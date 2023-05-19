@@ -158,6 +158,15 @@ func main() {
 		log.Fatalf("Current working directory (%q) is not under the exec root (%q), relative working dir = %q", wd, cOpts.ExecRoot, cOpts.WorkDir)
 	}
 
+	if cOpts.NumRemoteReruns < 0 {
+		log.Warningf("Expected num_remote_reruns to be at least 0, got %v. Defaulting num_remote_reruns to 0.", cOpts.NumRemoteReruns)
+		cOpts.NumRemoteReruns = 0
+	}
+	if cOpts.NumLocalReruns < 0 {
+		log.Warningf("Expected num_local_reruns to be at least 0, got %v. Defaulting num_local_reruns to 0.", cOpts.NumLocalReruns)
+		cOpts.NumLocalReruns = 0
+	}
+
 	// TODO (b/296409009): Add support for preserve true and download outputs false for downloading stubs.
 
 	resp, err := rewrapper.RunCommand(ctx, *dialTimeout, proxy, cmd, cOpts)

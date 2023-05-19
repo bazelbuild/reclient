@@ -2273,6 +2273,8 @@ func TestLERCMismatches(t *testing.T) {
 			},
 			CompareWithLocal: true,
 			ReclientTimeout:  3600,
+			NumLocalReruns:   1,
+			NumRemoteReruns:  1,
 		},
 	}
 	wantCmd := &command.Command{
@@ -2776,6 +2778,8 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 			RemoteExecutionOptions: remoteExecOptions,
 			CompareWithLocal:       true,
 			ReclientTimeout:        3600,
+			NumLocalReruns:         1,
+			NumRemoteReruns:        1,
 		},
 	}
 
@@ -3132,7 +3136,7 @@ func TestCompareWithReruns(t *testing.T) {
 	}
 }
 
-func TestRerun(t *testing.T) {
+func TestNoRerunWhenNoCompareMode(t *testing.T) {
 	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
@@ -3156,21 +3160,18 @@ func TestRerun(t *testing.T) {
 	var cmdArgs []string
 	var wantOutput []byte
 	var wantFileDg string
-	var wantLocalDirDg string
 	var wantRemoteDirDg string
 	var wantOutputBytes int64
 	if runtime.GOOS == "windows" {
 		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("(if not exist %s mkdir %s) && echo hello>%s", abPath, abPath, abOutPath)}
-		wantOutput = []byte("hello\r\n")
-		wantFileDg = "cd2eca3535741f27a8ae40c31b0c41d4057a7a7b912b33b9aed86485d1c84676/7"
-		wantLocalDirDg = "e04c31681c3dae2046b8caacda5a17160bca360461ba71b62951e9c514d4746d/79"
+		wantOutput = []byte("hello\n")
+		wantFileDg = "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03/6"
 		wantRemoteDirDg = "48bd723bc0791eeeda990c6ca2fc14133a73cb23e1c0aee08aa0a8728d37da93/79"
-		wantOutputBytes = int64(86)
+		wantOutputBytes = int64(85)
 	} else {
 		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprintf("mkdir -p %s && echo hello > %s", abPath, abOutPath)}
 		wantOutput = []byte("hello\n")
 		wantFileDg = "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03/6"
-		wantLocalDirDg = "48bd723bc0791eeeda990c6ca2fc14133a73cb23e1c0aee08aa0a8728d37da93/79"
 		wantRemoteDirDg = "48bd723bc0791eeeda990c6ca2fc14133a73cb23e1c0aee08aa0a8728d37da93/79"
 		wantOutputBytes = int64(85)
 	}
@@ -3210,7 +3211,6 @@ func TestRerun(t *testing.T) {
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
 	env.Set(cmd, executionOptions, res, &fakes.OutputFile{abOutPath, string(wantOutput)}, &fakes.OutputDir{abPath})
-	os.RemoveAll(filepath.Join(env.ExecRoot, abPath))
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -3254,73 +3254,10 @@ func TestRerun(t *testing.T) {
 				Result: &cpb.CommandResult{
 					Status: cpb.CommandResultStatus_SUCCESS,
 				},
-				RerunMetadata: []*lpb.RerunMetadata{
-					{
-						Attempt: 1,
-						Result:  &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
-						OutputFileDigests: map[string]string{
-							abOutPath: wantFileDg,
-						},
-						OutputDirectoryDigests: map[string]string{
-							abPath: wantRemoteDirDg,
-						},
-						NumOutputFiles:       1,
-						NumOutputDirectories: 1,
-						TotalOutputBytes:     wantOutputBytes,
-					},
-					{
-						Attempt: 2,
-						Result:  &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
-						OutputFileDigests: map[string]string{
-							abOutPath: wantFileDg,
-						},
-						OutputDirectoryDigests: map[string]string{
-							abPath: wantRemoteDirDg,
-						},
-						NumOutputFiles:       1,
-						NumOutputDirectories: 1,
-						TotalOutputBytes:     wantOutputBytes,
-					},
-					{
-						Attempt: 3,
-						Result:  &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
-						OutputFileDigests: map[string]string{
-							abOutPath: wantFileDg,
-						},
-						OutputDirectoryDigests: map[string]string{
-							abPath: wantRemoteDirDg,
-						},
-						NumOutputFiles:       1,
-						NumOutputDirectories: 1,
-						TotalOutputBytes:     wantOutputBytes,
-					},
-				},
 				TotalOutputBytes: wantOutputBytes,
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Labels: map[string]string{"type": "tool", "shallow": "true"},
-				RerunMetadata: []*lpb.RerunMetadata{
-					{
-						Attempt: 1,
-						Result:  &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
-						OutputFileDigests: map[string]string{
-							abOutPath: wantFileDg,
-						},
-						OutputDirectoryDigests: map[string]string{
-							abPath: wantLocalDirDg,
-						},
-					},
-					{
-						Attempt: 2,
-						Result:  &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
-						OutputFileDigests: map[string]string{
-							abOutPath: wantFileDg,
-						},
-						OutputDirectoryDigests: map[string]string{
-							abPath: wantLocalDirDg,
-						},
-					},
-				},
 			},
 		},
 	}

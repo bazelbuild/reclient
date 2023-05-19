@@ -21,8 +21,6 @@ import (
 
 	"team/foundry-x/re-client/internal/pkg/protoencoding"
 
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
-
 	lpb "team/foundry-x/re-client/api/log"
 
 	log "github.com/golang/glog"
@@ -33,35 +31,53 @@ func compareAction(ctx context.Context, s *Server, a *action) {
 		return
 	}
 	mismatches := make(map[string]*lpb.Verification_Mismatch)
+	var localExitCodes []int32
+	var remoteExitCodes []int32
 	numVerified := 0
 
 	for _, rerun := range a.rec.LocalMetadata.RerunMetadata {
 		numVerified += findMismatches(rerun.OutputFileDigests, rerun.OutputDirectoryDigests, mismatches, a, false)
+		localExitCodes = append(localExitCodes, rerun.Result.ExitCode)
 	}
 
 	if a.rec.RemoteMetadata != nil {
 		for _, rerun := range a.rec.RemoteMetadata.RerunMetadata {
 			numVerified += findMismatches(rerun.OutputFileDigests, rerun.OutputDirectoryDigests, mismatches, a, true)
+			remoteExitCodes = append(remoteExitCodes, rerun.Result.ExitCode)
 		}
 	}
 
-	for fp, mismatch := range mismatches {
-		localMismatches := len(mismatch.LocalDigests)
-		remoteMismatches := len(mismatch.RemoteDigests)
+	localExitCodes = dedupExitCodes(localExitCodes)
+	remoteExitCodes = dedupExitCodes(remoteExitCodes)
 
-		if localMismatches > 1 {
-			mismatch.Determinism = lpb.DeterminismStatus_NON_DETERMINISTIC
-		} else if remoteMismatches > 1 {
-			mismatch.Determinism = lpb.DeterminismStatus_REMOTE_NON_DETERMINISTIC
-		} else if localMismatches == 1 && remoteMismatches == 1 && (a.numLocalReruns > 1 || a.numRemoteReruns > 1 || mismatch.LocalDigests[0] == mismatch.RemoteDigests[0]) {
-			mismatch.Determinism = lpb.DeterminismStatus_DETERMINISTIC
-			if mismatch.LocalDigests[0] == mismatch.RemoteDigests[0] {
-				delete(mismatches, fp)
-			}
-		} else {
-			mismatch.Determinism = lpb.DeterminismStatus_UNKNOWN
+	for fp, mismatch := range mismatches {
+		mismatch.LocalExitCodes = localExitCodes
+		mismatch.RemoteExitCodes = remoteExitCodes
+
+		dgStatus, shouldLogDg := compareDigests(mismatch.LocalDigests, mismatch.RemoteDigests, a.numLocalReruns, a.numRemoteReruns)
+		ecStatus, shouldLogEc := compareExitCodes(mismatch.LocalExitCodes, mismatch.RemoteExitCodes, a.numLocalReruns, a.numRemoteReruns)
+
+		// Delete the records that we don't want to keep.
+		if !shouldLogDg && !shouldLogEc {
+			delete(mismatches, fp)
+		} else if !shouldLogDg {
+			mismatch.LocalDigests = nil
+			mismatch.RemoteDigests = nil
+		} else if !shouldLogEc {
+			mismatch.LocalExitCodes = nil
+			mismatch.RemoteExitCodes = nil
 		}
 
+		switch {
+		case dgStatus == lpb.DeterminismStatus_UNKNOWN || ecStatus == lpb.DeterminismStatus_UNKNOWN:
+			mismatch.Determinism = lpb.DeterminismStatus_UNKNOWN
+		case dgStatus == lpb.DeterminismStatus_REMOTE_NON_DETERMINISTIC || ecStatus == lpb.DeterminismStatus_REMOTE_NON_DETERMINISTIC:
+			mismatch.Determinism = lpb.DeterminismStatus_REMOTE_NON_DETERMINISTIC
+		case dgStatus == lpb.DeterminismStatus_NON_DETERMINISTIC || ecStatus == lpb.DeterminismStatus_NON_DETERMINISTIC:
+			mismatch.Determinism = lpb.DeterminismStatus_NON_DETERMINISTIC
+		default:
+			mismatch.Determinism = lpb.DeterminismStatus_DETERMINISTIC
+		}
 	}
 	verRes := mismatchesToProto(mismatches, numVerified)
 	a.rec.LocalMetadata.Verification = verRes
@@ -90,35 +106,54 @@ func mismatchesToProto(mismatches map[string]*lpb.Verification_Mismatch, numVeri
 	return res
 }
 
-func compareResults(localDigests, remoteDigests map[string]digest.Digest, actionDigest string) (map[string]*lpb.Verification_Mismatch, int) {
-	mismatches := make(map[string]*lpb.Verification_Mismatch)
-	numVerified := 0
-	for path, dl := range localDigests {
-		numVerified++
-		m := &lpb.Verification_Mismatch{
-			Path:         path,
-			LocalDigest:  dl.String(),
-			ActionDigest: actionDigest,
+// Returns the determinism status of the digests and whether we should log the mismatch.
+func compareDigests(localDigests []string, remoteDigests []string, numLocalReruns int, numRemoteReruns int) (lpb.DeterminismStatus, bool) {
+	totalReruns := numLocalReruns + numRemoteReruns
+	localMismatches := len(localDigests)
+	remoteMismatches := len(remoteDigests)
+
+	if localMismatches > 1 || remoteMismatches > 1 {
+		if localMismatches == 1 {
+			return lpb.DeterminismStatus_REMOTE_NON_DETERMINISTIC, true
 		}
-		if dr, ok := remoteDigests[path]; ok {
-			delete(remoteDigests, path)
-			if dr != dl {
-				m.RemoteDigests = []string{dr.String()}
-				mismatches[path] = m
-			}
-			continue
-		}
-		mismatches[path] = m
+		return lpb.DeterminismStatus_NON_DETERMINISTIC, true
 	}
-	for path, dr := range remoteDigests {
-		numVerified++
-		mismatches[path] = &lpb.Verification_Mismatch{
-			Path:          path,
-			RemoteDigests: []string{dr.String()},
-			ActionDigest:  actionDigest,
-		}
+
+	deterministicMismatch := localMismatches == 1 && remoteMismatches == 1 && localDigests[0] != remoteDigests[0] && totalReruns > 2
+	localDeterministic := localMismatches == 1 && numRemoteReruns == 0
+	remoteDeterministic := remoteMismatches == 1 && numLocalReruns == 0
+	deterministic := localMismatches == 1 && remoteMismatches == 1 && localDigests[0] == remoteDigests[0]
+
+	if localDeterministic || remoteDeterministic || deterministic || deterministicMismatch {
+		return lpb.DeterminismStatus_DETERMINISTIC, deterministicMismatch
 	}
-	return mismatches, numVerified
+
+	return lpb.DeterminismStatus_UNKNOWN, true
+}
+
+// Returns the determinism status of the exit codes and whether we should log the mismatch.
+func compareExitCodes(localExitCodes []int32, remoteExitCodes []int32, numLocalReruns int, numRemoteReruns int) (lpb.DeterminismStatus, bool) {
+	totalReruns := numLocalReruns + numRemoteReruns
+	localMismatches := len(localExitCodes)
+	remoteMismatches := len(remoteExitCodes)
+
+	if localMismatches > 1 || remoteMismatches > 1 {
+		if localMismatches == 1 {
+			return lpb.DeterminismStatus_REMOTE_NON_DETERMINISTIC, true
+		}
+		return lpb.DeterminismStatus_NON_DETERMINISTIC, true
+	}
+
+	deterministicMismatch := localMismatches == 1 && remoteMismatches == 1 && localExitCodes[0] != remoteExitCodes[0] && totalReruns > 2
+	localDeterministic := localMismatches == 1 && numRemoteReruns == 0
+	remoteDeterministic := remoteMismatches == 1 && numLocalReruns == 0
+	deterministic := localMismatches == 1 && remoteMismatches == 1 && localExitCodes[0] == remoteExitCodes[0]
+
+	if localDeterministic || remoteDeterministic || deterministic || deterministicMismatch {
+		return lpb.DeterminismStatus_DETERMINISTIC, deterministicMismatch
+	}
+
+	return lpb.DeterminismStatus_UNKNOWN, true
 }
 
 func findMismatches(fileDg map[string]string, dirDg map[string]string, mismatches map[string]*lpb.Verification_Mismatch, a *action, remote bool) int {
@@ -148,4 +183,18 @@ func findMismatches(fileDg map[string]string, dirDg map[string]string, mismatche
 		}
 	}
 	return numVerified
+}
+
+func dedupExitCodes(list []int32) []int32 {
+	var res []int32
+	seen := make(map[int32]bool)
+
+	for _, n := range list {
+		if _, ok := seen[n]; !ok {
+			seen[n] = true
+			res = append(res, n)
+		}
+	}
+
+	return res
 }

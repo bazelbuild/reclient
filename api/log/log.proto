@@ -235,14 +235,13 @@ message Verification {
     // Determines if the action inherently non-deterministic.
     bool non_deterministic = 4 [deprecated=true];
 
-    // Lists the various output digests we got from multiple remote-execution
-    // retries.
+    // A deduped list of output digests we got from remote-execution reruns.
     repeated string remote_digests = 5;
 
     // Action digest that produced the mismatching remote digests.
     string action_digest = 6;
 
-    // Lists the various output digests we got from multiple local reruns
+    // A deduped list of output digests we got from local reruns.
     repeated string local_digests = 7;
 
     // If true, the mismatch is considered expected/known thus can be ignored.
@@ -250,6 +249,12 @@ message Verification {
 
     // Indicates whether the action is inherently deterministic or not.
     DeterminismStatus determinism = 9;
+
+    // A deduped list of exit codes we got from remote-execution reruns.
+    repeated int32 remote_exit_codes = 10;
+
+    // A deduped list of exit codes we got from local reruns.
+    repeated int32 local_exit_codes = 11;
   }
 
   // Any SHA mismatches in the action.

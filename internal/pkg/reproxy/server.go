@@ -425,20 +425,10 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		}
 		rec.LocalMetadata.EventTimes[k] = t
 	}
-	numLocalRerun := int(req.GetExecutionOptions().GetNumLocalReruns())
+
 	numRemoteRerun := int(req.GetExecutionOptions().GetNumRemoteReruns())
-	if req.GetExecutionOptions().GetCompareWithLocal() {
-		if numLocalRerun == 0 {
-			numLocalRerun = 1
-		}
-		if numRemoteRerun == 0 {
-			numRetries := int(req.GetExecutionOptions().GetNumRetriesIfMismatched())
-			if numRetries > 0 {
-				numRemoteRerun = numRetries
-			} else {
-				numRemoteRerun = 1
-			}
-		}
+	if numRemoteRerun == 0 {
+		numRemoteRerun = int(req.GetExecutionOptions().GetNumRetriesIfMismatched())
 	}
 
 	reclientTimeout := int(req.GetExecutionOptions().GetReclientTimeout())
@@ -454,7 +444,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		lOpt:            req.GetExecutionOptions().GetLocalExecutionOptions(),
 		execStrategy:    req.GetExecutionOptions().GetExecutionStrategy(),
 		compare:         req.GetExecutionOptions().GetCompareWithLocal(),
-		numLocalReruns:  numLocalRerun,
+		numLocalReruns:  int(req.GetExecutionOptions().GetNumLocalReruns()),
 		numRemoteReruns: numRemoteRerun,
 		reclientTimeout: reclientTimeout,
 		oe:              outerr.NewRecordingOutErr(),
@@ -475,8 +465,13 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		a.rOpt.AcceptCached = false
 	}
 	s.runAction(aCtx, a)
-	if (a.numLocalReruns + a.numRemoteReruns) > 0 {
-		s.rerunAction(aCtx, a)
+
+	if a.compare {
+		if (a.numLocalReruns + a.numRemoteReruns) > 1 {
+			s.rerunAction(aCtx, a)
+		} else {
+			log.Errorf("%v: Invalid number of reruns. Total reruns of >= 2 expected. Got num_local_reruns=%v and num_remote_reruns=%v", executionID, a.numLocalReruns, a.numRemoteReruns)
+		}
 	}
 	s.logRecord(a, start)
 	oe := a.oe.(*outerr.RecordingOutErr)
@@ -751,7 +746,7 @@ func (s *Server) rerunAction(ctx context.Context, a *action) {
 		}
 		localRerunMetaData := &lpb.RerunMetadata{
 			Attempt:                int64(attemptNum),
-			Result:                 command.ResultToProto(a.res),
+			Result:                 command.ResultToProto(act.res),
 			EventTimes:             act.rec.LocalMetadata.EventTimes,
 			OutputFileDigests:      fileDgs,
 			OutputDirectoryDigests: dirDgs,
