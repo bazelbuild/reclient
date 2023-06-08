@@ -333,7 +333,7 @@ func TestComputeSpec_RemovesUnsupportedFlags(t *testing.T) {
 	inputs := []string{filepath.Clean("include/a/b.hmap")}
 	opts := inputprocessor.Options{
 		Cmd: []string{"../bin/clang++", "-o", "test.o", "-MF", "test.d", "-I../include/foo", "-I../include/bar", "-I../include/a/b.hmap",
-			"-fno-experimental-new-pass-manager", "-std=c++14", "-Xclang", "-verify", "-c", "../src/test.cpp"},
+			"-fno-experimental-new-pass-manager", "-fexperimental-new-pass-manager", "-std=c++14", "-Xclang", "-verify", "-c", "../src/test.cpp"},
 		WorkingDir: "out",
 		ExecRoot:   er,
 		Labels:     map[string]string{"type": "compile", "compiler": "clang", "lang": "cpp"},
@@ -351,7 +351,8 @@ func TestComputeSpec_RemovesUnsupportedFlags(t *testing.T) {
 		"-I../include/a/b.hmap",
 		"-std=c++14", "-c", // expect -std=xx to not be normalized
 		"-Qunused-arguments", // expect Qunused-arguments to be added, and -Xclang -verify to be removed
-		// -fno-experimental-new-pass-manager is removed since its not supported in newer clang versions
+		// -fno-experimental-new-pass-manager and -fexperimental-new-pass-manager are removed since
+		// they're not supported in newer clang versions.
 		"-o", "test.o",
 		filepath.Join(er, "src/test.cpp"),
 	}

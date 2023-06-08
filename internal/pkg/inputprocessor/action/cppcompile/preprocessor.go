@@ -60,6 +60,7 @@ var (
 	// argument parsing.
 	toRemoveArgs = map[string]struct{}{
 		"-fno-experimental-new-pass-manager": struct{}{},
+		"-fexperimental-new-pass-manager":    struct{}{},
 	}
 	virtualInputFlags = map[string]bool{"-I": true, "-isystem": true, "-isysroot": true, "--sysroot=": true, "--sysroot": true}
 )
