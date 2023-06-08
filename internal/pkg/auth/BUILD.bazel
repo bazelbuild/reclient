@@ -11,6 +11,7 @@ go_library(
     deps = [
         "//api/auth",
         "@com_github_golang_glog//:go_default_library",
+        "@com_github_hectane_go_acl//:go-acl",
         "@org_golang_google_grpc//credentials/oauth",
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//types/known/timestamppb",

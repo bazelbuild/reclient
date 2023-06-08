@@ -21,6 +21,7 @@ import (
 	apb "team/foundry-x/re-client/api/auth"
 
 	log "github.com/golang/glog"
+	"github.com/hectane/go-acl"
 	"golang.org/x/oauth2"
 	"google.golang.org/protobuf/encoding/prototext"
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
@@ -73,6 +74,12 @@ func saveToDisk(c cachedCredentials, tf string) error {
 	}
 	f, err := os.Create(tf)
 	if err != nil {
+		return err
+	}
+	// Only owner can read/write the credential cache.
+	// This is consistent with gcloud's credentials.db.
+	// os.OpenFile(..., 0600) is not used because it does not properly set ACLs on windows.
+	if err := acl.Chmod(tf, 0600); err != nil {
 		return err
 	}
 	defer f.Close()

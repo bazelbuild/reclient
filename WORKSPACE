@@ -151,6 +151,13 @@ go_repository(
     version = "v0.0.0-20200825202427-b303f430e36d",
 )
 
+go_repository(
+    name = "com_github_hectane_go_acl",
+    importpath = "github.com/hectane/go-acl",
+    sum = "h1:PGufWXXDq9yaev6xX1YQauaO1MV90e6Mpoq1I7Lz/VM=",
+    version = "v0.0.0-20230122075934-ca0b05cb1adb",
+)
+
 go_rules_dependencies()
 
 go_register_toolchains(version = "1.19.5")
