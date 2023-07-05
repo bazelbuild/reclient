@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"sync"
 	"time"
 
 	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner"
@@ -127,24 +128,35 @@ type Options struct {
 	ProxyServerAddress          string
 }
 
+// TODO(b/169675226): Replace usage with sync.OnceFunc when we upgrade to go 1.21
+func onceFunc(f func()) func() {
+	var once sync.Once
+	return func() {
+		once.Do(f)
+	}
+}
+
 // NewInputProcessor creates a new input processor.
 // Its resources are bound by the local resources manager.
-func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache, l *logger.Logger, opt *Options) (*InputProcessor, func()) {
+func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache, l *logger.Logger, opt *Options) (*InputProcessor, func(), error) {
 	depsCacheMode := getDepsCacheMode(opt.CacheDir, opt.EnableDepsCache)
 	var ignoredPlugins []string
 	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
 		ignoredPlugins = opt.ClangDepsScanIgnoredPlugins
 	}
-	depScanner := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, ignoredPlugins, depsCacheMode == gomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
+	depScanner, err := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, ignoredPlugins, depsCacheMode == gomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
+	if err != nil {
+		return nil, func() {}, err
+	}
 	ip := newInputProcessor(depScanner, opt.IPTimeout, opt.CppLinkDeepScan, executor, resMgr, fmc)
 	cleanup := func() {}
 	if depsCacheMode == reproxyDepsCache {
 		ip.depsCache, cleanup = newDepsCache(fmc, opt.CacheDir)
 	}
-	return ip, func() {
+	return ip, onceFunc(func() {
 		cleanup()
 		depScanner.Close()
-	}
+	}), nil
 }
 
 func getDepsCacheMode(depsCacheDir string, enableDepsCache bool) depsCacheMode {

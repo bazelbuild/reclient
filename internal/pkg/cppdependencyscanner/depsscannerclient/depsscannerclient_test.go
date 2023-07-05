@@ -146,7 +146,10 @@ func TestNew_ConnectSuccess(t *testing.T) {
 	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
 		return testService.connect(ctx, address)
 	}
-	depsScannerClient := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	if err != nil {
+		t.Errorf("New() retured unexpected error: %v", err)
+	}
 	if testService.connectCount != 1 {
 		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount)
 	}
@@ -166,7 +169,10 @@ func TestNew_ConnectFailure(t *testing.T) {
 	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
 		return testService.connect(ctx, address)
 	}
-	depsScannerClient := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	if err == nil {
+		t.Errorf("New() did not return expected error")
+	}
 	// Windows and mac runs are inconsistent with exactly how many attempts fit in 500ms
 	if testService.connectCount < 5 || testService.connectCount > 11 {
 		t.Errorf("New(): expected 5-11 connection attempts, got %v", testService.connectCount)
@@ -186,7 +192,10 @@ func TestNew_StartSuccess(t *testing.T) {
 		return testService.connect(ctx, address)
 	}
 	stubExecutor := &stubExecutor{}
-	depsScannerClient := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	if err != nil {
+		t.Errorf("New() retured unexpected error: %v", err)
+	}
 	if testService.connectCount != 1 {
 		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount)
 	}
@@ -228,7 +237,10 @@ func TestNew_StartFailure(t *testing.T) {
 	stubExecutor := &stubExecutor{
 		err: errors.New("File not found"),
 	}
-	depsScannerClient := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	if err == nil {
+		t.Errorf("New() did not return expected error")
+	}
 	if testService.connectCount != 0 {
 		t.Errorf("New(); expected 0 connection attempts, got %v", testService.connectCount)
 	}
@@ -263,7 +275,10 @@ func TestNew_StartNoConnect(t *testing.T) {
 		return testService.connect(ctx, address)
 	}
 	stubExecutor := &stubExecutor{}
-	depsScannerClient := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	if err == nil {
+		t.Errorf("New() did not return expected error")
+	}
 	// Windows and mac runs are inconsistent with exactly how many attempts fit in 500ms
 	if testService.connectCount < 5 || testService.connectCount > 11 {
 		t.Errorf("New(): expected 5-11 connection attempts, got %v", testService.connectCount)
@@ -294,7 +309,10 @@ func TestNew_StartDelayedConnect(t *testing.T) {
 		return testService.connect(ctx, address)
 	}
 	stubExecutor := &stubExecutor{}
-	depsScannerClient := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	if err != nil {
+		t.Errorf("New() retured unexpected error: %v", err)
+	}
 	// The exact number is unknown as it is (5s - execution time of lines 282 to 290)/50ms
 	if testService.connectCount <= 2 {
 		t.Errorf("New(); expected more than 2 connection attempts, got %v", testService.connectCount)
@@ -573,6 +591,7 @@ func TestFindKeyVal(t *testing.T) {
 		knownVars map[string]string
 		wantKey   string
 		wantVal   string
+		wantErr   bool
 	}{{
 		name:   "Normal",
 		envStr: "Key=Val",
@@ -630,6 +649,13 @@ func TestFindKeyVal(t *testing.T) {
 		},
 		wantKey: "Key=StillTheKey",
 		wantVal: "Val",
+	}, {
+		name:      "MissingEnvVar",
+		envStr:    "Key=StillTheKey=Val",
+		knownVars: map[string]string{},
+		wantKey:   "",
+		wantVal:   "",
+		wantErr:   true,
 	},
 	}
 	for _, test := range tests {
@@ -640,7 +666,13 @@ func TestFindKeyVal(t *testing.T) {
 				v, ok := test.knownVars[k]
 				return v, ok
 			}
-			gotKey, gotVal := findKeyVal(test.envStr, lookupEnvFunc)
+			gotKey, gotVal, err := findKeyVal(test.envStr, lookupEnvFunc)
+			if test.wantErr && err == nil {
+				t.Errorf("findKeyVal(%v) did not return expected error", test.envStr)
+			}
+			if !test.wantErr && err != nil {
+				t.Errorf("findKeyVal(%v) returned unexpected error: %v", test.envStr, err)
+			}
 			if gotKey != test.wantKey || gotVal != test.wantVal {
 				t.Errorf("findKeyVal(%v) returned wrong key value pair, wanted key=%v value=%v, got key=%v value=%v", test.envStr, test.wantKey, test.wantVal, gotKey, gotVal)
 			}

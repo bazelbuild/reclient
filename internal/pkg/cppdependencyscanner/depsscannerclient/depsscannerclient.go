@@ -104,7 +104,7 @@ var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient
 var connTimeout = 30 * time.Second
 
 // New creates new DepsScannerClient.
-func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, ignoredPlugins []string, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string) *DepsScannerClient {
+func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, ignoredPlugins []string, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string) (*DepsScannerClient, error) {
 	log.Infof("Connecting to remote dependency scanner: %v", depsScannerAddress)
 
 	ignoredPluginsMap := map[string]bool{}
@@ -127,13 +127,11 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 		executable := depsScannerAddress[7:]
 		addr, err := buildAddress(proxyServerAddress, findOpenPort)
 		if err != nil {
-			log.Errorf("Failed to build address for dependency scanner: %v", err)
-			return nil
+			return nil, fmt.Errorf("Failed to build address for dependency scanner: %w", err)
 		}
 		client.address = addr
 		if err := client.startService(ctx, executable); err != nil {
-			log.Errorf("Failed to start dependency scanner: %v", err)
-			return nil
+			return nil, fmt.Errorf("Failed to start dependency scanner: %w", err)
 		}
 	}
 
@@ -141,13 +139,11 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 	for {
 		select {
 		case <-connTimeoutCtx.Done():
-			log.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
 			client.Close()
-			return nil
+			return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
 		case err := <-client.ch:
 			if err != nil {
-				log.Errorf("%v terminated during startup: %v", client.executable, err)
-				return nil
+				return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err)
 			}
 			continue
 		default:
@@ -159,7 +155,7 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 			}
 			log.Infof("Connected to dependency scanner service on %v", client.address)
 			client.client = c
-			return client
+			return client, nil
 		}
 	}
 }
@@ -430,7 +426,10 @@ func (ds *DepsScannerClient) startService(ctx context.Context, executable string
 	for _, e := range os.Environ() {
 		// Debugging parameters `experimental_segfault` and `experimental_deadlock` can be used
 		// by setting their corresponding `FLAGS_*` environment variables.
-		key, val := findKeyVal(e, os.LookupEnv)
+		key, val, err := findKeyVal(e, os.LookupEnv)
+		if err != nil {
+			return err
+		}
 		switch key {
 		case "FLAGS_experimental_segfault":
 			cmdArgs = append(cmdArgs, "--experimental_segfault", val)
@@ -457,20 +456,19 @@ func (ds *DepsScannerClient) startService(ctx context.Context, executable string
 	return ds.executor.ExecuteInBackground(ctx, cmd, ds.oe, ds.ch)
 }
 
-func findKeyVal(envStr string, lookupEnvFunc func(string) (string, bool)) (string, string) {
+func findKeyVal(envStr string, lookupEnvFunc func(string) (string, bool)) (string, string, error) {
 	envParts := strings.Split(envStr, "=")
 	if len(envParts) == 2 {
-		return envParts[0], envParts[1]
+		return envParts[0], envParts[1], nil
 	}
 	for i := 1; i < len(envParts)+1; i++ {
 		pkey := strings.Join(envParts[:i], "=")
 		pval := strings.Join(envParts[i:], "=")
 		if val, ok := lookupEnvFunc(pkey); ok && val == pval {
-			return pkey, pval
+			return pkey, pval, nil
 		}
 	}
-	log.Fatalf("Got %s in env vars list but could not find any matching env var", strings.Join(envParts, "="))
-	return "", ""
+	return "", "", fmt.Errorf("Got %s in env vars list but could not find any matching env var", strings.Join(envParts, "="))
 }
 
 // stopService attempts to stop the dependency scanner service started by reproxy.

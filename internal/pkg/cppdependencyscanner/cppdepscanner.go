@@ -29,8 +29,6 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
-
-	log "github.com/golang/glog"
 )
 
 // DepsScanner is an include scanner for c++ compiles.
@@ -90,13 +88,9 @@ func Name() string {
 }
 
 // New creates new DepsScanner.
-func New(ctx context.Context, executor executor, fmc filemetadata.Cache, cacheDir, logDir string, cacheSizeMaxMb int, ignoredPlugins []string, useDepsCache bool, l *logger.Logger, depsScannerAddress, proxyServerAddress string) DepsScanner {
+func New(ctx context.Context, executor executor, fmc filemetadata.Cache, cacheDir, logDir string, cacheSizeMaxMb int, ignoredPlugins []string, useDepsCache bool, l *logger.Logger, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
 	if depsScannerAddress == "" {
-		return includescanner.New(fmc, cacheDir, logDir, cacheSizeMaxMb, ignoredPlugins, useDepsCache, l)
+		return includescanner.New(fmc, cacheDir, logDir, cacheSizeMaxMb, ignoredPlugins, useDepsCache, l), nil
 	}
-	client := depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, ignoredPlugins, useDepsCache, logDir, depsScannerAddress, proxyServerAddress)
-	if client == nil {
-		log.Fatal("Unable to connect to dependency scanner service")
-	}
-	return client
+	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, ignoredPlugins, useDepsCache, logDir, depsScannerAddress, proxyServerAddress)
 }

@@ -221,6 +221,48 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	var grpcClient *client.Client
 	var c *auth.Credentials
 	if !*remoteDisabled {
+		m, err := auth.MechanismFromFlags()
+		if err != nil || m == auth.Unknown {
+			log.Errorf("Failed to determine auth mechanism: %v", err)
+			os.Exit(auth.ExitCodeNoAuth)
+		}
+		c = mustBuildCredentials(m)
+		defer c.SaveToDisk()
+	}
+	var e *monitoring.Exporter
+	var exportActionMetrics logger.ExportActionMetricsFunc
+	if *metricsProject != "" {
+		e, err = newExporter(c)
+		if err != nil {
+			log.Errorf("Failed to initialize cloud monitoring: %v", err)
+		} else {
+			exportActionMetrics = e.ExportActionMetrics
+			defer e.Close()
+		}
+	}
+	if e != nil {
+		exportActionMetrics = e.ExportActionMetrics
+	}
+	mi, err := ignoremismatch.New(*mismatchIgnoreConfigPath)
+	if err != nil {
+		log.Errorf("Failed to create mismatch ignorer: %v", err)
+	}
+	l, err := initializeLogger(mi, exportActionMetrics)
+	if err != nil {
+		log.Exitf("%v", err)
+	}
+
+	st := filemetadata.NewSingleFlightCache()
+
+	exec := &subprocess.SystemExecutor{}
+	resMgr := localresources.NewFractionalDefaultManager(*localResourceFraction)
+	ipResCh := make(chan newIPResult)
+	defer close(ipResCh)
+	ipctx, cancelIPStartup := context.WithCancel(ctx)
+	defer cancelIPStartup()
+	go startIP(ipctx, logDir, exec, resMgr, st, l, ipResCh)
+
+	if !*remoteDisabled {
 		// Backward compatibility until useUnifiedCASOps is deprecated:
 		if *useUnifiedCASOps {
 			*useUnifiedUploads = true
@@ -236,19 +278,13 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			client.UseBatchOps(*useBatches),
 			client.CompressedBytestreamThreshold(*compressionThreshold),
 		}
-		m, err := auth.MechanismFromFlags()
-		if err != nil || m == auth.Unknown {
-			log.Errorf("Failed to determine auth mechanism: %v", err)
-			os.Exit(auth.ExitCodeNoAuth)
-		}
-		c = mustBuildCredentials(m)
-		defer c.SaveToDisk()
 		if ts := c.TokenSource(); ts != nil {
 			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
 		}
 		log.Infof("Creating a new SDK client")
 		grpcClient, err = rflags.NewClientFromFlags(ctx, clientOpts...)
 		if err != nil {
+			cancelIPStartup()
 			log.Errorf("Failed to initialize remote-execution client: %+v", err)
 			if ce, ok := err.(*client.InitError); ok {
 				// Error codes 10-19 are considered auth errors by bootstrap.
@@ -276,46 +312,13 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		defer grpcClient.Close()
 	}
 
-	mi, err := ignoremismatch.New(*mismatchIgnoreConfigPath)
-	if err != nil {
-		log.Errorf("Failed to create mismatch ignorer: %v", err)
+	ipRes := <-ipResCh
+	defer ipRes.cleanup()
+	if ipRes.err != nil {
+		log.Exitf("Failed to start input processor: %v", ipRes.err)
 	}
-	var e *monitoring.Exporter
-	if *metricsProject != "" {
-		e, err = newExporter(c)
-		if err != nil {
-			log.Errorf("Failed to initialize cloud monitoring: %v", err)
-		} else {
-			defer e.Close()
-		}
-	}
-	var exportActionMetrics logger.ExportActionMetricsFunc
-	if e != nil {
-		exportActionMetrics = e.ExportActionMetrics
-	}
-	l, err := initializeLogger(mi, exportActionMetrics)
-	if err != nil {
-		log.Exitf("%v", err)
-	}
-
-	st := filemetadata.NewSingleFlightCache()
-
-	exec := &subprocess.SystemExecutor{}
-	resMgr := localresources.NewFractionalDefaultManager(*localResourceFraction)
-	ipOpts := &inputprocessor.Options{
-		CacheDir:                    *cacheDir,
-		EnableDepsCache:             *enableDepsCache,
-		LogDir:                      logDir,
-		DepsCacheMaxMb:              *depsCacheMaxMb,
-		ClangDepsScanIgnoredPlugins: clangDepScanIgnoredPlugins,
-		CppLinkDeepScan:             *cppLinkDeepScan,
-		IPTimeout:                   *ipTimeout,
-		DepsScannerAddress:          *depsScannerAddress,
-		ProxyServerAddress:          *serverAddr,
-	}
-	ip, cleanupIP := inputprocessor.NewInputProcessor(ctx, exec, resMgr, st, l, ipOpts)
 	server := &reproxy.Server{
-		InputProcessor:            ip,
+		InputProcessor:            ipRes.ip,
 		FileMetadataStore:         st,
 		REClient:                  &rexec.Client{st, grpcClient},
 		LocalPool:                 reproxy.NewLocalPool(exec, resMgr),
@@ -343,7 +346,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	} else {
 		log.Warningf("nil logger pointer")
 	}
-	ip.SetLogger(l)
+	ipRes.ip.SetLogger(l)
 	// Delete old logs in the background.
 	go reproxy.DeleteOldLogFiles(*logKeepDuration, logDir)
 	pb.RegisterCommandsServer(grpcServer, server)
@@ -380,7 +383,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		}
 		grpcServer.GracefulStop()
 		// Input processor must be cleaned up after DrainAndReleaseResources() to ensure that all contexts are cancelled first.
-		cleanupIP()
+		ipRes.cleanup()
 		log.Infof("Finished shutting down and wrote log records...")
 		log.Flush()
 		wg.Done()
@@ -390,6 +393,36 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		wg.Done()
 	}()
 	wg.Wait()
+}
+
+type newIPResult struct {
+	ip      *inputprocessor.InputProcessor
+	cleanup func()
+	err     error
+}
+
+func startIP(ctx context.Context, logDir string, exec *subprocess.SystemExecutor, resMgr *localresources.Manager, st filemetadata.Cache, l *logger.Logger, out chan<- newIPResult) {
+	var res newIPResult
+	res.ip, res.cleanup, res.err = inputprocessor.NewInputProcessor(
+		ctx, exec, resMgr, st, l, &inputprocessor.Options{
+			CacheDir:                    *cacheDir,
+			EnableDepsCache:             *enableDepsCache,
+			LogDir:                      logDir,
+			DepsCacheMaxMb:              *depsCacheMaxMb,
+			ClangDepsScanIgnoredPlugins: clangDepScanIgnoredPlugins,
+			CppLinkDeepScan:             *cppLinkDeepScan,
+			IPTimeout:                   *ipTimeout,
+			DepsScannerAddress:          *depsScannerAddress,
+			ProxyServerAddress:          *serverAddr,
+		})
+	select {
+	case out <- res:
+	case <-ctx.Done():
+		if res.err != nil {
+			log.Errorf("Failed to start input processor: %v", res.err)
+		}
+		res.cleanup()
+	}
 }
 
 // mustBuildCredentials either returns a valid auth.Credentials struct or exits
