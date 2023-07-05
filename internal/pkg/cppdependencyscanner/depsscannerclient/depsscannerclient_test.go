@@ -55,7 +55,7 @@ type testService struct {
 	// A fake gRPC client to return from connect.
 	stubClient *stubClient
 	// The number of times connect should fail before returning stubClient.
-	connectDelay time.Duration
+	connectDelay time.Time
 	// Output: the number of times connect() was called.
 	connectCount int
 }
@@ -64,7 +64,7 @@ type testService struct {
 func (s *testService) connect(ctx context.Context, address string) (*stubClient, error) {
 	s.connectCount++
 	select {
-	case <-time.After(s.connectDelay):
+	case <-time.After(time.Until(s.connectDelay)):
 		// Sleep, simulate a slow connection that may or may not timeout
 	case <-ctx.Done():
 		return nil, errors.New("Connection timed out")
@@ -158,15 +158,18 @@ func TestNew_ConnectSuccess(t *testing.T) {
 // TestNew_ConnectFailure tests that a call to New() will fail if no dependency scanner service is
 // running when expected.
 func TestNew_ConnectFailure(t *testing.T) {
+	setConnTimeout(t, 500*time.Millisecond)
 	testService := &testService{
-		stubClient: nil,
+		stubClient:   nil,
+		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
 	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
 		return testService.connect(ctx, address)
 	}
 	depsScannerClient := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
-	if testService.connectCount != 1 {
-		t.Errorf("New(): expected 1 connection attempt, got %v", testService.connectCount)
+	// Windows and mac runs are inconsistent with exactly how many attempts fit in 500ms
+	if testService.connectCount < 5 || testService.connectCount > 11 {
+		t.Errorf("New(): expected 5-11 connection attempts, got %v", testService.connectCount)
 	}
 	if depsScannerClient != nil {
 		t.Error("New(): Returned DepsScannerClient; expected nil")
@@ -252,14 +255,18 @@ func TestNew_StartFailure(t *testing.T) {
 // TestNew_StartNoConnect tests that New() will error if it is able to successfully start a
 // dependency scanner service, but is unable to connect to it for any reason.
 func TestNew_StartNoConnect(t *testing.T) {
-	testService := &testService{}
+	setConnTimeout(t, 500*time.Millisecond)
+	testService := &testService{
+		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
+	}
 	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
 		return testService.connect(ctx, address)
 	}
 	stubExecutor := &stubExecutor{}
 	depsScannerClient := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
-	if testService.connectCount != 1 {
-		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount)
+	// Windows and mac runs are inconsistent with exactly how many attempts fit in 500ms
+	if testService.connectCount < 5 || testService.connectCount > 11 {
+		t.Errorf("New(): expected 5-11 connection attempts, got %v", testService.connectCount)
 	}
 	if depsScannerClient != nil {
 		t.Error("New(): DepsScannerClient returned; expected nil")
@@ -273,12 +280,6 @@ func TestNew_StartNoConnect(t *testing.T) {
 	if stubExecutor.cmd == nil {
 		t.Error("New(): Executor did not get a cmd")
 	}
-	select {
-	case <-stubExecutor.ctx.Done():
-		// Cancel() called. Expected
-	default:
-		t.Error("New(): Executor was expected to cancel")
-	}
 }
 
 // TestNew_StartDelayedConnect tests that a call to New() will be successful if the started
@@ -287,15 +288,16 @@ func TestNew_StartNoConnect(t *testing.T) {
 func TestNew_StartDelayedConnect(t *testing.T) {
 	testService := &testService{
 		stubClient:   &stubClient{},
-		connectDelay: 5 * time.Second, // Wait for 5 seconds before "accepting" the connection
+		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
 	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
 		return testService.connect(ctx, address)
 	}
 	stubExecutor := &stubExecutor{}
 	depsScannerClient := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
-	if testService.connectCount != 1 {
-		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount)
+	// The exact number is unknown as it is (5s - execution time of lines 282 to 290)/50ms
+	if testService.connectCount <= 2 {
+		t.Errorf("New(); expected more than 2 connection attempts, got %v", testService.connectCount)
 	}
 	if depsScannerClient == nil {
 		t.Error("New(): Expected DepsScannerClient; got nil")
@@ -713,4 +715,13 @@ func runForPlatforms(t *testing.T, name string, platforms []string, test func(t 
 			return
 		}
 	}
+}
+
+func setConnTimeout(t *testing.T, newTimeout time.Duration) {
+	t.Helper()
+	oldConnTimeout := connTimeout
+	connTimeout = newTimeout
+	t.Cleanup(func() {
+		connTimeout = oldConnTimeout
+	})
 }

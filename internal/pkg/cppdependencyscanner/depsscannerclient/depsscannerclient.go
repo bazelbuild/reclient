@@ -100,10 +100,11 @@ var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient
 	return client, nil
 }
 
+// TODO (b/258275137): make this configurable and move somewhere more appropriate when reconnect logic is implemented.
+var connTimeout = 30 * time.Second
+
 // New creates new DepsScannerClient.
 func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, ignoredPlugins []string, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string) *DepsScannerClient {
-	// TODO (b/258275137): make this configurable and move somewhere more appropriate when reconnect logic is implemented.
-	connTimeout := 30 * time.Second
 	log.Infof("Connecting to remote dependency scanner: %v", depsScannerAddress)
 
 	ignoredPluginsMap := map[string]bool{}
@@ -136,26 +137,31 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 		}
 	}
 
-	select {
-	case err := <-client.ch:
-		if err != nil {
-			log.Errorf("%v terminated during startup: %v", client.executable, err)
-			return nil
-		}
-	default:
-		tctx, cancel := context.WithTimeout(ctx, connTimeout)
-		defer cancel()
-		c, err := connect(tctx, client.address)
-		if err != nil {
-			log.Errorf("Failed to connect to dependency scanner service after %v seconds: %v", connTimeout.Seconds(), err)
+	connTimeoutCtx, _ := context.WithTimeout(ctx, connTimeout)
+	for {
+		select {
+		case <-connTimeoutCtx.Done():
+			log.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
 			client.Close()
 			return nil
+		case err := <-client.ch:
+			if err != nil {
+				log.Errorf("%v terminated during startup: %v", client.executable, err)
+				return nil
+			}
+			continue
+		default:
+			tctx, _ := context.WithTimeout(connTimeoutCtx, 50*time.Millisecond)
+			c, err := connect(tctx, client.address)
+			if err != nil {
+				log.Infof("Failed to connect to dependency scanner, it may not be started yet: %v", err)
+				continue
+			}
+			log.Infof("Connected to dependency scanner service on %v", client.address)
+			client.client = c
+			return client
 		}
-		client.client = c
 	}
-
-	log.Infof("Connected to dependency scanner service on %v", client.address)
-	return client
 }
 
 // buildAddress generates an address for the depsscanner process to listen on.
@@ -268,6 +274,9 @@ func findOpenPort() (int, error) {
 // It cleanly disconnects from the remote service and releases resource associated with
 // DepsScannerClient.
 func (ds *DepsScannerClient) Close() {
+	if ds.client == nil {
+		return
+	}
 	if err := ds.stopService(shutdownTimeout); err != nil {
 		log.Errorf("%v", err)
 	}
