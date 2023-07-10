@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "printer",
+    srcs = ["printer.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/printer",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@com_github_fatih_color//:color",
+        "@com_github_golang_glog//:go_default_library",
+        "@com_github_vardius_progress_go//:progress-go",
+    ],
+)

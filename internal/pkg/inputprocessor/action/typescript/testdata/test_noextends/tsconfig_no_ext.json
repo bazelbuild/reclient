@@ -1,0 +1,17 @@
+
+{
+  "include": [
+    "a/",
+    "b/",
+    "c/"
+  ],
+  "files": [
+    "testfile/a.ts",
+    "testfile/b.ts",
+    "testfile/c.ts"
+  ],
+  "exclude": [
+    "a/a",
+    "a/b"
+  ]
+}

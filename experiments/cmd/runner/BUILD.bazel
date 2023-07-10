@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "runner_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/experiments/cmd/runner",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//experiments/internal/pkg/runner",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "runner",
+    embed = [":runner_lib"],
+    visibility = ["//visibility:public"],
+)

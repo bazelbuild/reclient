@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "reproxy_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/cmd/reproxy",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/proxy",
+        "//internal/pkg/auth",
+        "//internal/pkg/cppdependencyscanner",
+        "//internal/pkg/ignoremismatch",
+        "//internal/pkg/interceptors",
+        "//internal/pkg/ipc",
+        "//internal/pkg/localresources",
+        "//internal/pkg/logger",
+        "//internal/pkg/monitoring",
+        "//internal/pkg/rbeflag",
+        "//internal/pkg/reproxy",
+        "//internal/pkg/reproxypid",
+        "//internal/pkg/stats",
+        "//internal/pkg/subprocess",
+        "//pkg/inputprocessor",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/client",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/flags",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/rexec",
+        "@com_github_golang_glog//:go_default_library",
+        "@com_google_cloud_go//profiler",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_binary(
+    name = "reproxy",
+    embed = [":reproxy_lib"],
+    visibility = ["//visibility:public"],
+)

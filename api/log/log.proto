@@ -1,0 +1,287 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package log;
+
+import "bq_table.proto";
+import "go/api/command/command.proto";
+
+message LogDump {
+  // The log records in the dump.
+  repeated LogRecord records = 1;
+}
+
+enum CompletionStatus {
+  // Invalid value.
+  STATUS_UNKNOWN = 0;
+  // Retrieved from cache.
+  STATUS_CACHE_HIT = 1;
+  // Executed remotely.
+  STATUS_REMOTE_EXECUTION = 2;
+  // Execution failed remotely but succeeded in local fallback run.
+  STATUS_LOCAL_FALLBACK = 3;
+  // Executed locally.
+  STATUS_LOCAL_EXECUTION = 4;
+  // Execution completed locally first during racing mode.
+  STATUS_RACING_LOCAL = 5;
+  // Execution completed remotely first during racing mode.
+  STATUS_RACING_REMOTE = 6;
+  // Execution failed remotely.
+  STATUS_REMOTE_FAILURE = 7;
+  // Execution failed locally.
+  STATUS_LOCAL_FAILURE = 8;
+  // Execution failed due a non zero exit code.
+  STATUS_NON_ZERO_EXIT = 9;
+  // Execution timed out
+  STATUS_TIMEOUT = 10;
+  // Execution was interrupted
+  STATUS_INTERRUPTED = 11;
+}
+
+// Properties describing the determinism status of a file/directory for a single action.
+enum DeterminismStatus {
+  // Action is deterministic.
+  DETERMINISTIC = 0;
+  // Action is non-deterministic.
+  NON_DETERMINISTIC = 1;
+  // Determinism of action is unknown.
+  UNKNOWN = 2;
+  // Action is non-deterministic only on RBE.
+  REMOTE_NON_DETERMINISTIC = 3;
+}
+
+// The full record of a single command execution.
+message LogRecord {
+  option (gen_bq_schema.bigquery_opts).table_name = "reproxy_log";
+
+  // The executed command.
+  cmd.Command command = 1;
+
+  // Final command result.
+  cmd.CommandResult result = 2;
+
+  // Properties of an remotely executed/cached action.
+  RemoteMetadata remote_metadata = 3;
+
+  // Properties relevant to local execution.
+  LocalMetadata local_metadata = 4;
+
+  // Overall completion status of the command execution.
+  CompletionStatus completion_status = 5;
+}
+
+message RerunMetadata {
+  // Current attempt number
+  int64 attempt = 1;
+
+  // The remote execution/cache result.
+  cmd.CommandResult result = 2;
+
+  // The total number of output files (incl symlinks).
+  int32 num_output_files = 3;
+
+  // The total number of output directories (incl symlinks, but not recursive).
+  int32 num_output_directories = 4;
+
+  // The overall number of bytes from all the output files (incl. stdout/stderr,
+  // but not symlinks).
+  int64 total_output_bytes = 5;
+
+  // Output file digests.
+  map<string, string> output_file_digests = 6;
+
+  // Output directory digests.
+  map<string, string> output_directory_digests = 7;
+
+  // Sum of size in bytes (excluding metadata) of the blobs that were
+  // downloaded.
+  int64 logical_bytes_downloaded = 8;
+
+  // Sum of size in bytes (excluding metadata) downloaded. May differ from
+  // logical_bytes_downloaded due to compression or retries.
+  int64 real_bytes_downloaded = 9;
+
+  // Times of various SDK events.
+  map<string, cmd.TimeInterval> event_times = 10;
+}
+
+// Properties of an remotely executed/cached action.
+message RemoteMetadata {
+  // The remote execution/cache result.
+  cmd.CommandResult result = 1;
+
+  // Whether the action was a remote cache hit.
+  bool cache_hit = 2;
+
+  // Number of overall action input files.
+  int32 num_input_files = 3;
+
+  // Number of overall action input files.
+  int32 num_input_directories = 4;
+
+  // Total bytes of all the inputs.
+  int64 total_input_bytes = 5;
+
+  // The total number of output files (incl symlinks).
+  int32 num_output_files = 9;
+
+  // The total number of output directories (incl symlinks, but not recursive).
+  int32 num_output_directories = 10;
+
+  // The overall number of bytes from all the output files (incl. stdout/stderr,
+  // but not symlinks).
+  int64 total_output_bytes = 11;
+
+  // The digest of the RE command proto, in canonical format <hash>/<size>.
+  string command_digest = 6;
+
+  // The digest of the RE action proto, in canonical format <hash>/<size>.
+  string action_digest = 7;
+
+  // Times of various SDK events.
+  map<string, cmd.TimeInterval> event_times = 8;
+
+  // Sum of size in bytes (exclusing metadata) of the blobs that were uploaded.
+  int64 logical_bytes_uploaded = 13;
+
+  // Sum of size in bytes (excluding metadata) uploaded. May differ from
+  // logical_bytes_uploaded due to compression or retries.
+  int64 real_bytes_uploaded = 14;
+
+  // Sum of size in bytes (exclusing metadata) of the blobs that were
+  // downloaded.
+  int64 logical_bytes_downloaded = 15;
+
+  // Sum of size in bytes (excluding metadata) downloaded. May differ from
+  // logical_bytes_downloaded due to compression or retries.
+  int64 real_bytes_downloaded = 16;
+
+  // Contains information about results from the rerun of the action.
+  repeated RerunMetadata rerun_metadata = 17;
+
+  // Output File digests. In compare mode where numRetriesIfMismatched > 1, this will be
+  // the output digests from the first remote-execution run.
+  map<string, string> output_file_digests = 18;
+
+  // Output directory digests.
+  map<string, string> output_directory_digests = 19;
+
+  // The digest of the RE stderr, in canonical format <hash>/<size>.
+  string stderr_digest = 20;
+
+  // The digest of the RE stdout, in canonical format <hash>/<size>.
+  string stdout_digest = 21;
+
+  reserved 12;
+}
+
+// Properties relevant to local execution.
+message LocalMetadata {
+  // The local execution result.
+  cmd.CommandResult result = 1;
+
+  // Whether the action was locally executed.
+  bool executed_locally = 2;
+
+  // For LERC, whether the remote cache hit was valid (vs dep file digests).
+  bool valid_cache_hit = 3;
+
+  // Whether the remote cache was updated with the local result.
+  bool updated_cache = 4;
+
+  // Verification results, if exist.
+  Verification verification = 5;
+
+  // Times of various local events.
+  map<string, cmd.TimeInterval> event_times = 6;
+
+  // All environment variables set when the action was requested from the proxy.
+  map<string, string> environment = 7;
+
+  // Command labels as passed to the proxy.
+  map<string, string> labels = 8;
+
+  // Contains information about results from the rerun of the action.
+  repeated RerunMetadata rerun_metadata = 9;
+}
+
+message Verification {
+  message Mismatch {
+    // The output path.
+    string path = 1;
+
+    // WARNING: Deprecated. Use remote_digests instead.
+    // The digest given by remote execution (or cache), if exists.
+    string remote_digest = 2 [deprecated=true];
+
+    // WARNING: Deprecated. Use local_digests instead.
+    // The digest produced locally, if exists.
+    string local_digest = 3 [deprecated=true];
+
+    // WARNING: Deprecated. Use determinism instead.
+    // Determines if the action inherently non-deterministic.
+    bool non_deterministic = 4 [deprecated=true];
+
+    // Lists the various output digests we got from multiple remote-execution
+    // retries.
+    repeated string remote_digests = 5;
+
+    // Action digest that produced the mismatching remote digests.
+    string action_digest = 6;
+
+    // Lists the various output digests we got from multiple local reruns
+    repeated string local_digests = 7;
+
+    // If true, the mismatch is considered expected/known thus can be ignored.
+    bool ignored = 8;
+
+    // Indicates whether the action is inherently deterministic or not.
+    DeterminismStatus determinism = 9;
+  }
+
+  // Any SHA mismatches in the action.
+  repeated Mismatch mismatches = 1;
+
+  // The number of overall mismatches. This includes both ignored and
+  // non-ignored mismatches
+  int32 total_mismatches = 2;
+
+  // The number of ignored mismatches.
+  int32 total_ignored_mismatches = 4;
+
+  // The number of digests verified.
+  int64 total_verified = 3;
+}
+
+// Information and metrics relative to a single instance of reproxy.
+message ProxyInfo {
+  // Times of various singular events in the lifetime of reproxy.
+  map<string, cmd.TimeInterval> event_times = 1;
+  // Metrics relevant to a single reproxy.
+  map<string, Metric> metrics = 2;
+  // Flag values from environment variables and command-line args.
+  map<string, string> flags = 3;
+}
+
+// Generic message to hold data relevant to a specific metric.
+message Metric {
+  // A single value for the metric.
+  oneof value {
+    int64 int64_value = 1;
+    bool bool_value = 2;
+    double double_value = 3;
+  }
+}

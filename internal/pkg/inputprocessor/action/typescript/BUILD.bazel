@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "typescript",
+    srcs = [
+        "preprocessor.go",
+        "tsconfig_parser.go",
+        "tsfile_parser.go",
+        "tsinputs.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/typescript",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/pathtranslator",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_karrick_godirwalk//:godirwalk",
+    ],
+)
+
+go_test(
+    name = "typescript_test",
+    srcs = [
+        "preprocessor_test.go",
+        "tsconfig_parser_test.go",
+        "tsfile_parser_test.go",
+        "tsinputs_test.go",
+    ],
+    data = glob(["testdata/**/*"]),
+    embed = [":typescript"],
+    deps = [
+        "//internal/pkg/execroot",
+        "//internal/pkg/inputprocessor",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)

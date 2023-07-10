@@ -1,0 +1,18 @@
+cc_library(
+    name = "clangscandepsipservice",
+    srcs = ["clangscandepsip.cc"],
+    hdrs = ["clangscandepsip.h"],
+    tags = ["manual"],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_service_config_linux": [],
+        "//:clangscandeps_input_processor_service_config_mac": [],
+        "//:clangscandeps_input_processor_service_config_windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/scandeps:cppscandeps_cc",
+        "//internal/pkg/cppdependencyscanner/clangscandepsservice:clangscandepscpplib",
+        "@com_github_grpc_grpc//:grpc++",
+    ],
+)

@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "bigquery",
+    srcs = ["bigquery.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/bigquery",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/auth",
+        "@com_google_cloud_go_bigquery//:bigquery",
+        "@org_golang_google_api//option",
+    ],
+)
+
+go_test(
+    name = "bigquery_test",
+    srcs = ["bigquery_test.go"],
+    embed = [":bigquery"],
+)

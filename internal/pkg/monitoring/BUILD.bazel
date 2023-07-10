@@ -1,0 +1,45 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "monitoring",
+    srcs = ["monitoring.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/monitoring",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/log",
+        "//api/stats",
+        "//internal/pkg/auth",
+        "//internal/pkg/labels",
+        "//internal/pkg/logger",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_golang_glog//:go_default_library",
+        "@com_github_google_uuid//:uuid",
+        "@io_opencensus_go//stats",
+        "@io_opencensus_go//stats/view",
+        "@io_opencensus_go//tag",
+        "@io_opencensus_go_contrib_exporter_stackdriver//:stackdriver",
+        "@org_golang_google_api//option",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_test(
+    name = "monitoring_test",
+    srcs = ["monitoring_test.go"],
+    embed = [":monitoring"],
+    deps = [
+        "//api/log",
+        "//internal/pkg/auth",
+        "//internal/pkg/stats",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@io_opencensus_go//stats",
+        "@io_opencensus_go//tag",
+        "@io_opencensus_go_contrib_exporter_stackdriver//:stackdriver",
+    ],
+)

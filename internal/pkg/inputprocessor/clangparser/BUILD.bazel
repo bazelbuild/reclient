@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+genrule(
+    name = "generate_clang_flags",
+    srcs = ["//llvm:clang-options"],
+    outs = ["clang_flags.go"],
+    cmd = "./$(location //internal/pkg/inputprocessor/clangparser/gen_clang_flags:gen_clang_flags) --input $(location //llvm:clang-options) -o $@",
+    tools = ["//internal/pkg/inputprocessor/clangparser/gen_clang_flags"],
+)
+
+go_library(
+    name = "clangparser",
+    srcs = [
+        "clang_flags.go",
+        "clangparser.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/clangparser",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/pkg/inputprocessor/args",
+        "//internal/pkg/inputprocessor/flags",
+        "//internal/pkg/rsp",
+    ],
+)
+
+go_test(
+    name = "clangparser_test",
+    size = "small",
+    srcs = ["clangparser_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":clangparser"],
+    deps = [
+        "//internal/pkg/execroot",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

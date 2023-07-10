@@ -1,0 +1,15 @@
+{
+  "include": [
+    "a/",
+    "b/"
+  ],
+  "files": [
+    "c/t1.ts",
+    "c/t2.ts",
+    "d/t1.tsx",
+    "e/t1.ts"
+  ],
+  "references": [
+    {"path":"../test_inputs/tsconfig_include.json"}
+  ]
+}

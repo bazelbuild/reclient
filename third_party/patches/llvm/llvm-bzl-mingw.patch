@@ -1,0 +1,43 @@
+diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+index 5e9986fe0e62..7e1cd757ff9e 100644
+--- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+@@ -31,6 +31,10 @@ cc_binary(
+     copts = [
+         "$(STACK_FRAME_UNLIMITED)",
+     ],
++    linkopts = select({
++        "@bazel_tools//src/conditions:windows": ["-luuid", "-lole32"],
++        "//conditions:default": ["-ldl"],
++    }),
+     stamp = 0,
+     deps = [
+         ":support",
+diff --git a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
+index f5f82ab3fffd..51651967df1d 100644
+--- a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
+@@ -581,6 +581,10 @@ cc_binary(
+     deps = [
+         ":tblgen",
+     ],
++    linkopts = select({
++        "@bazel_tools//src/conditions:windows": ["-luuid", "-lole32"],
++        "//conditions:default": [],
++    }),
+ )
+ 
+ gentbl(
+diff --git a/utils/bazel/llvm-project-overlay/llvm/config.bzl b/utils/bazel/llvm-project-overlay/llvm/config.bzl
+index 5beb3cc7c410..f62d0602aa65 100644
+--- a/utils/bazel/llvm-project-overlay/llvm/config.bzl
++++ b/utils/bazel/llvm-project-overlay/llvm/config.bzl
+@@ -68,6 +68,8 @@ win32_defines = [
+     # LLVM features
+     r'LTDL_SHLIB_EXT=\".dll\"',
+     r'LLVM_PLUGIN_EXT=\".dll\"',
++
++    "HAVE_UNISTD_H=1",
+ ]
+ 
+ # TODO: We should switch to platforms-based config settings to make this easier

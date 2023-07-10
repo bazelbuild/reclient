@@ -1,0 +1,34 @@
+# Packages for mismatch ignoring.
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "ignoremismatch",
+    srcs = [
+        "ignoremismatch.go",
+        "ignorerule.go",
+        "outputfilepathrule.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/ignoremismatch",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/log",
+        "//api/proxy",
+        "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_protobuf//encoding/prototext",
+    ],
+)
+
+go_test(
+    name = "ignoremismatch_test",
+    srcs = [
+        "ignoremismatch_test.go",
+        "ignorerule_test.go",
+        "outputfilepathrule_test.go",
+    ],
+    data = ["test_config.textproto"],
+    embed = [":ignoremismatch"],
+    deps = [
+        "//api/log",
+        "//api/proxy",
+    ],
+)

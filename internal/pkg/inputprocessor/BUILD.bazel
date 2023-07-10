@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_test(
+    name = "inputprocessor_test",
+    srcs = [
+        "fs_case_insensitive_test.go",
+        "fs_unix_test.go",
+        "inputprocessor_test.go",
+    ],
+    embed = [":inputprocessor"],
+    deps = [
+        "//internal/pkg/execroot",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+    ],
+)
+
+go_library(
+    name = "inputprocessor",
+    srcs = [
+        "fs_case_insensitive.go",
+        "fs_unix.go",
+        "inputprocessor.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor/flags",
+        "//internal/pkg/inputprocessor/flagsparser",
+        "//internal/pkg/inputprocessor/pathtranslator",
+        "//internal/pkg/inputprocessor/toolchain",
+        "//internal/pkg/localresources",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)

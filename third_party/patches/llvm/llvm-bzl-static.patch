@@ -1,0 +1,15 @@
+diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+index 5d6bcc15cb95..f80c58e5ebdf 100644
+--- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+@@ -1111,6 +1111,10 @@ cc_library(
+         ":tooling",
+         "//llvm:Support",
+     ],
++    linkstatic = select({
++        "@bazel_tools//src/conditions:windows": True,
++        "//conditions:default": False,
++    })
+ )
+ 
+ cc_library(

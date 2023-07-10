@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+# gazelle:exclude test.h
+
+go_library(
+    name = "proxyclient_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/examples/proxyclient",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/proxy",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "proxyclient",
+    data = [
+        "test.cpp",
+        "test.h",
+    ],
+    embed = [":proxyclient_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pathtranslator",
+    srcs = ["pathtranslator.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/pathtranslator",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "pathtranslator_test",
+    srcs = ["pathtranslator_test.go"],
+    embed = [":pathtranslator"],
+    deps = ["@com_github_google_go_cmp//cmp"],
+)

@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "flagsparser",
+    srcs = ["flagsparser.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/flagsparser",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/pkg/inputprocessor/args",
+        "//internal/pkg/inputprocessor/flags",
+    ],
+)

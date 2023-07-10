@@ -1,0 +1,88 @@
+# This .bazelrc file contains all of the flags required for the RBE provided
+# toolchain with Remote Build Execution. This heavily inspired from:
+# https://github.com/bazelbuild/bazel-toolchains/blob/master/bazelrc/bazel-0.27.0.bazelrc
+
+# https://docs.bazel.build/versions/master/command-line-reference.html#flag--enable_platform_specific_config
+# for --workspace_status_command
+build --enable_platform_specific_config
+# This will standardize the environment for building, which lets us share build cache
+# across developers and CI. It'll _eventually_ be turned on by default. See
+# https://github.com/bazelbuild/bazel/issues/7026
+build --incompatible_strict_action_env
+# When running with strict action environments. Bazel effectivelly hardcodes
+# Both the MSYS64 bin path & Windows default paths. However, go code and protobufs
+# also rely on mingw installs of git, patch, unzip, gcc and python. There doesn't seem
+# to be a way to extend bazel's PATH, so instead with hardcode the normal hardcoded path
+# + mingw + git.
+# See where bazel currently sets the path for strict action env:
+# https://github.com/bazelbuild/bazel/blob/6b33bdb1e22514304c0e35ce8e067f2175685245/src/main/java/com/google/devtools/build/lib/bazel/rules/BazelRuleClassProvider.java#L198-L200
+# https://github.com/bazelbuild/bazel/blob/6b33bdb1e22514304c0e35ce8e067f2175685245/src/main/java/com/google/devtools/build/lib/bazel/rules/BazelRuleClassProvider.java#L515-L525
+build:windows --action_env PATH="C:\\tools\\msys64\\usr\\bin;C:\\tools\\msys64\\bin;C:\\Windows;C:\\Windows\\System32;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\tools\\msys64\\mingw64\\bin;C:\\Program Files\\Git\\cmd"
+# MSYS's "ln" doesn't work as expected by default - it'll silently fail, or create
+# hard copies instead. In fairness, windows by default doesn't allow symlinks (before Vista,
+# there were symlinks, from vista to 10 you needed admin rights, from 10+ you ned to turn on
+# developer mode). Some non-trivial internet searching revealed you need this flag set so
+# real symlinks are used.
+build:windows --action_env MSYS="winsymlinks:nativestrict"
+build:windows --@io_bazel_rules_go//go/config:static
+
+### Required for LLVM
+# Prevent invalid caching if input files are modified during a build.
+build --experimental_guard_against_concurrent_changes
+build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+build --compilation_mode=opt
+# Remove clang's warnings from our output.
+build:linux --cxxopt=-Wcomment --host_cxxopt=-Wcomment
+build:linux --cxxopt=-Wuninitialized --host_cxxopt=-Wuninitialized
+
+# to propagete tags to execution_requirements
+# https://github.com/bazelbuild/bazel/issues/8830
+build --experimental_allow_tags_propagation
+
+## use BAZEL_LLVM on windows
+## http://docs.bazel.build/versions/master/windows.html#bulid-c-with-clang
+## but it doesn't work with go/cgo yet.
+# use MingW on windows (for rules_go)
+# https://github.com/bazelbuild/rules_go/blob/master/windows.rst
+build:windows --incompatible_enable_cc_toolchain_resolution
+build:windows --cpu=x64_windows
+build:windows --compiler=mingw-gcc
+build:windows --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows_mingw
+build:windows --host_platform=//:x64_windows_mingw
+build:windows --platforms=//:x64_windows_mingw
+build:windows --cxxopt=-O3
+
+
+# Get the current workspace git commit SHA as a variable for use with versioning.
+# See https://docs.bazel.build/versions/master/user-manual.html#flag--workspace_status_command.
+build:linux --workspace_status_command=./scripts/sha.sh
+build:macos --workspace_status_command=./scripts/sha.sh
+build:windows --workspace_status_command=./scripts/sha.bat
+# TODO(b/144421495): Temporary workaround for https://github.com/bazelbuild/rules_go/issues/2224
+# to stamp version numbers. Remove when the issue is fixed.
+build --stamp
+build --copt '-fPIC'
+
+# Required for backwards compatibility with older GLIBC
+# version present on Ubuntu 1604. See the comment on
+# //internal/pkg/cppdependencyscanner/bridge.cc.
+build:glibc_new --cxxopt=-D__GLIBC_NEW__
+
+# need for windows to avoid mt.exe permission error.
+build --action_env=TMPDIR
+# need this for user's application default credentials for integ test
+# with --test_env=RBE_use_application_default_credentials=true
+test:linux --test_env=HOME
+test:macos --test_env=HOME
+test:windows --test_env=APPDATA
+
+build:clangscandeps --//:include_scanner=clangscandeps
+build:clangscandeps --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+
+build:goma --//:include_scanner=goma
+build:goma --cxxopt=-std=c++14 --host_cxxopt=-std=c++14
+
+build:clangscandeps-service --//:include_scanner=clangscandeps-service
+
+build:goma-service --//:include_scanner=goma-service
+build:goma-service --cxxopt=-std=c++14 --host_cxxopt=-std=c++14

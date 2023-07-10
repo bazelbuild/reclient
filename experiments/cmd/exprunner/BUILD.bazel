@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "exprunner_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/experiments/cmd/exprunner",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//experiments/internal/pkg/perfgate:uploader",
+        "//experiments/internal/pkg/runner",
+        "//experiments/internal/pkg/tabulator",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "exprunner",
+    embed = [":exprunner_lib"],
+    visibility = ["//visibility:public"],
+)

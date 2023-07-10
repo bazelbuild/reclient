@@ -1,0 +1,12 @@
+diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+index 79feb0689a5c..710d42617a0e 100644
+--- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+@@ -1327,7 +1327,6 @@ cc_library(
+         "lib/Driver",
+     ],
+     linkopts = select({
+-        "@bazel_tools//src/conditions:windows": ["version.lib"],
+         "//conditions:default": [],
+     }),
+     textual_hdrs = glob([

@@ -1,0 +1,98 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package stats;
+
+import "api/log/log.proto";
+
+// The full aggregated build stats and properties.
+message Stats {
+  // Number of actions in the build.
+  int64 num_records = 1;
+
+  // Aggregated build stats.
+  repeated Stat stats = 2;
+
+  // Verification results, if exist.
+  log.Verification verification = 4;
+
+  // RBE tooling version.
+  string tool_version = 5;
+
+  // Unique invocation IDs of the aggregated actions.
+  repeated string invocation_ids = 6;
+
+  // Information about the build machine.
+  MachineInfo machine_info = 7;
+
+  // Information relative to each reproxy invocation.
+  repeated log.ProxyInfo proxy_info = 9;
+
+  // The number of cache hits divided by the number of actions. 0 if there are
+  // no actions.
+  double build_cache_hit_ratio = 10;
+
+  // Total seconds between start of first build action and end of last build
+  // action. 0 if there are no actions.
+  double build_latency = 11;
+
+  reserved 3, 8;
+}
+
+// Outlier represents a command with an unusually large value in the stat.
+message Outlier {
+  string command_id = 1;
+  int64 value = 2;
+}
+
+message Stat {
+  // The metric/stat name.
+  string name = 1;
+
+  // The number of all the true values for booleans, the sum of all the
+  // values for ints.
+  int64 count = 2;
+
+  message Value {
+    string name = 1;
+    int64 count = 2;
+  }
+  // For enum stats, the count of each value.
+  repeated Value counts_by_value = 3;
+
+  // A list of commands that have the highest values.
+  repeated Outlier outliers = 4;
+
+  int64 median = 5;
+  int64 percentile75 = 6;
+  int64 percentile85 = 7;
+  int64 percentile95 = 8;
+  double average = 9;
+}
+
+message MachineInfo {
+  // Number of CPU cores that the machine has.
+  int64 num_cpu = 1;
+
+  // Amount of RAM that the machine has in megabytes.
+  int64 ram_mbs = 2;
+
+  // Type of operating system of the build machine.
+  string os_family = 3;
+
+  // The architecture of the machine's CPU.
+  string arch = 4;
+}

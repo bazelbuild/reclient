@@ -1,0 +1,50 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package auth;
+
+message AuthMechanism {
+  enum Value {
+    // Invalid value, should always specify a value.
+    UNSPECIFIED = 0;
+    // Reserved.
+    reserved 1;
+    // Application default credentials.
+    ADC = 2;
+    // Reserved.
+    reserved 3;
+    // GCE based authentication.
+    GCE = 4;
+    // A credential file with service account credentials
+    CREDENTIAL_FILE = 5;
+    // No authentication is used
+    NONE = 6;
+  }
+}
+
+// Stores information used for authenticating to the remote execution service.
+message Credentials {
+  // Authentication mechanism.
+  AuthMechanism.Value mechanism = 1;
+  // The token string.
+  string token = 2;
+  reserved 3;
+  reserved "created_at";
+  // Token expiry.
+  google.protobuf.Timestamp expiry = 4;
+}

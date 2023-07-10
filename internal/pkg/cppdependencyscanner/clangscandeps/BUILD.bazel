@@ -1,0 +1,79 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+filegroup(
+    name = "bridge_cc",
+    srcs = ["bridge.cc"],
+    visibility = ["//internal/pkg/cppdependencyscanner/clangscandepsservice:__pkg__"],
+)
+
+filegroup(
+    name = "bridge_h",
+    srcs = ["bridge.h"],
+    visibility = ["//internal/pkg/cppdependencyscanner/clangscandepsservice:__pkg__"],
+)
+
+go_library(
+    name = "clangscandeps",
+    srcs = [
+        "bridge.cc",
+        "bridge.h",
+        "clangscandeps.go",
+    ],
+    cdeps = ["@llvm-project//clang:tooling_dependency_scanning"],
+    cgo = True,
+    clinkopts = select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "-Wl,-Bstatic,-ltinfo,-lstdc++,-Bdynamic",
+            "-static-libgcc",
+            "-static-libstdc++",
+            "-Wl,--wrap=exp2 -Wl,--wrap=pow -Wl,--wrap=log2f",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "-lcurses",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
+            "-lcurses",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,-Bstatic,-ltinfo,-lstdc++,-Bdynamic",
+            "-static-libgcc",
+            "-static-libstdc++",
+            "-Wl,--wrap=exp2 -Wl,--wrap=pow -Wl,--wrap=log2f",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "-Wl,-Bstatic,-lz,-lstdc++,-lpthread,-lwinpthread,-Bdynamic",
+            "-lole32",
+            "-luuid",
+            "-lversion",
+            "-static-libgcc",
+            "-static-libstdc++",
+        ],
+        "//conditions:default": [],
+    }),
+    cxxopts = [
+        "-fno-rtti",
+        "-Wall",
+        "-Werror",
+        "-Wno-deprecated",
+        "-Wno-range-loop-analysis",
+        "-std=c++17",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/includescanner",  # keep
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_golang_glog//:go_default_library"],
+)
+
+go_test(
+    name = "clangscandeps_test",
+    srcs = ["clangscandeps_test.go"],
+    embed = [":clangscandeps"],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = ["@com_github_google_go_cmp//cmp"],
+)

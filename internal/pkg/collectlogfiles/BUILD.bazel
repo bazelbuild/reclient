@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "collectlogfiles",
+    srcs = ["collectlogfiles.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/collectlogfiles",
+    visibility = ["//:__subpackages__"],
+    deps = ["//internal/pkg/logger"],
+)
+
+go_test(
+    name = "collectlogfiles_test",
+    srcs = ["collectlogfiles_test.go"],
+    embed = [":collectlogfiles"],
+)

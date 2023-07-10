@@ -1,0 +1,6 @@
+# This line should be ignored.
+// This line should be ignored.
+     # Spaces should be trimmed from the beggining of the line.
+    # Tabs should be trimmed from the beginning of the line.
+a.txt
+b.txt

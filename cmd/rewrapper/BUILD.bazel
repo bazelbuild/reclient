@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "rewrapper_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/cmd/rewrapper",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/proxy",
+        "//internal/pkg/ipc",
+        "//internal/pkg/protoencoding",
+        "//internal/pkg/rbeflag",
+        "//internal/pkg/rewrapper",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "rewrapper",
+    embed = [":rewrapper_lib"],
+    visibility = ["//visibility:public"],
+)

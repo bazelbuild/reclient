@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "toolchain",
+    srcs = [
+        "inputfiles.go",
+        "toolchain.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/toolchain",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor/pathtranslator",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "toolchain_test",
+    size = "small",
+    srcs = ["toolchain_test.go"],
+    data = glob([
+        "testdata/*",
+        "testdata2/*",
+    ]),
+    embed = [":toolchain"],
+    deps = [
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_google_go_cmp//cmp",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)

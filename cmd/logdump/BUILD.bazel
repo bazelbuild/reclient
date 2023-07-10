@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "logdump_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/cmd/logdump",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/log",
+        "//internal/pkg/logger",
+        "//internal/pkg/rbeflag",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
+        "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_binary(
+    name = "logdump",
+    embed = [":logdump_lib"],
+    visibility = ["//visibility:public"],
+)

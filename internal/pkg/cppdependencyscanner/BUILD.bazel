@@ -1,0 +1,27 @@
+# gazelle:ignore
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cppdependencyscanner",
+    srcs = ["cppdepscanner.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/cppdependencyscanner/depsscannerclient",
+        "//internal/pkg/logger",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
+        "@com_github_golang_glog//:go_default_library",
+    ] + select({
+        "//:goma_input_processor_config": [
+            "//internal/pkg/cppdependencyscanner/goma",
+        ],
+        "//:clangscandeps_input_processor_config": [
+            "//internal/pkg/cppdependencyscanner/clangscandeps",
+        ],
+        "//:goma_input_processor_service_config": [
+            "//internal/pkg/cppdependencyscanner/stub",
+        ],
+    }),
+)

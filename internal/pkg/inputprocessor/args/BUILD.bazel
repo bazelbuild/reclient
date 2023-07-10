@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "args",
+    srcs = ["scanner.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/args",
+    visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "args_test",
+    srcs = ["scanner_test.go"],
+    embed = [":args"],
+    deps = ["@com_github_google_go_cmp//cmp"],
+)

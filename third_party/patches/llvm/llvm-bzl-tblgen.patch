@@ -1,0 +1,25 @@
+diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+index 0c6f0069c783..e7a0218cf12a 100644
+--- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+@@ -1320,6 +1320,20 @@ gentbl(
+     ],
+ )
+ 
++gentbl(
++    name = "driver_options_json_gen",
++    tbl_outs = [(
++        "",
++        "clang-options.json",
++    )],
++    tblgen = "//llvm:llvm-tblgen",
++    tblgen_args = "--dump-json",
++    td_file = "include/clang/Driver/Options.td",
++    td_srcs = [
++        "//llvm:include/llvm/Option/OptParser.td",
++    ],
++)
++
+ cc_library(
+     name = "driver",
+     srcs = glob(

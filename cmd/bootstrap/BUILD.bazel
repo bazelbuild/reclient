@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "bootstrap_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/cmd/bootstrap",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/log",
+        "//api/stats",
+        "//internal/pkg/auth",
+        "//internal/pkg/bigquery",
+        "//internal/pkg/bootstrap",
+        "//internal/pkg/logger",
+        "//internal/pkg/monitoring",
+        "//internal/pkg/rbeflag",
+        "//internal/pkg/stats",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "bootstrap",
+    args = ["--re_proxy=$(location //cmd/reproxy:reproxy)"],
+    data = ["//cmd/reproxy"],
+    embed = [":bootstrap_lib"],
+    visibility = ["//visibility:public"],
+)

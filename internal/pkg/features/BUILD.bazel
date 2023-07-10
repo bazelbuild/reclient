@@ -1,0 +1,8 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "features",
+    srcs = ["features.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/features",
+    visibility = ["//:__subpackages__"],
+)

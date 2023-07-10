@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "execroot",
+    testonly = 1,
+    srcs = ["execroot.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/execroot",
+    visibility = ["//:__subpackages__"],
+)

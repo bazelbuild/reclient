@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "bigquery_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/cmd/bigquery",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/log",
+        "//internal/pkg/bigquery",
+        "//internal/pkg/bigquerytranslator",
+        "//internal/pkg/logger",
+        "//internal/pkg/rbeflag",
+        "@com_github_golang_glog//:go_default_library",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_binary(
+    name = "bigquery",
+    embed = [":bigquery_lib"],
+    visibility = ["//visibility:public"],
+)

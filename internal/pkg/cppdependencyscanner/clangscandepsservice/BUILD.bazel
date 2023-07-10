@@ -1,0 +1,35 @@
+cc_library(
+    name = "clangscandepscpplib",
+    srcs = [
+        "//internal/pkg/cppdependencyscanner/clangscandeps:bridge_cc",
+    ],
+    hdrs = [
+        "//internal/pkg/cppdependencyscanner/clangscandeps:bridge_h",
+    ],
+    copts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-fPIC",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,--wrap=glob",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = [
+        "manual",
+    ],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_service_config_linux": [],
+        "//:clangscandeps_input_processor_service_config_mac": [],
+        "//:clangscandeps_input_processor_service_config_windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@llvm-project//clang:tooling_dependency_scanning",
+    ],
+)

@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "remoteecho_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/examples/remoteecho",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/flags",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/rexec",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "remoteecho",
+    embed = [":remoteecho_lib"],
+    visibility = ["//visibility:public"],
+)

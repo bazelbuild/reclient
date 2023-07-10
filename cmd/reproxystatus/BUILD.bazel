@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "reproxystatus_lib",
+    srcs = ["main.go"],
+    importpath = "team/foundry-x/re-client/cmd/reproxystatus",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//api/proxy",
+        "//internal/pkg/ipc",
+        "//internal/pkg/printer",
+        "//internal/pkg/rbeflag",
+        "//internal/pkg/reproxystatus",
+        "@com_github_fatih_color//:color",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "reproxystatus",
+    embed = [":reproxystatus_lib"],
+    visibility = ["//visibility:public"],
+)

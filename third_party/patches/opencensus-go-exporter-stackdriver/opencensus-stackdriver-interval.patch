@@ -1,0 +1,48 @@
+diff --git a/metrics.go b/metrics.go
+index 902b776..edebc93 100644
+--- a/metrics.go
++++ b/metrics.go
+@@ -25,7 +25,7 @@ import (
+ 	"strings"
+ 
+ 	"github.com/golang/protobuf/ptypes/any"
+-	"github.com/golang/protobuf/ptypes/timestamp"
++	"time"
+ 	"go.opencensus.io/trace"
+ 	"google.golang.org/protobuf/proto"
+ 
+@@ -369,7 +369,7 @@ func (se *statsExporter) metricTsToMpbPoint(ts *metricdata.TimeSeries, metricKin
+ 
+ 		// If we have a last value aggregation point i.e. MetricDescriptor_GAUGE
+ 		// StartTime should be nil.
+-		startTime := timestampProto(ts.StartTime)
++		startTime := &ts.StartTime
+ 		if metricKind == googlemetricpb.MetricDescriptor_GAUGE {
+ 			startTime = nil
+ 		}
+@@ -383,7 +383,7 @@ func (se *statsExporter) metricTsToMpbPoint(ts *metricdata.TimeSeries, metricKin
+ 	return sptl, nil
+ }
+ 
+-func metricPointToMpbPoint(startTime *timestamp.Timestamp, pt *metricdata.Point, projectID string) (*monitoringpb.Point, error) {
++func metricPointToMpbPoint(startTime *time.Time, pt *metricdata.Point, projectID string) (*monitoringpb.Point, error) {
+ 	if pt == nil {
+ 		return nil, nil
+ 	}
+@@ -395,11 +395,14 @@ func metricPointToMpbPoint(startTime *timestamp.Timestamp, pt *metricdata.Point,
+ 
+ 	mpt := &monitoringpb.Point{
+ 		Value: mptv,
+-		Interval: &monitoringpb.TimeInterval{
+-			StartTime: startTime,
++	}
++	if startTime == nil {
++		mpt.Interval = &monitoringpb.TimeInterval{
+ 			EndTime:   timestampProto(pt.Time),
+-		},
++		}
++		return mpt, nil
+ 	}
++	mpt.Interval = toValidTimeIntervalpb(*startTime, pt.Time)
+ 	return mpt, nil
+ }

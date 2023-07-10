@@ -1,0 +1,135 @@
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "client",
+    hdrs = glob([
+        "client/client/*.h",
+        "client/client/goma_flags.cc",
+        "client/client/cxx/**/*.h",
+        "client/client/clang_tidy/*.h",
+        "client/client/dart_analyzer/*.h",
+        "client/client/fake/*.h",
+        "client/client/java/*.h",
+        "client/client/rust/*.h",
+        "client/client/rbe/*.h",
+        "client/client/clang_modules/**/*.h",
+        ], allow_empty=False),
+    strip_include_prefix = "client/client",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "zlib",
+    hdrs = glob([
+        "client/third_party/zlib/**/*.h",
+        ], allow_empty=False),
+    strip_include_prefix = "client/third_party/zlib",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "root",
+    hdrs = glob([
+        "client/**/*.h",
+        ]),
+    strip_include_prefix = "client",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "lib",
+    hdrs = glob([
+        "client/lib/*.h",
+        ]),
+    strip_include_prefix = "client/lib",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "protobuf",
+    hdrs = glob([
+        "client/third_party/protobuf/protobuf/src/**/*.h",
+        "client/third_party/protobuf/protobuf/src/**/*.inc",
+        ], allow_empty=False),
+    strip_include_prefix = "client/third_party/protobuf/protobuf/src/",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "base",
+    hdrs = glob([
+        "client/base/*.h",
+        ]),
+    strip_include_prefix = "client/base",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "gtest",
+    hdrs = glob([
+        "client/third_party/gtest/googletest/include/gtest/**/*.h",
+        ], allow_empty = False),
+    strip_include_prefix = "client/third_party/gtest/googletest/include/",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "glog",
+    hdrs = select({
+        "@bazel_tools//platforms:linux": glob(["client/third_party/config/glog/linux/**/*.h"], allow_empty=False),
+        "@bazel_tools//platforms:windows": glob(["client/third_party/config/glog/win/**/*.h"], allow_empty=False),
+        "@bazel_tools//platforms:osx": glob(["client/third_party/config/glog/mac/**/*.h"], allow_empty=False),
+        "//conditions:default": [],
+    }),
+    strip_include_prefix = select({
+        "@bazel_tools//platforms:linux": "client/third_party/config/glog/linux",
+        "@bazel_tools//platforms:windows": "client/third_party/config/glog/win",
+        "@bazel_tools//platforms:osx": "client/third_party/config/glog/mac",
+        "//conditions:default": "",
+    }),
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "json",
+    hdrs = glob([
+        "client/third_party/jsoncpp/source/include/json/*.h",
+        ]),
+    strip_include_prefix = "client/third_party/jsoncpp/source/include",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "chromium_base",
+    hdrs = glob([
+        "client/third_party/chromium_base/*.h",
+        ]),
+    strip_include_prefix = "client/third_party/chromium_base",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "absl",
+    hdrs = glob([
+        "client/third_party/abseil/src/absl/**/*.*",
+        ], allow_empty=False),
+    strip_include_prefix = "client/third_party/abseil/src",
+    visibility = ["//visibility:public"]
+)
+
+cc_library(
+    name = "libc",
+    hdrs = glob([
+        "client/buildtools/third_party/libc++/trunk/include/**/*",
+        "client/buildtools/third_party/libc++abi/trunk/include/**/*",
+        ]),
+    includes = [
+        "client/buildtools/third_party/libc++/trunk/include/",
+        "client/buildtools/third_party/libc++abi/trunk/include/",
+    ],
+    visibility = ["//visibility:public"]
+)

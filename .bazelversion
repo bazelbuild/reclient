@@ -1,0 +1,49 @@
+5.3.0
+### PLEASE READ ###
+
+Bazelisk only reads the first line of this file. Don't move this up.
+When upgrading bazel, you must also upgrade toolchains.
+
+1. Install rbe_configs_gen:
+    1.1: $ git clone https://github.com/bazelbuild/bazel-toolchains
+    1.2: $ cd bazel-toolchains
+    1.3: $ go install ./cmd/rbe_configs_gen/rbe_configs_gen.go
+
+2. Run it for Linux:
+
+```
+RECLIENT_BUILDER_V=v12
+NEW_BAZEL_VERSION=5.3.0
+PATH_TO_RECLIENT=$PWD
+GCR_IMAGE=gcr.io/reclient-releases/reclient-builder:${RECLIENT_BUILDER_V}
+rbe_configs_gen \
+    --output_src_root=${PATH_TO_RECLIENT} \
+    --output_config_path=configs/linux \
+    --exec_os=linux \
+    --target_os=linux \
+    --toolchain_container=${GCR_IMAGE} \
+    --bazel_version=${NEW_BAZEL_VERSION} \
+    --generate_java_configs=false
+bazelisk run //:gazelle
+```
+
+Edit the cc_toolchain_suite in //configs/linux/cc/BUILD.bazel to include
+`tags=["manual"]` so it isn't caught by `...` expansion.
+
+3. Run it for Windows. You'll need a windows machine/cloudtop/GCE VM.
+
+$ set RECLIENT_BUILDER_V=v3
+$ set NEW_BAZEL_VERSION=5.0.0
+$ set PATH_TO_RECLIENT=%CD%
+$ rbe_configs_gen.exe^
+    --output_src_root=%PATH_TO_RECLIENT%^
+    --output_config_path=configs/windows^
+    --exec_os=windows^
+    --target_os=windows^
+    --toolchain_container=gcr.io/reclient-releases/reclient-builder-win:%RECLIENT_BUILDER_V%^
+    --cpp_toolchain_target=cc-compiler-x64_windows_mingw^
+    --bazel_version=%NEW_BAZEL_VERSION%^
+    --generate_java_configs=false
+
+Edit the cc_toolchain_suite in //configs/windows/cc/BUILD.bazel to include
+`tags=["manual"]` so it isn't caught by `...` expansion.

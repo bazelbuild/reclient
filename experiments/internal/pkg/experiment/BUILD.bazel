@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "experiment",
+    srcs = ["experiment.go"],
+    data = [
+        "//cmd/bootstrap",
+        "//cmd/dumpstats",
+        "//cmd/reproxy",
+        "//cmd/rewrapper",
+    ],
+    importpath = "team/foundry-x/re-client/experiments/internal/pkg/experiment",
+    visibility = ["//experiments:__subpackages__"],
+    deps = [
+        "//experiments/api/experiment",
+        "//experiments/internal/pkg/gcs",
+        "//experiments/internal/pkg/vm",
+        "@com_github_golang_glog//:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_x_sync//errgroup",
+    ],
+)

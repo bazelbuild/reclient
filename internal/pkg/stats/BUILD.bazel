@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "stats",
+    srcs = ["stats.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/stats",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/log",
+        "//api/stats",
+        "//internal/pkg/labels",
+        "//internal/pkg/localresources",
+        "//internal/pkg/logger",
+        "//internal/pkg/protoencoding",
+        "//internal/pkg/reproxystatus",
+        "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_golang_glog//:go_default_library",
+        "@com_github_google_uuid//:uuid",
+        "@com_google_cloud_go_bigquery//:bigquery",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_test(
+    name = "stats_test",
+    size = "small",
+    srcs = ["stats_test.go"],
+    embed = [":stats"],
+    deps = [
+        "//api/log",
+        "//api/stats",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@com_google_cloud_go_bigquery//:bigquery",
+        "@org_golang_google_protobuf//testing/protocmp",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

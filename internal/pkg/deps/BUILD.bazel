@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "deps",
+    srcs = ["parser.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/deps",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/logger",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "deps_test",
+    size = "small",
+    srcs = ["parser_test.go"],
+    embed = [":deps"],
+    deps = [
+        "//api/log",
+        "//internal/pkg/execroot",
+        "//internal/pkg/logger",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

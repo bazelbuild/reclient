@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "depsscannerclient",
+    srcs = ["depsscannerclient.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/depsscannerclient",  # keep
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/scandeps:cppscandeps",
+        "//internal/pkg/ipc",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
+        "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)
+
+go_test(
+    name = "depsscannerclient_test",
+    srcs = ["depsscannerclient_test.go"],
+    embed = [":depsscannerclient"],
+    deps = [
+        "//api/scandeps:cppscandeps",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_uuid//:uuid",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)

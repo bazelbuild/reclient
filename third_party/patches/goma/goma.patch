@@ -1,0 +1,40 @@
+--- ./client/build/config/compiler/BUILD.gn	2023-02-16 11:51:34.546861729 -0500
++++ ./client/build/config/compiler/BUILD.gn.new	2023-02-16 11:52:03.219149175 -0500
+@@ -80,6 +80,10 @@
+         "-Wl,-z,now",
+         "-Wl,-z,relro",
+       ]
++      cflags += [
++        # Use DWARF version 4 (default 5) for Ubuntu 18.04 compatibility
++        "-fdebug-default-version=4",
++      ]
+     }
+     sysroot = ""
+     if (current_cpu == "x64") {
+@@ -88,9 +92,6 @@
+         "-march=x86-64",
+       ]
+       ldflags += [ "-m64" ]
+-      if (os == "linux") {
+-        sysroot = "//third_party/chromium_build/linux/debian_bullseye_amd64-sysroot"
+-      }
+     } else if (current_cpu == "x86") {
+       cflags += [ "-m32" ]
+       ldflags += [ "-m32" ]
+@@ -109,8 +110,6 @@
+ 
+     if (use_lld) {
+       ldflags += [
+-        "-fuse-ld=lld",
+-
+         # This is necessary to prevent crash of goma on chromiumos chroot env.
+         # (crbug.com/780045#c35)
+         "-Wl,-hash-style=both",
+@@ -545,6 +544,7 @@
+ 
+       # ioapi.c in minizip violates this.
+       "-Wno-deprecated-non-prototype",
++      "-Wno-unknown-warning-option",
+     ]
+   }
+ }

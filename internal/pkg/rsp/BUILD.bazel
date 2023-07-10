@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "rsp",
+    srcs = ["rsp.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/rsp",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor/args",
+    ],
+)
+
+go_test(
+    name = "rsp_test",
+    srcs = ["rsp_test.go"],
+    embed = [":rsp"],
+    deps = [
+        "//internal/pkg/inputprocessor/args",
+        "@com_github_google_go_cmp//cmp",
+    ],
+)

@@ -1,0 +1,61 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package includescanner;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+
+service CPPDepsScanner {
+   // Process the provided inputs; direct mapping to DespScanner.ProcessInputs().
+   rpc ProcessInputs(CPPProcessInputsRequest) returns (CPPProcessInputsResponse) {}
+   // Returns the current status of the service.
+   rpc Status(google.protobuf.Empty) returns (StatusResponse) {}
+   // Tells the process to shutdown; returns the status at time of shutdown.
+   rpc Shutdown(google.protobuf.Empty) returns (StatusResponse) {}
+}
+
+message CPPProcessInputsRequest {
+   repeated string command = 1;
+   string filename = 2;
+   string directory = 3;
+   repeated string cmd_env = 4;
+   string exec_id = 5;
+}
+
+message CPPProcessInputsResponse {
+   // List of dependent files.
+   repeated string dependencies = 1;
+   // true if dependencies were read from cache.
+   bool used_cache = 2;
+   // If non-empty string, an error occurred scanning for dependencies.
+   string error = 3;
+}
+
+message StatusResponse {
+   // Distinguishing name of the service
+   string name = 1;
+   // Stringified version of the service
+   string version = 2;
+   // Time service has been running
+   google.protobuf.Duration uptime = 3;
+   // Increasing count of the number of actions completed
+   int32 completed_actions = 4;
+   // Number of actions currently being processed
+   int32 running_actions = 5;
+   // The length of time the currently longest running action has been running
+   google.protobuf.Duration longest_current_action = 6;
+}

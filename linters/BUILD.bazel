@@ -1,0 +1,29 @@
+sh_binary(
+    name = "gofmt",
+    srcs = ["run_in_workspace.sh"],
+    args = [
+        "$(location @go_sdk//:bin/gofmt)",
+    ],
+    data = [
+        "@go_sdk//:bin/gofmt",
+    ],
+    tags = [
+        "local",
+        "manual",
+    ],
+)
+
+sh_binary(
+    name = "golint",
+    srcs = ["run_in_workspace.sh"],
+    args = [
+        "$(location @org_golang_x_lint//golint:golint)",
+    ],
+    data = [
+        "@org_golang_x_lint//golint",
+    ],
+    tags = [
+        "local",
+        "manual",
+    ],
+)

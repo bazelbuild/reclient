@@ -1,0 +1,58 @@
+cc_library(
+    name = "scandeps_lib",
+    srcs = ["scandeps.cc"],
+    tags = ["manual"],
+    deps = [
+        "//api/scandeps:cppscandeps_cc",
+        "//cmd/scandeps/server:scandeps_server_lib",
+        "@com_github_gflags_gflags//:gflags",
+        "@com_github_grpc_grpc//:grpc++",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# TODO(b/243521521): Make this build with static-libstdc++.
+cc_binary(
+    name = "scandeps_server",
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,--wrap=getentropy",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = [
+        "local",
+    ],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_service_config_linux": [],
+        "//:clangscandeps_input_processor_service_config_mac": [],
+        "//:clangscandeps_input_processor_service_config_windows": [],
+        "//:goma_input_processor_service_config_linux": [],
+        "//:goma_input_processor_service_config_mac": [],
+        "//:goma_input_processor_service_config_windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = [
+        "//tests/integ:__subpackages__",
+    ],
+    deps =
+        select({
+            "//:clangscandeps_input_processor_service_config": [
+                ":scandeps_lib",
+                #gazelle:ignore
+                "//internal/pkg/clangscandepsipservice",
+                "//internal/pkg/cppdependencyscanner/clangscandepsservice:clangscandepscpplib",
+            ],
+            "//:goma_input_processor_service_config": [
+                ":scandeps_lib",
+                #gazelle:ignore
+                "//internal/pkg/gomaipservice",
+                "//internal/pkg/cppdependencyscanner/gomaservice:gomacpplib",
+            ],
+            "//conditions:default": [],
+        }),
+)

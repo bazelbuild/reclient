@@ -1,0 +1,45 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("//:settings.bzl", "LLVM_COMMIT")
+load("@io_bazel_rules_go//go:def.bzl", "go_embed_data")
+
+# Refer to go/rbe/dev/x/playbook/upgrading_clang_scan_deps if you are
+# running into a missing file error in this library when upgrading
+# clang-scan-deps version.
+filegroup(
+    name = "clang-options",
+    srcs = [
+        "clang-options-" + LLVM_COMMIT[:6] + ".json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_embed_data(
+    name = "want_clang_options_test_data",
+    srcs = ["@llvm-project//clang:clang-options.json"],
+    package = "clangoptions_test",
+    var = "wantClangOptions",
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ] + select({
+        "//:clangscandeps_input_processor_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+)
+
+go_embed_data(
+    name = "got_clang_options_test_data",
+    srcs = [":clang-options"],
+    package = "clangoptions_test",
+    var = "gotClangOptions",
+)
+
+# gazelle:ignore
+# Disabling gazelle because it removes the ":want_clang_options_test_data" in go_test rule.
+go_test(
+    name = "clangoptions_test",
+    srcs = [
+        "clang_options_test.go",
+        ":want_clang_options_test_data",
+        ":got_clang_options_test_data",
+    ],
+)

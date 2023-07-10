@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "nacl",
+    srcs = ["preprocessor.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/nacl",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor/action/cppcompile",
+        "//internal/pkg/inputprocessor/flags",
+    ],
+)
+
+go_test(
+    name = "nacl_test",
+    srcs = ["preprocessor_test.go"],
+    embed = [":nacl"],
+    deps = [
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/action/cppcompile",
+    ],
+)

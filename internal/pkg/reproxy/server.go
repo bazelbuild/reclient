@@ -1,0 +1,880 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package reproxy
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"sort"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"team/foundry-x/re-client/internal/pkg/features"
+	"team/foundry-x/re-client/internal/pkg/interceptors"
+	"team/foundry-x/re-client/internal/pkg/labels"
+	"team/foundry-x/re-client/internal/pkg/logger"
+	"team/foundry-x/re-client/internal/pkg/protoencoding"
+	"team/foundry-x/re-client/pkg/inputprocessor"
+	"team/foundry-x/re-client/pkg/version"
+
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/rexec"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/uploadinfo"
+	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	lpb "team/foundry-x/re-client/api/log"
+	ppb "team/foundry-x/re-client/api/proxy"
+	spb "team/foundry-x/re-client/api/stats"
+
+	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
+
+	log "github.com/golang/glog"
+)
+
+const (
+	// osFamilyKey is the key used to identify the platform OS Family.
+	osFamilyKey = "OSFamily"
+	// poolKey is the key used to specify the worker pool.
+	poolKey = "Pool"
+	// labelKeyPrefix is the key prefix to select workers.
+	labelKeyPrefix = "label:"
+	// platformVersionKey is the key used to identify the reproxy version generating the action.
+	platformVersionKey = "reproxy-version"
+	// cacheSiloKey is the key used to cache-silo all the actions in the current run of reproxy.
+	cacheSiloKey = "cache-silo"
+)
+
+var (
+	// runtime.GOOS -> RE OSFamily.
+	// https://cloud.google.com/remote-build-execution/docs/remote-execution-properties#google_internal_properties
+	// not match with https://github.com/bazelbuild/remote-apis/blob/master/build/bazel/remote/execution/v2/platform.md though.
+	knownOSFamilies = map[string]string{
+		"linux":   "Linux",
+		"windows": "Windows",
+	}
+	pollTime = time.Second * 10
+	// AllowedIPTimeouts is the max number of IP timeouts before failing the build
+	AllowedIPTimeouts = int64(7)
+)
+
+// Server is the server responsible for executing and retrieving results of RunRequests.
+type Server struct {
+	InputProcessor            *inputprocessor.InputProcessor
+	FileMetadataStore         filemetadata.Cache
+	REClient                  *rexec.Client
+	LocalPool                 *LocalPool
+	Logger                    *logger.Logger
+	KeepLastRecords           int
+	CacheSilo                 string
+	VersionCacheSilo          bool
+	RemoteDisabled            bool
+	DumpInputTree             bool
+	Forecast                  *Forecast
+	StartTime                 time.Time
+	FailEarlyMinActionCount   int64
+	FailEarlyMinFallbackRatio float64
+	RacingBias                float64
+	RacingTmp                 string
+	MaxHoldoff                time.Duration // Maximum amount of time to wait for downloads before starting racing.
+	numActions                int64
+	numFallbacks              int64
+	numIPTimeouts             int64
+	failBuild                 bool
+	failBuildMu               sync.RWMutex
+	failBuildErr              error
+	activeActions             sync.Map
+	records                   []*lpb.LogRecord
+	rmu                       sync.Mutex
+	wgShutdown                sync.WaitGroup
+	shutdownCmd               chan bool
+	shutdownOnce              sync.Once
+	drain                     chan bool
+	rrOnce                    sync.Once
+	stats                     *spb.Stats // Only populated after DrainAndReleaseResources() is called
+}
+
+type ctxWithCause struct {
+	context.Context
+	cause error
+}
+
+var (
+	// A UUID of this proxy.
+	invocationID = uuid.New().String()
+)
+
+func (c ctxWithCause) Err() error {
+	if c.cause != nil {
+		return c.cause
+	}
+	return c.Context.Err()
+}
+
+func cancelWithCause(ctx context.Context) (context.Context, func(error)) {
+	cancelCtx, cancel := context.WithCancel(ctx)
+	withCause := &ctxWithCause{Context: cancelCtx}
+	return withCause, func(cause error) {
+		withCause.cause = cause
+		cancel()
+	}
+}
+
+// Init initializes internal state and should only be called once.
+func (s *Server) Init() {
+	s.shutdownCmd = make(chan bool)
+	s.drain = make(chan bool)
+}
+
+// MonitorFailBuildConditions monitors fail early conditions. If conditions such as
+// ratio of fallbacks to total actions periodically or number of IP timeouts are exceeded,
+// it sets failBuild flag and failBuildErr.
+// If fail early is disabled the function returns immediately.
+// Should be run in a goroutine.
+func (s *Server) MonitorFailBuildConditions(ctx context.Context) {
+	s.monitorFailBuildConditions(ctx, pollTime)
+}
+
+func (s *Server) monitorFailBuildConditions(ctx context.Context, pollTime time.Duration) {
+	if s.FailEarlyMinActionCount == 0 || s.FailEarlyMinFallbackRatio == 0 {
+		return
+	}
+	ticker := time.NewTicker(pollTime)
+	for {
+		select {
+		case <-ticker.C:
+			s.checkFailBuild()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *Server) checkFailBuild() {
+	nf := atomic.LoadInt64(&s.numFallbacks)
+	na := atomic.LoadInt64(&s.numActions)
+	nt := atomic.LoadInt64(&s.numIPTimeouts)
+	if nt <= AllowedIPTimeouts && na < s.FailEarlyMinActionCount {
+		return
+	}
+	if nt > AllowedIPTimeouts || float64(nf)/float64(na) >= s.FailEarlyMinFallbackRatio {
+		s.failBuildMu.Lock()
+		defer s.failBuildMu.Unlock()
+		// Set the switch to fail all the new actions...
+		s.failBuild = true
+		s.failBuildErr = s.getFailBuildErr(nf, na, nt)
+		// .. and cancel the actions that are already started.
+		s.activeActions.Range(func(key, val any) bool {
+			if action, ok := val.(*action); ok {
+				action.cancelFunc(s.failBuildErr)
+			}
+			return true
+		})
+		return
+	}
+}
+
+func (s *Server) shouldFailBuild() (bool, error) {
+	s.failBuildMu.RLock()
+	defer s.failBuildMu.RUnlock()
+	return s.failBuild, s.failBuildErr
+}
+
+func (s *Server) getFailBuildErr(nf, na, nt int64) error {
+	if nt > AllowedIPTimeouts {
+		return fmt.Errorf("this build has encountered too many action input processing timeouts. Number of timeouts %v > %v",
+			nt, AllowedIPTimeouts)
+	}
+	if float64(nf)/float64(na) >= s.FailEarlyMinFallbackRatio {
+		return fmt.Errorf(
+			"this build has encountered too many local fallbacks. This means that the ratio of actions that failed remotely is equal to or above the preconfigured threshold of %.1f%%",
+			s.FailEarlyMinFallbackRatio*100)
+	}
+	return nil
+}
+
+// WaitForShutdownCommand returns a channel that is closed when a shutdown command is recieved.
+func (s *Server) WaitForShutdownCommand() <-chan bool {
+	return s.shutdownCmd
+}
+
+// DrainAndReleaseResources closes all external resources, cancels all inflight RunCommand rpcs
+// and prevents future RunCommand rpcs in preparation for server exit.
+// s.stats is populated with aggregated build metrics.
+// All calls after the first are noops.
+func (s *Server) DrainAndReleaseResources() {
+	s.rrOnce.Do(func() {
+		close(s.drain)
+		s.wgShutdown.Wait()
+		if s.Logger != nil {
+			s.Logger.AddEventTimeToProxyInfo(logger.EventProxyUptime, s.StartTime, time.Now())
+		}
+		s.stats = s.Logger.CloseAndAggregate()
+	})
+}
+
+// Shutdown shuts the server down gracefully.
+func (s *Server) Shutdown(ctx context.Context, req *ppb.ShutdownRequest) (*ppb.ShutdownResponse, error) {
+	s.shutdownOnce.Do(func() {
+		close(s.shutdownCmd)
+		// Ensure DrainAndReleaseResources has been called to guarentee that s.stats is populated.
+		s.DrainAndReleaseResources()
+	})
+	return &ppb.ShutdownResponse{
+		Stats: s.stats,
+	}, nil
+}
+
+func (s *Server) withServerDrainCancel(ctx context.Context) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		defer cancel()
+		select {
+		case <-s.drain:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}()
+	return ctx
+}
+
+// RunCommand runs a command according to the parameters defined in the RunRequest.
+func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunResponse, error) {
+	log.V(1).Infof("Received RunRequest:\n%s", protoencoding.TextWithIndent.Format(req))
+	// Intentionally overwriting ctx so that all function calls below will be canceled at server shutdown.
+	ctx = s.withServerDrainCancel(ctx)
+	select {
+	case <-ctx.Done(): // Short circuit if server is already shutting down
+		return nil, ctx.Err()
+	default:
+	}
+	s.wgShutdown.Add(1)
+	defer s.wgShutdown.Done()
+	start := time.Now()
+	if req.Command == nil {
+		return nil, status.Error(codes.InvalidArgument, "no command provided in the request")
+	}
+	executionID := uuid.New().String()
+	cmd := command.FromProto(req.Command)
+	cmd.Identifiers.ExecutionID = executionID
+	cmd.Identifiers.ToolName = "re-client"
+	cmd.Identifiers.ToolVersion = version.CurrentVersion()
+	if err := cmd.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	if cmd.Identifiers.InvocationID == "" {
+		cmd.Identifiers.InvocationID = invocationID
+	}
+	cmd.FillDefaultFieldValues()
+	s.addLabelDigestToCommandID(cmd, req)
+	if cmd.Platform == nil {
+		cmd.Platform = make(map[string]string)
+	}
+	if req.GetExecutionOptions().GetExecutionStrategy() == ppb.ExecutionStrategy_LOCAL || s.VersionCacheSilo {
+		// For LERC actions, there's a chance we may have reclient bugs.
+		// We want to ensure we don't persist those across actions.
+		// We also want to add version if the option to do so is set to true.
+		cmd.Platform[platformVersionKey] = version.CurrentVersion()
+	}
+
+	if len(s.CacheSilo) > 0 {
+		cmd.Platform[cacheSiloKey] = s.CacheSilo
+	}
+	setPlatformOSFamily(cmd)
+
+	localMetadata := &lpb.LocalMetadata{
+		EventTimes: map[string]*cpb.TimeInterval{},
+		Labels:     req.GetLabels(),
+	}
+	cmdEnv := req.GetMetadata().GetEnvironment()
+	if req.GetExecutionOptions().GetLogEnvironment() {
+		localMetadata.Environment = sliceToMap(cmdEnv, "=")
+	}
+	rec := s.Logger.LogActionStart()
+	rec.LocalMetadata = localMetadata
+	for k, t := range req.GetMetadata().GetEventTimes() {
+		if t.To == nil {
+			t.To = command.TimeToProto(start)
+		}
+		rec.LocalMetadata.EventTimes[k] = t
+	}
+	numLocalRerun := int(req.GetExecutionOptions().GetNumLocalReruns())
+	numRemoteRerun := int(req.GetExecutionOptions().GetNumRemoteReruns())
+	if req.GetExecutionOptions().GetCompareWithLocal() {
+		if numLocalRerun == 0 {
+			numLocalRerun = 1
+		}
+		if numRemoteRerun == 0 {
+			numRetries := int(req.GetExecutionOptions().GetNumRetriesIfMismatched())
+			if numRetries > 0 {
+				numRemoteRerun = numRetries
+			} else {
+				numRemoteRerun = 1
+			}
+		}
+	}
+
+	reclientTimeout := int(req.GetExecutionOptions().GetReclientTimeout())
+	if reclientTimeout <= 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid reclient_timeout set. Expected a value > 0, got: %v", reclientTimeout))
+	}
+
+	aCtx, cancel := cancelWithCause(ctx)
+	a := &action{
+		cmd:             cmd,
+		windowsCross:    isWindowsCross(cmd.Platform),
+		rOpt:            req.GetExecutionOptions().GetRemoteExecutionOptions(),
+		lOpt:            req.GetExecutionOptions().GetLocalExecutionOptions(),
+		execStrategy:    req.GetExecutionOptions().GetExecutionStrategy(),
+		compare:         req.GetExecutionOptions().GetCompareWithLocal(),
+		numLocalReruns:  numLocalRerun,
+		numRemoteReruns: numRemoteRerun,
+		reclientTimeout: reclientTimeout,
+		oe:              outerr.NewRecordingOutErr(),
+		rec:             rec,
+		fmc:             s.FileMetadataStore,
+		forecast:        s.Forecast,
+		lbls:            req.Labels,
+		toolchainInputs: req.ToolchainInputs,
+		cmdEnvironment:  cmdEnv,
+		cancelFunc:      cancel,
+		racingBias:      s.RacingBias,
+		racingTmp:       s.RacingTmp,
+	}
+	s.activeActions.Store(executionID, a)
+	defer s.activeActions.Delete(executionID)
+
+	if rand.Intn(100) < features.GetConfig().ExperimentalCacheMissRate {
+		a.rOpt.AcceptCached = false
+	}
+	s.runAction(aCtx, a)
+	if (a.numLocalReruns + a.numRemoteReruns) > 0 {
+		s.rerunAction(aCtx, a)
+	}
+	s.logRecord(a, start)
+	oe := a.oe.(*outerr.RecordingOutErr)
+	var logRecord *lpb.LogRecord
+	if req.GetExecutionOptions().GetIncludeActionLog() {
+		logRecord = a.rec.LogRecord
+	}
+	if !a.res.IsOk() {
+		log.Errorf("%v: Execution failed with %+v", executionID, a.res)
+		log.Flush()
+		status := a.res.Status
+
+		if status != command.NonZeroExitResultStatus && oe != nil && len(oe.Stdout()) == 0 && len(oe.Stderr()) == 0 {
+			if a.res.Err != nil {
+				errorMsg := "reclient[" + executionID + "]: " + status.String() + ": " + a.res.Err.Error() + "\n"
+				return toResponse(cmd, a.res, nil, []byte(errorMsg), logRecord), nil
+			}
+			return toResponse(cmd, a.res, nil, nil, logRecord), nil
+		}
+	}
+	if oe == nil {
+		return toResponse(cmd, a.res, nil, nil, logRecord), nil
+	}
+	return toResponse(cmd, a.res, oe.Stdout(), oe.Stderr(), logRecord), nil
+}
+
+func isWindowsCross(platformProperty map[string]string) bool {
+	if runtime.GOOS != "windows" {
+		return false
+	}
+	os, ok := platformProperty[osFamilyKey]
+	if !ok {
+		return false
+	}
+	return os != "Windows"
+}
+
+// setPlatformOSFamily sets OSFamily in platform if OSFamily, Pool,
+// or label:<user-label-key> is not set.
+func setPlatformOSFamily(cmd *command.Command) {
+	if cmd.Platform == nil {
+		cmd.Platform = make(map[string]string)
+	}
+	_, ok := cmd.Platform[osFamilyKey]
+	if ok {
+		// use rewrapper specified OSFamily.
+		return
+	}
+	_, ok = cmd.Platform[poolKey]
+	if ok {
+		// use rewrapper specified Pool.
+		return
+	}
+	for k := range cmd.Platform {
+		if strings.HasPrefix(k, labelKeyPrefix) {
+			// use rewrapper specified label:<user-label-key>
+			return
+		}
+	}
+
+	osFamily, ok := knownOSFamilies[runtime.GOOS]
+	if !ok {
+		log.Warningf("%v: no platform OSFamily", cmd.Identifiers.ExecutionID)
+		return
+	}
+	log.V(1).Infof("%v: set platform OSFamily=%q", cmd.Identifiers.ExecutionID, osFamily)
+	cmd.Platform[osFamilyKey] = osFamily
+}
+
+// addLabelDigestToCommandID adds a digest of the request labels to commandID so that the action type
+// can be identified in remote-execution logs.
+func (s *Server) addLabelDigestToCommandID(cmd *command.Command, req *ppb.RunRequest) error {
+	labelDigest, err := labels.ToDigest(req.GetLabels())
+	if err != nil {
+		return err
+	}
+	cmd.Identifiers.CommandID = fmt.Sprintf("%s-%s", labelDigest, cmd.Identifiers.CommandID)
+	return nil
+}
+
+// GetRecords returns the latest saved LogRecords.
+func (s *Server) GetRecords(ctx context.Context, req *ppb.GetRecordsRequest) (*ppb.GetRecordsResponse, error) {
+	return &ppb.GetRecordsResponse{Records: s.records}, nil
+}
+
+func (s *Server) logRecord(a *action, start time.Time) {
+	a.rec.Command = command.ToProto(a.cmd)
+	if a.res != nil {
+		a.rec.Result = command.ResultToProto(a.res)
+	} else if a.rec.LocalMetadata.GetResult() != nil {
+		a.rec.Result = a.rec.LocalMetadata.Result
+	} else if a.rec.RemoteMetadata.GetResult() != nil {
+		a.rec.Result = a.rec.RemoteMetadata.Result
+	}
+	a.rec.RecordEventTime(logger.EventProxyExecution, start)
+	logger.AddCompletionStatus(a.rec, a.execStrategy)
+	s.Logger.Log(a.rec)
+	if s.KeepLastRecords > 0 {
+		s.rmu.Lock()
+		defer s.rmu.Unlock()
+		s.records = append(s.records, a.rec.LogRecord)
+		if len(s.records) > s.KeepLastRecords {
+			s.records = s.records[1:len(s.records)]
+		}
+	}
+	if s.Forecast != nil {
+		s.Forecast.RecordSample(a)
+	}
+}
+
+func (s *Server) populateCommandIO(ctx context.Context, a *action) (err error) {
+	if err = a.populateCommandIO(ctx, s.InputProcessor); errors.Is(err, inputprocessor.ErrIPTimeout) {
+		atomic.AddInt64(&s.numIPTimeouts, 1)
+	}
+	return err
+}
+
+func (s *Server) runAction(ctx context.Context, a *action) {
+	if failBuild, failBuildErr := s.shouldFailBuild(); failBuild {
+		if failBuildErr != nil {
+			a.res = command.NewLocalErrorResult(failBuildErr)
+			a.oe.WriteOut([]byte(failBuildErr.Error()))
+		}
+		return
+	}
+	defer atomic.AddInt64(&s.numActions, 1)
+	if s.RemoteDisabled {
+		a.runLocal(ctx, s.LocalPool)
+		return
+	}
+	log.V(2).Infof("%v: Execution strategy: %v", a.cmd.Identifiers.ExecutionID, a.execStrategy)
+	// b/261368381: A local fallback might update the in-out file without invalidating its cache entry
+	// in file metadata cache. There are more subtlties to this invalidation (e.g racing). The safest
+	// option for now is to always invalidate cache entries for in-out files at the negligible cost of
+	// redigesting them (there aren't many of such files in a build).
+	defer a.clearInputOutputFileCache()
+	switch a.execStrategy {
+	case ppb.ExecutionStrategy_LOCAL:
+		s.runLERC(ctx, a)
+		if !a.res.IsOk() && a.res.Status != command.NonZeroExitResultStatus {
+			log.Warningf("%v: LERC failed with %+v, falling back to local.", a.cmd.Identifiers.ExecutionID, a.res)
+			a.runLocal(ctx, s.LocalPool)
+			atomic.AddInt64(&s.numFallbacks, 1)
+		}
+		return
+	case ppb.ExecutionStrategy_REMOTE:
+		// TODO: add support for compare mode in remote execution.
+		s.runRemote(ctx, a)
+		return
+	case ppb.ExecutionStrategy_REMOTE_LOCAL_FALLBACK:
+		s.runRemote(ctx, a)
+		if !a.res.IsOk() {
+			roe := a.oe.(*outerr.RecordingOutErr)
+			log.Warningf("%v: Remote execution failed with %+v, falling back to local.\n stdout: %s\n stderr: %s",
+				a.cmd.Identifiers.ExecutionID, a.res, roe.Stdout(), roe.Stderr())
+			a.oe = outerr.NewRecordingOutErr()
+			a.runLocal(ctx, s.LocalPool)
+			atomic.AddInt64(&s.numFallbacks, 1)
+		}
+		return
+	case ppb.ExecutionStrategy_RACING:
+		s.runRacing(ctx, a)
+		return
+	}
+	a.res = command.NewLocalErrorResult(fmt.Errorf("%v: invalid execution strategy %v", a.cmd.Identifiers.ExecutionID, a.execStrategy))
+}
+
+func (s *Server) rerunAction(ctx context.Context, a *action) {
+	local := []*lpb.RerunMetadata{}
+	remote := []*lpb.RerunMetadata{}
+	var rerunWaiter sync.WaitGroup
+
+	localActionDupes := a.duplicate(a.numLocalReruns)
+	remoteActionDupes := a.duplicate(a.numRemoteReruns)
+	c := make(chan *lpb.RerunMetadata, a.numRemoteReruns)
+	rerunWaiter.Add(a.numRemoteReruns)
+	for i := 0; i < a.numRemoteReruns; i++ {
+		act := remoteActionDupes[i]
+		act.rOpt.AcceptCached = false
+		act.rOpt.DoNotCache = true
+		act.rOpt.DownloadOutputs = false
+		attemptNum := i + 1
+		go func() {
+			defer rerunWaiter.Done()
+			act.runRemote(ctx, s.REClient)
+			if !act.res.IsOk() {
+				log.Warningf("%v: Execution failed during remote rerun attempt:%v with %v", act.cmd.Identifiers.ExecutionID, attemptNum, act.res)
+			}
+			remoteRerunMetaData := &lpb.RerunMetadata{
+				Attempt:                int64(attemptNum),
+				Result:                 command.ResultToProto(act.res),
+				NumOutputFiles:         act.rec.RemoteMetadata.NumOutputFiles,
+				NumOutputDirectories:   act.rec.RemoteMetadata.NumOutputDirectories,
+				TotalOutputBytes:       act.rec.RemoteMetadata.TotalOutputBytes,
+				OutputFileDigests:      act.rec.RemoteMetadata.OutputFileDigests,
+				OutputDirectoryDigests: act.rec.RemoteMetadata.OutputDirectoryDigests,
+				LogicalBytesDownloaded: act.rec.RemoteMetadata.LogicalBytesDownloaded,
+				RealBytesDownloaded:    act.rec.RemoteMetadata.RealBytesDownloaded,
+				EventTimes:             act.rec.RemoteMetadata.EventTimes,
+			}
+			c <- remoteRerunMetaData
+		}()
+	}
+	rerunWaiter.Wait()
+	close(c)
+
+	for i := range c {
+		remote = append(remote, i)
+	}
+	sort.Slice(remote, func(i, j int) bool {
+		return remote[i].Attempt < remote[j].Attempt
+	})
+
+	restoreInOutFiles := a.stashInputOutputFiles()
+	for i := 0; i < a.numLocalReruns; i++ {
+		act := localActionDupes[i]
+		attemptNum := i + 1
+		act.clearOutputsCache()
+		if a.compare {
+			restoreInOutFiles()
+			restoreInOutFiles = a.stashInputOutputFiles()
+		}
+		act.runLocal(ctx, s.LocalPool)
+
+		if !act.res.IsOk() {
+			log.Warningf("%v: Execution failed during local rerun attempt:%v with %+v", act.cmd.Identifiers.ExecutionID, attemptNum, act.res)
+		}
+		act.rec.EndAllEventTimes()
+		var outPaths []string
+		for _, file := range act.cmd.OutputFiles {
+			outPaths = append(outPaths, file)
+		}
+		for _, dir := range act.cmd.OutputDirs {
+			outPaths = append(outPaths, dir)
+		}
+		blobs, resPb, err := s.REClient.GrpcClient.ComputeOutputsToUpload(act.cmd.ExecRoot, act.cmd.WorkingDir, outPaths, filemetadata.NewSingleFlightCache(), act.cmd.InputSpec.SymlinkBehavior)
+		if err != nil {
+			log.Warningf("Error computing output directory digests during local rerun attempt:%v with %v", attemptNum, err)
+		}
+		toUpload := []*uploadinfo.Entry{}
+		for _, ch := range blobs {
+			toUpload = append(toUpload, ch)
+		}
+		_, _, err = s.REClient.GrpcClient.UploadIfMissing(ctx, toUpload...)
+		if err != nil {
+			log.Warningf("Error uploading artifacts during local rerun attempt:%v with %v", attemptNum, err)
+		}
+		fileDgs := make(map[string]string)
+		for _, file := range resPb.OutputFiles {
+			dg := digest.NewFromProtoUnvalidated(file.Digest)
+			fileDgs[file.Path] = dg.String()
+		}
+		dirDgs := make(map[string]string)
+		for _, dir := range resPb.OutputDirectories {
+			dg := digest.NewFromProtoUnvalidated(dir.TreeDigest)
+			dirDgs[dir.Path] = dg.String()
+		}
+		localRerunMetaData := &lpb.RerunMetadata{
+			Attempt:                int64(attemptNum),
+			Result:                 command.ResultToProto(a.res),
+			EventTimes:             act.rec.LocalMetadata.EventTimes,
+			OutputFileDigests:      fileDgs,
+			OutputDirectoryDigests: dirDgs,
+		}
+		local = append(local, localRerunMetaData)
+	}
+
+	a.rec.LocalMetadata.RerunMetadata = local
+	if a.rec.RemoteMetadata != nil {
+		a.rec.RemoteMetadata.RerunMetadata = remote
+	}
+	compareAction(ctx, s, a)
+}
+
+func (s *Server) runLERC(ctx context.Context, a *action) {
+	if err := a.createExecContext(ctx, s.REClient); err != nil {
+		// This cannot really happen, as the only error it checks for is cmd.Validate.
+		a.res = command.NewLocalErrorResult(err)
+		return
+	}
+	if err := s.populateCommandIO(ctx, a); err != nil {
+		return
+	}
+	log.V(1).Infof("%v: Inputs: %v", a.cmd.Identifiers.ExecutionID, a.cmd.InputSpec.Inputs)
+	// Since this is LERC mode, add dependency file outputs to the command since we will
+	// generate it locally.
+	a.addDepsFileOutput()
+	if s.DumpInputTree {
+		if err := dumpInputs(a.cmd); err != nil {
+			log.Errorf("%v: Failed to dump inputs: %+v", a.cmd.Identifiers.ExecutionID, err)
+		}
+	}
+	if !a.lOpt.GetAcceptCached() {
+		a.runLocal(ctx, s.LocalPool)
+		a.cacheLocal()
+		return
+	}
+	a.getCachedResult(ctx)
+	if a.res == nil || !a.res.IsOk() {
+		a.runLocal(ctx, s.LocalPool)
+		a.cacheLocal()
+		return
+	}
+}
+
+func (s *Server) runRacing(ctx context.Context, a *action) {
+	if features.GetConfig().CleanIncludePaths {
+		a.cmd.Args = cleanIncludePaths(a.cmd)
+	}
+
+	if err := s.populateCommandIO(ctx, a); err != nil {
+		return
+	}
+	log.V(1).Infof("%v: Inputs: %v, Outputs: %+v", a.cmd.Identifiers.ExecutionID, a.cmd.InputSpec.Inputs, a.cmd.OutputFiles)
+
+	a.race(ctx, s.REClient, s.LocalPool, &s.numFallbacks, s.MaxHoldoff)
+	if a.res == nil {
+		a.res = command.NewLocalErrorResult(fmt.Errorf("racing did not produce a result"))
+	}
+	if _, ok := a.oe.(*outerr.RecordingOutErr); !ok {
+		log.Warningf("%v: Racing produced a nil OutErr.", a.cmd.Identifiers.ExecutionID)
+		a.oe = outerr.NewRecordingOutErr()
+	}
+}
+
+func (s *Server) runRemote(ctx context.Context, a *action) {
+	rCtx, cancel := cancelWithCause(ctx)
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-time.After(time.Duration(a.reclientTimeout) * time.Second):
+			cancel(fmt.Errorf("remote action timed out by reclient timeout"))
+		case <-done:
+		}
+	}()
+
+	if features.GetConfig().CleanIncludePaths {
+		a.cmd.Args = cleanIncludePaths(a.cmd)
+	}
+	if err := s.populateCommandIO(rCtx, a); err != nil {
+		return
+	}
+	log.V(1).Infof("%v: Inputs: %v", a.cmd.Identifiers.ExecutionID, a.cmd.InputSpec.Inputs)
+	var restoreInOutFiles restoreInOutFilesFn
+	if a.compare {
+		restoreInOutFiles = a.stashInputOutputFiles()
+	}
+	a.runRemote(rCtx, s.REClient)
+
+	// We need not run compare mode if the remote result is already a failure.
+	if !a.res.IsOk() || !a.compare {
+		return
+	}
+	if a.compare {
+		a.removeAllOutputs()
+		restoreInOutFiles()
+	}
+}
+
+// fileList returns the absolute path of all the files in the given list
+// and all the files in the list of given directories.
+func fileList(execRoot string, files []string, dirs []string) []string {
+	var res []string
+	for _, f := range files {
+		path := f
+		if !filepath.IsAbs(f) {
+			path = filepath.Join(execRoot, f)
+		}
+		res = append(res, path)
+	}
+	for _, d := range dirs {
+		filepath.Walk(filepath.Join(execRoot, d), func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.Warningf("Error when listing directory for files: %v", err)
+				return nil
+			}
+			if info.IsDir() {
+				return nil
+			}
+			res = append(res, path)
+			return nil
+		})
+	}
+	return res
+}
+
+func toResponse(cmd *command.Command, res *command.Result, stdout, stderr []byte, logRecord *lpb.LogRecord) *ppb.RunResponse {
+	return &ppb.RunResponse{
+		ExecutionId: cmd.Identifiers.ExecutionID,
+		Result:      command.ResultToProto(res),
+		Stdout:      stdout,
+		Stderr:      stderr,
+		ActionLog:   logRecord,
+	}
+}
+
+func dedup(list []string) []string {
+	// key is cleaned path, value is original path.
+	// returns original paths.
+	fileSet := make(map[string]string)
+	for _, f := range list {
+		if _, found := fileSet[filepath.Clean(f)]; found {
+			continue
+		}
+		fileSet[filepath.Clean(f)] = f
+	}
+	var dlist []string
+	for _, f := range fileSet {
+		dlist = append(dlist, f)
+	}
+	return dlist
+}
+
+func execOptionsFromProto(opt *ppb.RemoteExecutionOptions) *command.ExecutionOptions {
+	if opt == nil {
+		return command.DefaultExecutionOptions()
+	}
+	return &command.ExecutionOptions{
+		AcceptCached:                 opt.AcceptCached,
+		DoNotCache:                   opt.DoNotCache,
+		DownloadOutErr:               true,
+		DownloadOutputs:              opt.DownloadOutputs,
+		PreserveUnchangedOutputMtime: opt.PreserveUnchangedOutputMtime,
+	}
+}
+
+// It is temporary feature for nest build. b/157442013
+func cleanIncludePaths(cmd *command.Command) []string {
+	cleanArgs := []string{}
+	for i := 0; i < len(cmd.Args); i++ {
+		arg := cmd.Args[i]
+		var dir string
+		if arg == "-I" {
+			dir = cmd.Args[i+1]
+			i++
+		} else if strings.HasPrefix(arg, "-I") {
+			dir = strings.TrimSpace(strings.TrimPrefix(arg, "-I"))
+		} else {
+			cleanArgs = append(cleanArgs, arg)
+			continue
+		}
+
+		if !filepath.IsAbs(dir) {
+			cleanArgs = append(cleanArgs, "-I"+dir)
+			continue
+		}
+
+		relDir, err := filepath.Rel(filepath.Join(cmd.ExecRoot, cmd.WorkingDir), dir)
+		if err != nil {
+			log.Warningf("failed to make %s relative to working directory", dir)
+			cleanArgs = append(cleanArgs, "-I"+dir)
+			continue
+		}
+		cleanArgs = append(cleanArgs, "-I"+relDir)
+	}
+	return cleanArgs
+}
+
+// DeleteOldLogFiles removes RE tooling log files older than d from dir.
+func DeleteOldLogFiles(d time.Duration, dir string) {
+	maxAge := time.Now().Add(-d)
+	log.V(1).Infof("Deleting RE logs older than %v from %s...", maxAge.Format("2006-01-02 15:04:05"), dir)
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		log.V(1).Infof("Failed listing %s: %v", dir, err)
+		return
+	}
+
+	filenamePatterns := []string{`^reproxy.*`, `^rewrapper.*`, `^bootstrap.*`, interceptors.DumpNameRegexPattern}
+	filenameRegex, err := regexp.Compile(strings.Join(filenamePatterns, "|"))
+	if err != nil {
+		log.Fatalf("Error compiling regex %s: %v", filenameRegex, err)
+	}
+	var toDelete []string
+	for _, f := range files {
+		if info, err := f.Info(); err == nil && filenameRegex.MatchString(f.Name()) && info.ModTime().Before(maxAge) {
+			toDelete = append(toDelete, f.Name())
+		}
+	}
+	log.V(1).Infof("About to delete %d old logs from %s", len(toDelete), dir)
+	delCount, errCount := 0, 0
+	for _, name := range toDelete {
+		path := filepath.Join(dir, name)
+		log.V(3).Infof("Deleting %s...", path)
+		if err := os.Remove(path); err != nil {
+			errCount++
+			log.V(3).Infof("Error deleting %s :%v", path, err)
+		} else {
+			delCount++
+		}
+	}
+	log.V(1).Infof("Successfully deleted %d old logs from %s, %d errors.", delCount, dir, errCount)
+}
+
+func sliceToMap(slice []string, separator string) map[string]string {
+	result := make(map[string]string)
+	for _, item := range slice {
+		pair := strings.SplitN(item, separator, 2)
+		result[pair[0]] = pair[1]
+	}
+	return result
+}

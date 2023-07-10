@@ -1,0 +1,91 @@
+diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h
+index 84d9cfb2e21b..a0806f2c1bf9 100644
+--- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h
++++ b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h
+@@ -16,7 +16,7 @@
+ #include "MCTargetDesc/AArch64MCTargetDesc.h"
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/MC/MCInstPrinter.h"
+-#include "../Utils/AArch64BaseInfo.h"
++#include "Utils/AArch64BaseInfo.h"
+ 
+ namespace llvm {
+ 
+diff --git a/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h b/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h
+index b5b12200505b..eb8caf701265 100644
+--- a/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h
++++ b/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h
+@@ -14,7 +14,7 @@
+ #ifndef LLVM_LIB_TARGET_WEBASSEMBLY_MCTARGETDESC_WEBASSEMBLYMCTARGETDESC_H
+ #define LLVM_LIB_TARGET_WEBASSEMBLY_MCTARGETDESC_WEBASSEMBLYMCTARGETDESC_H
+ 
+-#include "../WebAssemblySubtarget.h"
++#include "WebAssemblySubtarget.h"
+ #include "llvm/BinaryFormat/Wasm.h"
+ #include "llvm/MC/MCInstrDesc.h"
+ #include "llvm/Support/DataTypes.h"
+diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp
+index 8be32d2effa6..744007855c6b 100644
+--- a/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp
++++ b/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp
+@@ -10,7 +10,7 @@
+ 
+ #include "llvm/Support/Format.h"
+ #include "llvm/TableGen/Record.h"
+-#include "../CodeGenInstruction.h"
++#include "llvm/utils/TableGen/CodeGenInstruction.h"
+ 
+ using namespace llvm;
+ 
+diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchDagInstr.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchDagInstr.cpp
+index ad9fbea8f881..327806cf45b1 100644
+--- a/llvm/utils/TableGen/GlobalISel/GIMatchDagInstr.cpp
++++ b/llvm/utils/TableGen/GlobalISel/GIMatchDagInstr.cpp
+@@ -7,7 +7,7 @@
+ //===----------------------------------------------------------------------===//
+ 
+ #include "GIMatchDagInstr.h"
+-#include "../CodeGenInstruction.h"
++#include "llvm/utils/TableGen/CodeGenInstruction.h"
+ #include "GIMatchDag.h"
+ #include "llvm/TableGen/Record.h"
+ 
+diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchDagOperands.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchDagOperands.cpp
+index e79e4686b91e..b5342d9a61c2 100644
+--- a/llvm/utils/TableGen/GlobalISel/GIMatchDagOperands.cpp
++++ b/llvm/utils/TableGen/GlobalISel/GIMatchDagOperands.cpp
+@@ -8,7 +8,7 @@
+ 
+ #include "GIMatchDagOperands.h"
+ 
+-#include "../CodeGenInstruction.h"
++#include "llvm/utils/TableGen/CodeGenInstruction.h"
+ 
+ using namespace llvm;
+ 
+diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchDagPredicate.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchDagPredicate.cpp
+index 6a9e33ac515e..994f4c8d40a6 100644
+--- a/llvm/utils/TableGen/GlobalISel/GIMatchDagPredicate.cpp
++++ b/llvm/utils/TableGen/GlobalISel/GIMatchDagPredicate.cpp
+@@ -10,7 +10,7 @@
+ 
+ #include "llvm/TableGen/Record.h"
+ 
+-#include "../CodeGenInstruction.h"
++#include "llvm/utils/TableGen/CodeGenInstruction.h"
+ #include "GIMatchDag.h"
+ 
+ using namespace llvm;
+diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp
+index d98884493e84..13570de86ea7 100644
+--- a/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp
++++ b/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp
+@@ -9,7 +9,7 @@
+ #include "GIMatchTree.h"
+ #include "GIMatchDagPredicate.h"
+ 
+-#include "../CodeGenInstruction.h"
++#include "llvm/utils/TableGen/CodeGenInstruction.h"
+ 
+ #include "llvm/Support/Debug.h"
+ #include "llvm/Support/Format.h"

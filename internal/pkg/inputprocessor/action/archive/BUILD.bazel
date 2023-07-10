@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "archive",
+    srcs = ["preprocessor.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/archive",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/flags",
+        "//internal/pkg/rsp",
+    ],
+)
+
+go_test(
+    name = "archive_test",
+    srcs = ["preprocessor_test.go"],
+    embed = [":archive"],
+    deps = [
+        "//internal/pkg/execroot",
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/flags",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+    ],
+)

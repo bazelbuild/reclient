@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "bigquerytranslator",
+    srcs = ["translator.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/bigquerytranslator",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/log",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_google_cloud_go_bigquery//:bigquery",
+    ],
+)
+
+go_test(
+    name = "bigquerytranslator_test",
+    srcs = ["translator_test.go"],
+    embed = [":bigquerytranslator"],
+    deps = [
+        "//api/log",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_google_go_cmp//cmp",
+        "@com_google_cloud_go_bigquery//:bigquery",
+    ],
+)

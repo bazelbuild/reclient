@@ -1,0 +1,31 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "r8",
+    srcs = [
+        "flagsparser.go",
+        "preprocessor.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/r8",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/args",
+        "//internal/pkg/inputprocessor/flags",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+    ],
+)
+
+go_test(
+    name = "r8_test",
+    srcs = ["preprocessor_test.go"],
+    embed = [":r8"],
+    deps = [
+        "//internal/pkg/execroot",
+        "//internal/pkg/inputprocessor",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+    ],
+)

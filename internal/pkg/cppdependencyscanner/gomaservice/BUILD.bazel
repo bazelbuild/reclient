@@ -1,0 +1,69 @@
+cc_library(
+    name = "gomadeps",
+    deps = select({
+        "//:goma_input_processor_service_config_windows": [
+            "@com_github_google_glog//:glog",
+            "@goma_clang//:absl",
+            "@goma_clang//:base",
+            "@goma_clang//:chromium_base",
+            "@goma_clang//:client",
+            "@goma_clang//:gtest",
+            "@goma_clang//:json",
+            "@goma_clang//:lib",
+            "@goma_clang//:protobuf",
+            "@goma_clang//:root",
+            "@goma_clang//:zlib",
+        ],
+        "//conditions:default": [
+            "@goma//:absl",
+            "@goma//:base",
+            "@goma//:chromium_base",
+            "@goma//:client",
+            "@goma//:glog",
+            "@goma//:gtest",
+            "@goma//:json",
+            "@goma//:lib",
+            "@goma//:protobuf",
+            "@goma//:root",
+            "@goma//:zlib",
+        ],
+    }),
+)
+
+cc_library(
+    name = "gomacpplib",
+    srcs = [
+        "//internal/pkg/cppdependencyscanner/goma:bridge_cc",
+    ],
+    hdrs = [
+        "//internal/pkg/cppdependencyscanner/goma:bridge_h",
+    ],
+    copts = [
+        "-DGOMA_CPP_SERVICE",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-fPIC",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,--wrap=glob",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = [
+        "manual",
+    ],
+    target_compatible_with = select({
+        "//:goma_input_processor_service_config_linux": [],
+        "//:goma_input_processor_service_config_mac": [],
+        "//:goma_input_processor_service_config_windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":gomadeps",
+        "//goma:goma_input_processor",
+    ],
+)

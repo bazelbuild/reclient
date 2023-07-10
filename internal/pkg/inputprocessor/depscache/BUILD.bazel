@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "depscache",
+    srcs = [
+        "cppfilecache.go",
+        "depscache.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/depscache",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/proxy",
+        "//internal/pkg/logger",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_golang_glog//:go_default_library",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_sync//singleflight",
+    ],
+)
+
+go_test(
+    name = "depscache_test",
+    srcs = ["depscache_test.go"],
+    embed = [":depscache"],
+    deps = [
+        "//internal/pkg/execroot",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+    ],
+)

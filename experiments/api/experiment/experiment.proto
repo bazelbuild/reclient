@@ -1,0 +1,253 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package experiment;
+
+import "api/log/log.proto";
+import "api/stats/stats.proto";
+
+// Experiment encapsulates all configuration required for running an experiment
+// on reclient in GCE.
+message Experiment {
+  // The name of the experiment.
+  string name = 1;
+
+  // The base configuration for all run configurations of the experiment.
+  RunConfiguration base_configuration = 2;
+
+  // The list of run configurations in the experiment. Configurations in this
+  // list are applied on top of the base configuration. Any non-repeated field
+  // is replaced by the values in run configuration, and any repeated field is
+  // appended to by the values in the run configuration.
+  repeated RunConfiguration run_configurations = 3;
+
+  // The number of trials to run.
+  int32 num_trials = 4;
+
+  // Tags to add to the experiment run.
+  map<string, string> tags = 5;
+}
+
+// A configuration for a run or a set of runs in an experiment.
+message RunConfiguration {
+  // The name of the run configuration.
+  string name = 1;
+
+  // The settings of the VM to use in the configuration.
+  oneof machine_settings {
+    VMSettings vm_settings = 2;
+    WSSettings ws_settings = 14;
+  }
+
+  // Can either be "local" or path to a directory in GCS that contains reclient
+  // binaries. When "local" is used, the framework uses locally built version of
+  // re-client binaries.
+  string reclient_bin_path = 3;
+
+  // The location on the VM to which the reclient binaries should be
+  // downloaded.
+  string reclient_destination = 4;
+
+  // List of inputs to be moved to the GCE machine before it happens.
+  repeated Input inputs = 11;
+
+  // List of commands to run for the setup of the run configuration. Only runs
+  // once for all trials.
+  repeated Command setup_commands = 6;
+
+  // List of pre-build commands to run before building. Runs once per trial. If
+  // a command has a user switch 'su', every build command following that runs
+  // as the desired user.
+  repeated Command pre_build_commands = 7;
+
+  // The build command to run and measure timing for.
+  Command build_command = 8;
+
+  // List of post-build commands to run after building, before downloading
+  // outputs and teardown. Runs once per trial. Similar to pre_build_commands,
+  // if any of them has a user switch `su`, every command afterwards will run
+  // as the desired user.
+  repeated Command post_build_commands = 12;
+
+  // List of output file paths to download from the VM after a trial. If the
+  // file is under the attached disk, it will be under /img.
+  repeated string outputs = 9;
+
+  // List of teardown commands to run at the end of a trial.
+  repeated Command teardown_commands = 10;
+
+  // Number of machines to run this config. Defaults to 1. Must be positibe.
+  uint32 num_machines = 13;
+
+  // Environment variables that are build settings.
+  repeated Environment environment = 15;
+
+  reserved 5;
+
+  // Next ID: 16
+}
+
+// Inputs to be copied over from your local machine to the GCE workstations.
+message Input {
+  // Source path relative to the experiment textproto location.
+  string source = 1;
+  // Destination path in the GCE machine.
+  string destination = 2;
+  // By default, the file is uploaded to GCS and then downloaded in each remote
+  // machine, saving all data that makes the experiment reproducible.
+  //
+  // If the file isn't worth preserving or is sensitive, setting this to true
+  // bypasses GCS and sends the file straight to the VMs.
+  bool vm_direct = 3;
+}
+
+// Settings for the VM.
+// A virtual machine will be created for the experiment to run,
+// and then deleted when the experiment has completed successfully.
+message VMSettings {
+  // Zone to create the VM in.
+  string zone = 1;
+
+  // The machine type of the VM.
+  string machine_type = 2;
+
+  // The name of the image to use to create the VM.
+  string image = 3;
+
+  // The GCP project where the image exists.
+  string image_project = 4;
+
+  enum OS {
+    LINUX = 0;
+    WINDOWS = 1;
+    // Next ID: 2
+  }
+
+  // The OS for the image being ran. Defaults to linux.
+  OS image_os = 8;
+
+  // Extra flags to add to the VM creation command.
+  repeated string creation_flags = 5;
+
+  // The size of the system disk should be resized to.
+  // If not provided default disk size from the snapshot is used.
+  // The value must be a whole number followed by a size unit of GB for gigabyte, or TB for terabyte.
+  // If no size unit is specified, GB is assumed.
+  // For example, 10GB will produce 10 gigabyte disks. Disk size must be a multiple of 1 GB.
+  string system_disk_size = 12;
+
+  // The name of the disk image to attach to the VM.
+  string disk_image = 6;
+
+  // The GCP project where the disk image exists.
+  string disk_image_project = 7;
+
+  // The data disk type. Defaults to pd-ssd.
+  string disk_type = 11;
+
+  // Path to ssh private key to be used. The VM image is expected to have the
+  // public key pre-installed.  Setting this removes the gcloud prefix.
+  string ssh_key_path = 9;
+
+  // SSH user to set. This disables GCP OS login, and is required on Windows
+  // images since they do not support OS login.
+  string ssh_user = 10;
+
+  // Next ID: 13
+}
+
+// Existing workstation settings.
+// Connect to an existing workstation/cloudtop/VM at the given address.
+// The target machine must be up and available.
+// The machine will not be started or stopped as part of the experiment.
+// The user must have ssh access to the machine.
+message WSSettings {
+  // The address to ssh to.
+  string address = 1;
+
+  // SSH user to log in with.
+  string ssh_user = 2;
+
+  // Path to ssh private key to be used. The workstation is expected to have the
+  // public key pre-installed.
+  string ssh_key_path = 3;
+
+  // Instructs the framework to use "sudo" for certain setup and teardown steps.
+  // This can only work if the user has passwordless sudo access on the target machine.
+  // Defaults to false.
+  // Experiment writer must ensure their experiment does not require any root privileges.
+  bool use_sudo = 4;
+  // Next ID: 5
+}
+
+// Command is a command to run on the VM during an experiment.
+message Command {
+  // List of command args.
+  repeated string args = 1;
+}
+
+// Results of an experiment.
+message Results {
+  // The name of the experiment.
+  string name = 1;
+
+  // Url of the experiment configuration in GCS.
+  string config_url = 2;
+
+  // Results per run configuration.
+  repeated ConfigurationResult config_results = 3;
+}
+
+// The results collected form a configuration.
+message ConfigurationResult {
+  // The name of the configuraiton.
+  string name = 1;
+
+  // The duration of trials of the configuration.
+  repeated int64 durations = 2;
+
+  // The stats collected from trials of the configuration.
+  repeated Stats stats = 3;
+}
+
+// The full aggregated build stats and properties.
+message Stats {
+  // Number of actions in the build.
+  int64 num_records = 1;
+
+  // Aggregated build stats.
+  repeated stats.Stat stats = 2;
+
+  // Environment variables that are build settings.
+  repeated Environment environment = 3;
+
+  // Verification results, if exist.
+  log.Verification verification = 4;
+
+  // RBE tooling version.
+  string tool_version = 5;
+}
+
+// Environment is the environment variable set during the build and used by
+// reclient. We use a message instead of a map because bigquery does not support
+// inferring schema from a map.
+message Environment {
+  // The environment variable key.
+  string key = 1;
+
+  // The environment variable value.
+  string value = 2;
+}

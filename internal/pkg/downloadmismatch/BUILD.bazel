@@ -1,0 +1,31 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "downloadmismatch",
+    srcs = [
+        "diff.go",
+        "download.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/downloadmismatch",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/stats",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/client",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/tool",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_test(
+    name = "downloadmismatch_test",
+    srcs = ["download_test.go"],
+    embed = [":downloadmismatch"],
+    deps = [
+        "//api/log",
+        "//api/stats",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/fakes",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

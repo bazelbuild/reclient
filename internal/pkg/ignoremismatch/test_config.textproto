@@ -1,0 +1,7 @@
+rules {
+  output_file_path_rule_spec {
+    path_pattern {
+      expression: ".*"
+    }
+  }
+}

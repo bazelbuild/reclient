@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "clanglink",
+    srcs = [
+        "ar_reader.go",
+        "flagsparser.go",
+        "preprocessor.go",
+    ],
+    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/clanglink",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/pkg/features",
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/args",
+        "//internal/pkg/inputprocessor/clangparser",
+        "//internal/pkg/inputprocessor/flags",
+        "//internal/pkg/rsp",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "clanglink_test",
+    srcs = [
+        "ar_reader_test.go",
+        "flagsparser_test.go",
+    ],
+    data = glob(["testdata/*"]),
+    embed = [":clanglink"],
+    deps = [
+        "//internal/pkg/execroot",
+        "//internal/pkg/inputprocessor",
+        "//internal/pkg/inputprocessor/flags",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)

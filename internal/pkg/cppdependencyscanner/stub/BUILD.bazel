@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "stub",
+    srcs = ["stub.go"],
+    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/includescanner",  # keep
+    target_compatible_with = select({
+        "//:goma_input_processor_service_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//:__subpackages__"],
+    # x_defs attribute substitutes the string with given values.
+    # Refer to https://github.com/bazelbuild/rules_go/blob/master/go/core.rst#defines-and-stamping.
+    x_defs = select({
+        "//:goma_input_processor_service_config": {
+            "Name": "Goma",
+        },
+        "//conditions:default": {},
+    }),
+    deps = [
+        "//internal/pkg/logger",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_golang_glog//:go_default_library",
+    ],
+)

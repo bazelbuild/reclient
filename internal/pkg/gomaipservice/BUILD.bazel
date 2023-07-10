@@ -1,0 +1,18 @@
+cc_library(
+    name = "gomaipservice",
+    srcs = ["gomaip.cc"],
+    hdrs = ["gomaip.h"],
+    tags = ["manual"],
+    target_compatible_with = select({
+        "//:goma_input_processor_service_config_linux": [],
+        "//:goma_input_processor_service_config_mac": [],
+        "//:goma_input_processor_service_config_windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/scandeps:cppscandeps_cc",
+        "//internal/pkg/cppdependencyscanner/gomaservice:gomacpplib",
+        "@com_github_grpc_grpc//:grpc++",
+    ],
+)
