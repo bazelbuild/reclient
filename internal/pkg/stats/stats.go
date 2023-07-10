@@ -46,7 +46,12 @@ import (
 )
 
 const (
-	aggregatedMetricsFileBaseName = "rbe_metrics"
+	// AggregatedMetricsFileBaseName is the base name of the rbe metric file.
+	//
+	// We typically work with two rbe_metrics files:
+	//   rbe_metrics.pb
+	//   rbe_metrics.txt
+	AggregatedMetricsFileBaseName = "rbe_metrics"
 	bwUnit                        = 1000
 	bwUnitReps                    = "KMGT"
 )
@@ -515,7 +520,7 @@ func WriteStats(sPb *spb.Stats, outputdir string) error {
 	if err := os.MkdirAll(outputdir, os.FileMode(0777)); err != nil {
 		return err
 	}
-	path := filepath.Join(outputdir, aggregatedMetricsFileBaseName)
+	path := filepath.Join(outputdir, AggregatedMetricsFileBaseName)
 	f, err := os.Create(path + ".txt")
 	if err != nil {
 		return err
