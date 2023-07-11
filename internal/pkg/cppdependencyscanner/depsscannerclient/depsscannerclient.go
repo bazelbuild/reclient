@@ -91,7 +91,7 @@ type DepsScannerClient struct {
 }
 
 var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-	conn, err := ipc.DialContext(ctx, address)
+	conn, err := ipc.DialContextWithBlock(ctx, address)
 	if err != nil {
 		return nil, err
 	}

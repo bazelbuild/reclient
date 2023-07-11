@@ -214,7 +214,7 @@ func startProxy(ctx context.Context, serverAddr string, cmd *exec.Cmd, waitSecon
 		default:
 			tctx, _ := context.WithTimeout(ctx, 50*time.Millisecond)
 			i += 50
-			conn, err := ipc.DialContext(tctx, serverAddr)
+			conn, err := ipc.DialContextWithBlock(tctx, serverAddr)
 			if err != nil {
 				log.Infof("Reproxy not started yet: %v", err)
 				continue

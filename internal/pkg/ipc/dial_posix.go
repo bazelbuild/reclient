@@ -27,9 +27,18 @@ import (
 
 const lsofOutputPrefix = "n/"
 
-// DialContext connects to the serverAddress for grpc.
+// DialContext connects to the serverAddress for grpc.  Returns immediately and will make the connection lazily when needed.
+// This is the recommended approach to dialing from the grpc documentation (https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md)
 func DialContext(ctx context.Context, serverAddr string) (*grpc.ClientConn, error) {
-	return grpc.DialContext(ctx, serverAddr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithMaxMsgSize(GrpcMaxMsgSize))
+	return grpc.DialContext(ctx, serverAddr, grpc.WithInsecure(), grpc.WithMaxMsgSize(GrpcMaxMsgSize))
+}
+
+// DialContextWithBlock connects to the serverAddress for grpc, but waits until the connection is made (via WithBlock) until returning.
+// This is NOT the recommended approach to dialing, but is needed for bootstrap which relies on WithBlock as a check that reproxy has started successfully.
+// Also needed for reproxy connecting to the depsscannerservice.
+// TODO(b/290804932): Remove the dependence on WithBlock as a startup check.
+func DialContextWithBlock(ctx context.Context, serverAddr string) (*grpc.ClientConn, error) {
+	return grpc.DialContext(ctx, serverAddr, grpc.WithBlock(), grpc.WithInsecure(), grpc.WithMaxMsgSize(GrpcMaxMsgSize))
 }
 
 // DialAllContexts searches for and connects to all reproxy sockets

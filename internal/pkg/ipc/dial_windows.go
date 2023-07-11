@@ -39,8 +39,22 @@ var (
 )
 
 // DialContext connects to the serverAddress for grpc.
+// Returns immediately and will make the connection lazily when needed.
+// This is the recommended approach to dialing from the grpc documentation (https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md)
 // if serverAddr is `pipe://<addr>`, it connects to named pipe (`\\.\\pipe\<addr>`).
 func DialContext(ctx context.Context, serverAddr string) (*grpc.ClientConn, error) {
+	if strings.HasPrefix(serverAddr, pipeProtocol) {
+		return dialPipe(ctx, strings.TrimPrefix(serverAddr, pipeProtocol))
+	}
+	return grpc.DialContext(ctx, serverAddr, grpc.WithInsecure())
+}
+
+// DialContext connects to the serverAddress for grpc but waits until the connection is made (via WithBlock) until returning.
+// This is NOT the recommended approach to dialing, but is needed for bootstrap which relies on WithBlock as a check that reproxy has started successfully.
+// Also needed for reproxy connecting to the depsscannerservice.
+// TODO(b/290804932): Remove the dependence on WithBlock as a startup check.
+// if serverAddr is `pipe://<addr>`, it connects to named pipe (`\\.\\pipe\<addr>`).
+func DialContextWithBlock(ctx context.Context, serverAddr string) (*grpc.ClientConn, error) {
 	if strings.HasPrefix(serverAddr, pipeProtocol) {
 		return dialPipe(ctx, strings.TrimPrefix(serverAddr, pipeProtocol))
 	}
