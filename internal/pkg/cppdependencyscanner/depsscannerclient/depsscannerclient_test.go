@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -57,12 +58,12 @@ type testService struct {
 	// The number of times connect should fail before returning stubClient.
 	connectDelay time.Time
 	// Output: the number of times connect() was called.
-	connectCount int
+	connectCount atomic.Int64
 }
 
 // connect returns a preset stubClient.
-func (s *testService) connect(ctx context.Context, address string) (*stubClient, error) {
-	s.connectCount++
+func (s *testService) connect(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
+	s.connectCount.Add(1)
 	select {
 	case <-time.After(time.Until(s.connectDelay)):
 		// Sleep, simulate a slow connection that may or may not timeout
@@ -143,15 +144,17 @@ func TestNew_ConnectSuccess(t *testing.T) {
 	testService := &testService{
 		stubClient: &stubClient{},
 	}
-	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-		return testService.connect(ctx, address)
-	}
+	oldConnect := connect
+	connect = testService.connect
+	t.Cleanup(func() {
+		connect = oldConnect
+	})
 	depsScannerClient, err := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
-	if testService.connectCount != 1 {
-		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount)
+	if testService.connectCount.Load() != 1 {
+		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount.Load())
 	}
 	if depsScannerClient == nil {
 		t.Error("New(): Expected DepsScannerClient; got nil")
@@ -166,16 +169,18 @@ func TestNew_ConnectFailure(t *testing.T) {
 		stubClient:   nil,
 		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
-	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-		return testService.connect(ctx, address)
-	}
+	oldConnect := connect
+	connect = testService.connect
+	t.Cleanup(func() {
+		connect = oldConnect
+	})
 	depsScannerClient, err := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
 	// Windows and mac runs are inconsistent with exactly how many attempts fit in 500ms
-	if testService.connectCount < 5 || testService.connectCount > 11 {
-		t.Errorf("New(): expected 5-11 connection attempts, got %v", testService.connectCount)
+	if testService.connectCount.Load() != 1 {
+		t.Errorf("New(): expected 1 connection attempt, got %v", testService.connectCount.Load())
 	}
 	if depsScannerClient != nil {
 		t.Error("New(): Returned DepsScannerClient; expected nil")
@@ -188,16 +193,18 @@ func TestNew_StartSuccess(t *testing.T) {
 	testService := &testService{
 		stubClient: &stubClient{},
 	}
-	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-		return testService.connect(ctx, address)
-	}
+	oldConnect := connect
+	connect = testService.connect
+	t.Cleanup(func() {
+		connect = oldConnect
+	})
 	stubExecutor := &stubExecutor{}
 	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
-	if testService.connectCount != 1 {
-		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount)
+	if testService.connectCount.Load() != 1 {
+		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount.Load())
 	}
 	if depsScannerClient == nil {
 		t.Error("New(): Expected DepsScannerClient; got nil")
@@ -231,9 +238,11 @@ func TestNew_StartFailure(t *testing.T) {
 	testService := &testService{
 		stubClient: &stubClient{},
 	}
-	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-		return testService.connect(ctx, address)
-	}
+	oldConnect := connect
+	connect = testService.connect
+	t.Cleanup(func() {
+		connect = oldConnect
+	})
 	stubExecutor := &stubExecutor{
 		err: errors.New("File not found"),
 	}
@@ -241,8 +250,8 @@ func TestNew_StartFailure(t *testing.T) {
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
-	if testService.connectCount != 0 {
-		t.Errorf("New(); expected 0 connection attempts, got %v", testService.connectCount)
+	if testService.connectCount.Load() != 0 {
+		t.Errorf("New(); expected 0 connection attempts, got %v", testService.connectCount.Load())
 	}
 	if depsScannerClient != nil {
 		t.Error("New(): Received DepsScannerClient; expected nil")
@@ -271,17 +280,19 @@ func TestNew_StartNoConnect(t *testing.T) {
 	testService := &testService{
 		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
-	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-		return testService.connect(ctx, address)
-	}
+	oldConnect := connect
+	connect = testService.connect
+	t.Cleanup(func() {
+		connect = oldConnect
+	})
 	stubExecutor := &stubExecutor{}
 	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
 	// Windows and mac runs are inconsistent with exactly how many attempts fit in 500ms
-	if testService.connectCount < 5 || testService.connectCount > 11 {
-		t.Errorf("New(): expected 5-11 connection attempts, got %v", testService.connectCount)
+	if testService.connectCount.Load() != 1 {
+		t.Errorf("New(): expected 1 connection attempt, got %v", testService.connectCount.Load())
 	}
 	if depsScannerClient != nil {
 		t.Error("New(): DepsScannerClient returned; expected nil")
@@ -305,17 +316,18 @@ func TestNew_StartDelayedConnect(t *testing.T) {
 		stubClient:   &stubClient{},
 		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
-	connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-		return testService.connect(ctx, address)
-	}
+	oldConnect := connect
+	connect = testService.connect
+	t.Cleanup(func() {
+		connect = oldConnect
+	})
 	stubExecutor := &stubExecutor{}
 	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
-	// The exact number is unknown as it is (5s - execution time of lines 282 to 290)/50ms
-	if testService.connectCount <= 2 {
-		t.Errorf("New(); expected more than 2 connection attempts, got %v", testService.connectCount)
+	if testService.connectCount.Load() != 1 {
+		t.Errorf("New(); expected 1 connection attempt, got %v", testService.connectCount.Load())
 	}
 	if depsScannerClient == nil {
 		t.Error("New(): Expected DepsScannerClient; got nil")

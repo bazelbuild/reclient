@@ -31,6 +31,7 @@ import (
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/retry"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -90,13 +91,35 @@ type DepsScannerClient struct {
 	m                 sync.Mutex
 }
 
+var (
+	backoff     = retry.ExponentialBackoff(1*time.Second, 10*time.Second, retry.Attempts(10))
+	shouldRetry = func(err error) bool {
+		if err == context.DeadlineExceeded {
+			return true
+		}
+		s, ok := status.FromError(err)
+		if !ok {
+			return false
+		}
+		switch s.Code() {
+		case codes.Canceled, codes.Unknown, codes.DeadlineExceeded, codes.Unavailable, codes.ResourceExhausted:
+			return true
+		default:
+			return false
+		}
+	}
+)
+
 var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-	conn, err := ipc.DialContextWithBlock(ctx, address)
+	conn, err := ipc.DialContext(ctx, address)
 	if err != nil {
 		return nil, err
 	}
-
 	client := pb.NewCPPDepsScannerClient(conn)
+	err = retry.WithPolicy(ctx, shouldRetry, backoff, func() error {
+		_, err = client.Status(ctx, &emptypb.Empty{})
+		return err
+	})
 	return client, nil
 }
 
@@ -135,28 +158,37 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 		}
 	}
 
-	connTimeoutCtx, _ := context.WithTimeout(ctx, connTimeout)
-	for {
+	type connectResponse struct {
+		client pb.CPPDepsScannerClient
+		err    error
+	}
+	connectCh := make(chan connectResponse)
+	ctx, cancel := context.WithTimeout(ctx, connTimeout)
+	defer cancel()
+	go func() {
+		defer close(connectCh)
+		client, err := connect(ctx, client.address)
 		select {
-		case <-connTimeoutCtx.Done():
-			client.Close()
-			return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
-		case err := <-client.ch:
-			if err != nil {
-				return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err)
-			}
-			continue
-		default:
-			tctx, _ := context.WithTimeout(connTimeoutCtx, 50*time.Millisecond)
-			c, err := connect(tctx, client.address)
-			if err != nil {
-				log.Infof("Failed to connect to dependency scanner, it may not be started yet: %v", err)
-				continue
-			}
-			log.Infof("Connected to dependency scanner service on %v", client.address)
-			client.client = c
-			return client, nil
+		case connectCh <- connectResponse{
+			client: client,
+			err:    err,
+		}:
+		case <-ctx.Done():
 		}
+	}()
+	select {
+	case <-ctx.Done():
+		client.Close()
+		return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
+	case err := <-client.ch:
+		return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err)
+	case c := <-connectCh:
+		if c.err != nil {
+			return nil, fmt.Errorf("Failed to connect to dependency scanner service: %w", c.err)
+		}
+		log.Infof("Connected to dependency scanner service on %v", client.address)
+		client.client = c.client
+		return client, nil
 	}
 }
 
@@ -307,7 +339,13 @@ func (ds *DepsScannerClient) ProcessInputs(ctx context.Context, execID string, c
 
 	select {
 	case <-ctx.Done():
+		// Only restart service if context timed out.
+		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, false, fmt.Errorf("failed to get response from scandeps: %w",
+				ctx.Err())
+		}
 		// Timeout processing inputs.  Could be the service is offline.  Restart it if possible.
+		log.Infof("restartService B: %v", ctx.Err())
 		err := ds.restartService(ds.ctx, ds.executable)
 		if err == nil {
 			// Successfully restarted service; bubble up DeadlineExceeded to trigger a retry
@@ -320,10 +358,20 @@ func (ds *DepsScannerClient) ProcessInputs(ctx context.Context, execID string, c
 	case err := <-errCh:
 		if st, ok := status.FromError(err); ok && st.Code() == codes.Unavailable {
 			// Unavailable means a disconnect has occurred.
-			if restartErr := ds.restartService(ds.ctx, ds.executable); restartErr != nil {
-				return nil, false, fmt.Errorf("communication with service lost; failed to restart service: %w", restartErr)
+			select {
+			// If the context was cancelled it means that scandeps was terminated by a propagated Ctrl-C
+			// and reproxy is currently shutting down.
+			case <-ctx.Done():
+				if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					return nil, false, fmt.Errorf("failed to get response from scandeps: %w",
+						ctx.Err())
+				}
+			default:
+				if restartErr := ds.restartService(ds.ctx, ds.executable); restartErr != nil {
+					return nil, false, fmt.Errorf("communication with service lost; failed to restart service: %w", restartErr)
+				}
+				return nil, false, errors.New("communication with service lost; service restarted")
 			}
-			return nil, false, errors.New("communication with service lost; service restarted")
 		}
 		// else something unexpected has gone wrong.
 		return nil, false, fmt.Errorf("An unexpected error occurred communicating with the service: %w", err)
