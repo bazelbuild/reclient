@@ -228,25 +228,7 @@ func bootstrapReproxy(args []string, m auth.Mechanism) (string, int) {
 		if !ok {
 			log.Exitf(defaultErr)
 		}
-		exitCode := status.ExitStatus()
-		errMsg := ""
-		switch {
-
-		case exitCode == auth.ExitCodeAppDefCredsAuth:
-			errMsg = "\nTry restarting the build after running the following command:\n"
-			errMsg += "    \033[1mgcloud auth application-default login --disable-quota-project\033[0m"
-			errMsg += "\nIf this is a headless machine, use:\n"
-			errMsg += "    \033[1mgcloud auth application-default login --no-launch-browser --disable-quota-project\n\033[0m"
-
-		case exitCode == auth.ExitCodeExternalTokenAuth:
-
-		case (exitCode >= auth.ExitCodeGCECredsAuth) && (exitCode <= auth.ExitCodeUnknown):
-			errMsg = "\nFailed to authenticate with Remote Execution backend. Bootstrapping remote execution proxy failed."
-
-		default:
-			errMsg = defaultErr
-		}
-		return errMsg, exitCode
+		return defaultErr, status.ExitStatus()
 	}
 	return "Proxy started successfully.", 0
 }

@@ -89,11 +89,11 @@ func TestRemoteStrategyWithLocalError(t *testing.T) {
 		ExecutionOptions: &ppb.ProxyExecutionOptions{ExecutionStrategy: ppb.ExecutionStrategy_REMOTE, ReclientTimeout: 3600},
 	}
 	server := &Server{
-		InputProcessor: new(inputprocessor.InputProcessor),
-		REClient:       env.Client,
-		MaxHoldoff:     time.Minute,
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(&inputprocessor.InputProcessor{}, func() {})
+	server.SetREClient(env.Client)
 	resp, err := server.RunCommand(context.Background(), req)
 	if err != nil {
 		t.Errorf("Expected err to be nil and local error to be within RunResponse, got err = %v", err)
@@ -129,11 +129,11 @@ func TestRemote(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
-		MaxHoldoff:     time.Minute,
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -245,12 +245,12 @@ func TestRemoteWithReclientTimeout(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		FileMetadataStore: fmc,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -396,11 +396,11 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			execroot.AddFiles(t, env.ExecRoot, files)
 			resMgr := localresources.NewDefaultManager()
 			server := &Server{
-				InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-				REClient:       env.Client,
-				MaxHoldoff:     time.Minute,
+				MaxHoldoff: time.Minute,
 			}
 			server.Init()
+			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+			server.SetREClient(env.Client)
 			lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 			if err != nil {
 				t.Errorf("logger.New() returned error: %v", err)
@@ -492,11 +492,11 @@ func TestRemoteWithSingleActionLog(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
-		MaxHoldoff:     time.Minute,
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -593,11 +593,11 @@ func TestNoRemoteOnInputFail(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
-		MaxHoldoff:     time.Minute,
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -641,13 +641,13 @@ func TestLERCNoDeps(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -784,12 +784,12 @@ func TestLERCLocalFailure(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		LocalPool:      NewLocalPool(executor, resMgr),
-		MaxHoldoff:     time.Minute,
+		LocalPool:  NewLocalPool(executor, resMgr),
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -893,12 +893,12 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		LocalPool:      NewLocalPool(executor, resMgr),
-		MaxHoldoff:     time.Minute,
+		LocalPool:  NewLocalPool(executor, resMgr),
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -1073,12 +1073,12 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 	execroot.AddFilesWithContent(t, env.ExecRoot, fileContents)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -1190,13 +1190,13 @@ func TestLERCInputAsOutput_UploadsUpdatedOutputAsCacheResult(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	var cmdArgs []string
 	var wantOutput []byte
 	var wantAfterDigest digest.Digest
@@ -1282,13 +1282,13 @@ func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 
 	inOutFileName := "in-out.txt"
 	inOutFilepath := filepath.Join(env.ExecRoot, inOutFileName)
@@ -1378,12 +1378,12 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 	execroot.AddFilesWithContent(t, env.ExecRoot, fileContents)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -1511,13 +1511,13 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 	}}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -1698,13 +1698,13 @@ func TestLERCMismatches(t *testing.T) {
 	}}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -1868,13 +1868,13 @@ func TestCompareStashRestore(t *testing.T) {
 	}}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(nil, false, nil, resMgr),
-		REClient:          env.Client,
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(nil, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	t.Cleanup(server.DrainAndReleaseResources)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
@@ -1957,13 +1957,13 @@ func TestNumRetriesIfMismatched(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	execroot.AddFileWithContent(t, filepath.Join(env.ExecRoot, abOutPath), []byte("foo\n"))
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -2193,13 +2193,13 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -2351,13 +2351,13 @@ func TestCompareWithReruns(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	execroot.AddFileWithContent(t, filepath.Join(env.ExecRoot, abOutPath), []byte("foo\n"))
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -2606,13 +2606,13 @@ func TestRerun(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	execroot.AddFileWithContent(t, filepath.Join(env.ExecRoot, abOutPath), []byte("hello\n"))
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -2802,12 +2802,12 @@ func TestRemoteLocalFallback(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		LocalPool:      NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
-		MaxHoldoff:     time.Minute,
+		LocalPool:  NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -2906,11 +2906,11 @@ func TestForwardErrorLog(t *testing.T) {
 	env.Client.FileMetadataCache = fmc
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		MaxHoldoff:     time.Minute,
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	ctx := context.Background()
 	// There is an error in the mock code which returns CacheHitResultStatus for RemoteErrorResultStatus. We need to disable the cache here
 	// in order to get the expected response.
@@ -3002,9 +3002,7 @@ func TestFailEarlyOnIpTimeouts(t *testing.T) {
 			}
 
 			server := &Server{
-				InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(depScanner, false, nil, resMgr),
-				REClient:       env.Client,
-				LocalPool:      NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+				LocalPool: NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 				// needs to be > 0 for fail early functionality to be active
 				// but high enough that we can test fail early for IP timeouts and not fallbacks
 				FailEarlyMinActionCount:   4000,
@@ -3012,6 +3010,8 @@ func TestFailEarlyOnIpTimeouts(t *testing.T) {
 				MaxHoldoff:                time.Minute,
 			}
 			server.Init()
+			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(depScanner, false, nil, resMgr), func() {})
+			server.SetREClient(env.Client)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -3039,14 +3039,14 @@ func TestFailEarly(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:            inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:                  env.Client,
 		LocalPool:                 NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FailEarlyMinActionCount:   2,
 		FailEarlyMinFallbackRatio: 0.5,
 		MaxHoldoff:                time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go server.monitorFailBuildConditions(ctx, 500*time.Millisecond)
@@ -3203,12 +3203,12 @@ func TestRunCommand_LabelDigestAddedToCommandID(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		LocalPool:      NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
-		MaxHoldoff:     time.Minute,
+		LocalPool:  NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -3282,12 +3282,12 @@ func TestRunCommand_InvalidUTF8InStdout(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		LocalPool:      NewLocalPool(executor, resMgr),
-		MaxHoldoff:     time.Minute,
+		LocalPool:  NewLocalPool(executor, resMgr),
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	var cmdArgs []string
 	if runtime.GOOS == "windows" {
 		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("mkdir %s && echo hello>%s", abPath, abOutPath)}
@@ -3338,12 +3338,12 @@ func TestLocalFallback(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:       env.Client,
-		LocalPool:      NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
-		MaxHoldoff:     time.Minute,
+		LocalPool:  NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -3434,8 +3434,6 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -3443,6 +3441,8 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -3568,8 +3568,6 @@ func TestRacingRemoteWins(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -3577,6 +3575,8 @@ func TestRacingRemoteWins(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -3682,8 +3682,6 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -3691,6 +3689,8 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -3786,8 +3786,6 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -3795,6 +3793,8 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -3981,8 +3981,6 @@ func TestRacingRemoteWins_PreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			t.Cleanup(release)
 			server := &Server{
-				InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-				REClient:          env.Client,
 				LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 				FileMetadataStore: fmc,
 				Forecast:          &Forecast{},
@@ -3990,6 +3988,8 @@ func TestRacingRemoteWins_PreserveUnchangedOutputMtime(t *testing.T) {
 				RacingTmp:         t.TempDir(),
 			}
 			server.Init()
+			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+			server.SetREClient(env.Client)
 			lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 			if err != nil {
 				t.Errorf("logger.New() returned error: %v", err)
@@ -4077,8 +4077,6 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -4086,6 +4084,8 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -4200,8 +4200,6 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -4209,6 +4207,8 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -4307,8 +4307,6 @@ func TestRacingLocalWins(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -4316,6 +4314,8 @@ func TestRacingLocalWins(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -4416,8 +4416,6 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	t.Cleanup(cleanup)
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
@@ -4425,6 +4423,8 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -4526,8 +4526,6 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	t.Cleanup(cleanup)
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{minSizeForStats: 1},
@@ -4535,6 +4533,8 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 
 	// Update forecast with one datapoint taking 1s to download.
 	a := actionsWithLatencies(t, map[string]string{"type": "tool"}, []int{1000})
@@ -4646,8 +4646,6 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	t.Cleanup(cleanup)
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{minSizeForStats: 1},
@@ -4655,6 +4653,8 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 
 	// Update forecast with one datapoint taking 1s to download.
 	a := actionsWithLatencies(t, map[string]string{"type": "tool"}, []int{1000})
@@ -4764,8 +4764,6 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	t.Cleanup(cleanup)
 	server := &Server{
-		InputProcessor:    inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
-		REClient:          env.Client,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{minSizeForStats: 1},
@@ -4773,6 +4771,8 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 		RacingTmp:         t.TempDir(),
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 
 	// Update forecast with one datapoint taking 20s to download.
 	a := actionsWithLatencies(t, map[string]string{"type": "tool"}, []int{20000})
@@ -4876,11 +4876,11 @@ func TestDupOutputs(t *testing.T) {
 	ds := &stubCPPDependencyScanner{processInputsReturnValue: files}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
-		MaxHoldoff:     time.Minute,
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	ctx := context.Background()
 	req := &ppb.RunRequest{
 		Command: &cpb.Command{
@@ -4994,11 +4994,16 @@ func TestRunCommandError(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			env, cleanup := fakes.NewTestEnv(t)
+			t.Cleanup(cleanup)
+			fmc := filemetadata.NewSingleFlightCache()
+			env.Client.FileMetadataCache = fmc
 			server := &Server{
-				InputProcessor: test.inp,
-				MaxHoldoff:     time.Minute,
+				MaxHoldoff: time.Minute,
 			}
 			server.Init()
+			server.SetInputProcessor(test.inp, func() {})
+			server.SetREClient(env.Client)
 			ctx := context.Background()
 			res, err := server.RunCommand(ctx, test.req)
 			if test.wantStatus != cpb.CommandResultStatus_UNKNOWN {
@@ -5028,12 +5033,12 @@ func TestCacheSilo(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
-		CacheSilo:      "test-test",
-		MaxHoldoff:     time.Minute,
+		CacheSilo:  "test-test",
+		MaxHoldoff: time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -5136,13 +5141,13 @@ func TestRemoteDisabled(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
 		LocalPool:      NewLocalPool(executor, resMgr),
 		RemoteDisabled: true,
 		MaxHoldoff:     time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
@@ -5218,14 +5223,14 @@ func TestProxyInfoUptime(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	st := time.Now()
 	server := &Server{
-		InputProcessor: inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr),
-		REClient:       env.Client,
 		LocalPool:      NewLocalPool(executor, resMgr),
 		RemoteDisabled: true,
 		StartTime:      st,
 		MaxHoldoff:     time.Minute,
 	}
 	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client)
 	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)

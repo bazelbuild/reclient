@@ -101,6 +101,7 @@ type Server struct {
 	RacingBias                float64
 	RacingTmp                 string
 	MaxHoldoff                time.Duration // Maximum amount of time to wait for downloads before starting racing.
+	StartupCancelFn           func()
 	numActions                int64
 	numFallbacks              int64
 	numIPTimeouts             int64
@@ -116,6 +117,10 @@ type Server struct {
 	drain                     chan bool
 	rrOnce                    sync.Once
 	stats                     *spb.Stats // Only populated after DrainAndReleaseResources() is called
+	started                   chan bool
+	startErr                  error
+	cleanupFns                []func()
+	smu                       sync.Mutex
 }
 
 type ctxWithCause struct {
@@ -148,6 +153,67 @@ func cancelWithCause(ctx context.Context) (context.Context, func(error)) {
 func (s *Server) Init() {
 	s.shutdownCmd = make(chan bool)
 	s.drain = make(chan bool)
+	s.started = make(chan bool)
+}
+
+// SetInputProcessor sets the InputProcessor property of Server and then unblocks startup.
+// cleanup will be run in Server.DrainAndReleaseResources()
+func (s *Server) SetInputProcessor(ip *inputprocessor.InputProcessor, cleanup func()) {
+	s.smu.Lock()
+	defer s.smu.Unlock()
+	if s.startErr != nil {
+		cleanup()
+		return
+	}
+	s.InputProcessor = ip
+	s.cleanupFns = append(s.cleanupFns, cleanup)
+	s.maybeUnblockStartup()
+}
+
+// SetREClient sets the REClient property of Server and then unblocks startup.
+// If rclient.GrpcClient is not nil then rclient.GrpcClient will be closed in
+// Server.DrainAndReleaseResources()
+func (s *Server) SetREClient(rclient *rexec.Client) {
+	s.smu.Lock()
+	defer s.smu.Unlock()
+	cleanup := func() {}
+	if rclient.GrpcClient != nil {
+		cleanup = func() {
+			rclient.GrpcClient.Close()
+		}
+	}
+	if s.startErr != nil {
+		cleanup()
+		return
+	}
+	s.REClient = rclient
+	s.cleanupFns = append(s.cleanupFns, cleanup)
+	s.maybeUnblockStartup()
+}
+
+// SetStartupErr saves the first error that happens during async startup and then unblocks startup.
+func (s *Server) SetStartupErr(err error) {
+	s.smu.Lock()
+	defer s.smu.Unlock()
+	if s.startErr != nil {
+		return
+	}
+	s.startErr = err
+	s.maybeUnblockStartup()
+}
+
+func (s *Server) maybeUnblockStartup() {
+	select {
+	case <-s.started:
+		// startup is already unblocked
+		return
+	default:
+	}
+	log.Infof("Startup status: Input Processor started? %v, RBE connected (or disabled)? %v, Startup error? %v", s.InputProcessor != nil, s.REClient != nil, s.startErr != nil)
+	if s.startErr != nil || (s.InputProcessor != nil && s.REClient != nil) {
+		log.Infof("Done startup")
+		close(s.started)
+	}
 }
 
 // MonitorFailBuildConditions monitors fail early conditions. If conditions such as
@@ -228,12 +294,27 @@ func (s *Server) WaitForShutdownCommand() <-chan bool {
 // All calls after the first are noops.
 func (s *Server) DrainAndReleaseResources() {
 	s.rrOnce.Do(func() {
+		select {
+		case <-s.started:
+		default:
+			// Cancel startup and wait for cancellation to propagate before shutting down
+			// if startup never finished.
+			s.StartupCancelFn()
+			if err := s.waitForStarted(context.Background()); err != nil {
+				log.Errorf("Error in reproxy startup: %v", err)
+			}
+		}
 		close(s.drain)
 		s.wgShutdown.Wait()
 		if s.Logger != nil {
 			s.Logger.AddEventTimeToProxyInfo(logger.EventProxyUptime, s.StartTime, time.Now())
 		}
 		s.stats = s.Logger.CloseAndAggregate()
+		for _, cleanup := range s.cleanupFns {
+			if cleanup != nil {
+				cleanup()
+			}
+		}
 	})
 }
 
@@ -263,6 +344,15 @@ func (s *Server) withServerDrainCancel(ctx context.Context) context.Context {
 	return ctx
 }
 
+func (s *Server) waitForStarted(ctx context.Context) error {
+	select {
+	case <-s.started:
+		return s.startErr
+	case <-ctx.Done():
+		return status.Error(codes.DeadlineExceeded, "timedout waiting for reproxy to start")
+	}
+}
+
 // RunCommand runs a command according to the parameters defined in the RunRequest.
 func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunResponse, error) {
 	log.V(1).Infof("Received RunRequest:\n%s", protoencoding.TextWithIndent.Format(req))
@@ -272,6 +362,9 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 	case <-ctx.Done(): // Short circuit if server is already shutting down
 		return nil, ctx.Err()
 	default:
+	}
+	if err := s.waitForStarted(ctx); err != nil {
+		return nil, err
 	}
 	s.wgShutdown.Add(1)
 	defer s.wgShutdown.Done()

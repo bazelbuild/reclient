@@ -166,7 +166,8 @@ func main() {
 		}
 	}
 	if err != nil {
-		log.Fatalf("Command failed: %v", err)
+		// Don't use log.Fatalf to avoid printing a stack trace.
+		log.Exitf("Command failed: %v", err)
 	}
 	os.Stdout.Write(resp.GetStdout())
 	os.Stderr.Write(resp.GetStderr())

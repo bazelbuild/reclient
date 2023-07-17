@@ -65,7 +65,7 @@ func TestCpp(t *testing.T) {
 		},
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
 		filepath.Clean("wd/ISoundTriggerClient.cpp"),
@@ -115,7 +115,7 @@ func TestCppEventTimes(t *testing.T) {
 		},
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
 		filepath.Clean("wd/ISoundTriggerClient.cpp"),
@@ -172,8 +172,8 @@ func TestCppWithDepsCache(t *testing.T) {
 	defer cleanup()
 	resMgr := localresources.NewDefaultManager()
 	fmc := filemetadata.NewSingleFlightCache()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, fmc)
-	ip.depsCache, cleanup = newDepsCache(fmc, er)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, fmc, nil)
+	ip.depsCache, cleanup = newDepsCache(fmc, er, nil)
 
 	cmd := []string{"clang++", "-c", "-o", "test.o",
 		"-Xclang", "-add-plugin", "-Xclang", "foo", // should be stripped because it's included in clangDepsScanIgnoredPlugins
@@ -224,7 +224,7 @@ func TestCppShallowFallback(t *testing.T) {
 		processInputsError: errors.New("failed to call clang-scan-deps"),
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
 		filepath.Clean("wd/test.cpp"),
@@ -269,7 +269,7 @@ func TestNoCppShallowFallbackWithRemote(t *testing.T) {
 		processInputsError: errors.New("failed to call clang-scan-deps"),
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
 		filepath.Clean("wd/test.cpp"),
@@ -304,7 +304,7 @@ func TestNoCppShallowFallbackWithRemoteLocalFallback(t *testing.T) {
 		processInputsError: errors.New("failed to call clang-scan-deps"),
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
 		filepath.Clean("wd/test.cpp"),
@@ -339,7 +339,7 @@ func TestCppShallowFallbackWithLocal(t *testing.T) {
 		processInputsError: errors.New("failed to call clang-scan-deps"),
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
 		filepath.Clean("wd/test.cpp"),
@@ -387,7 +387,7 @@ func TestHeaderABIDumper(t *testing.T) {
 		},
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/abi-header-dumper"),
 		filepath.Clean("wd/libc++.so.1"),
@@ -427,7 +427,7 @@ func TestHeaderABIDumper(t *testing.T) {
 func TestJavac(t *testing.T) {
 	ctx := context.Background()
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/foo.java"),
 		filepath.Clean("wd/bar/bar.java"),
@@ -469,7 +469,7 @@ func TestJavac(t *testing.T) {
 func TestMetalava(t *testing.T) {
 	ctx := context.Background()
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(nil, dsTimeout, false, &execStub{stdout: "Metalava: 1.3.0"}, resMgr, nil)
+	ip := newInputProcessor(nil, dsTimeout, false, &execStub{stdout: "Metalava: 1.3.0"}, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/foo.java"),
 		filepath.Clean("wd/bar/bar.java"),
@@ -523,7 +523,7 @@ func TestMetalava(t *testing.T) {
 func TestMetalavaInputsUnderSourcePath(t *testing.T) {
 	ctx := context.Background()
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(nil, dsTimeout, false, &execStub{stdout: "Metalava: 1.3.0"}, resMgr, nil)
+	ip := newInputProcessor(nil, dsTimeout, false, &execStub{stdout: "Metalava: 1.3.0"}, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/foo.java"),
 		filepath.Clean("wd/src/bar/bar.java"),
@@ -653,7 +653,7 @@ func TestIncludeDirectoriesWithNoInputs_VirtualInputsAdded(t *testing.T) {
 			processInputsReturnValue: []string{"wd/test.cpp"},
 		}
 		resMgr := localresources.NewDefaultManager()
-		ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+		ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 		existingFiles := []string{filepath.Clean("wd/test.cpp")}
 		er, cleanup := execroot.Setup(t, append(existingFiles, filepath.Join(wd, "remote_toolchain_inputs")))
 		execroot.AddFiles(t, er, test.files)
@@ -700,7 +700,7 @@ func TestFromAndroidCompileCommand(t *testing.T) {
 		},
 	}
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("ISoundTriggerClient.cpp"),
 		filepath.Clean("frameworks/av/soundtrigger/ISoundTriggerClient.cpp"),
@@ -860,7 +860,7 @@ func TestError(t *testing.T) {
 			defer cleanup()
 			ds := &stubCPPDependencyScanner{processInputsError: fmt.Errorf("fail: %w", test.depsScanErr)}
 			resMgr := localresources.NewDefaultManager()
-			ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil)
+			ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, nil, nil)
 			shallowFallbackConfig[labels.FromMap(test.lbls)] = map[ppb.ExecutionStrategy_Value]bool{ppb.ExecutionStrategy_UNSPECIFIED: test.shallowFallback}
 			defer func() {
 				shallowFallbackConfig[labels.FromMap(test.lbls)] = map[ppb.ExecutionStrategy_Value]bool{ppb.ExecutionStrategy_UNSPECIFIED: !test.shallowFallback}
@@ -956,7 +956,7 @@ func TestSystemTool(t *testing.T) {
 func TestShallow(t *testing.T) {
 	ctx := context.Background()
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/test.cpp"),
 		filepath.Clean("clang++"),
@@ -1020,7 +1020,7 @@ func TestError_InvalidLabels(t *testing.T) {
 func TestFileCache(t *testing.T) {
 	ctx := context.Background()
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/test.cpp"),
 		filepath.Clean("clang++"),
@@ -1066,7 +1066,7 @@ func TestFileCache(t *testing.T) {
 func TestNoFileCache(t *testing.T) {
 	ctx := context.Background()
 	resMgr := localresources.NewDefaultManager()
-	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil)
+	ip := newInputProcessor(nil, dsTimeout, false, nil, resMgr, nil, nil)
 	existingFiles := []string{
 		filepath.Clean("wd/test.cpp"),
 		filepath.Clean("clang++"),

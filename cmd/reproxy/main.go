@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -48,9 +49,9 @@ import (
 
 	"cloud.google.com/go/profiler"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/rexec"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/rexec"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -218,7 +219,6 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	grpcServer := grpc.NewServer(opts...)
 
 	ctx := context.Background()
-	var grpcClient *client.Client
 	var c *auth.Credentials
 	if !*remoteDisabled {
 		m, err := auth.MechanismFromFlags()
@@ -256,13 +256,55 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 
 	exec := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewFractionalDefaultManager(*localResourceFraction)
-	ipResCh := make(chan newIPResult)
-	defer close(ipResCh)
-	ipctx, cancelIPStartup := context.WithCancel(ctx)
-	defer cancelIPStartup()
-	go startIP(ipctx, logDir, exec, resMgr, st, l, ipResCh)
 
-	if !*remoteDisabled {
+	initCtx, cancelInit := context.WithCancel(ctx)
+	server := &reproxy.Server{
+		FileMetadataStore:         st,
+		LocalPool:                 reproxy.NewLocalPool(exec, resMgr),
+		KeepLastRecords:           *keepRecords,
+		CacheSilo:                 *cacheSilo,
+		VersionCacheSilo:          *versionCacheSilo,
+		RemoteDisabled:            *remoteDisabled,
+		DumpInputTree:             *dumpInputTree,
+		Forecast:                  &reproxy.Forecast{},
+		StartTime:                 start,
+		FailEarlyMinActionCount:   *failEarlyMinActionCount,
+		FailEarlyMinFallbackRatio: *failEarlyMinFallbackRatio,
+		RacingBias:                *racingBias,
+		RacingTmp:                 *racingTmp,
+		MaxHoldoff:                time.Minute,
+		Logger:                    l,
+		StartupCancelFn:           cancelInit,
+	}
+	server.Init()
+
+	ipOpts := &inputprocessor.Options{
+		CacheDir:                    *cacheDir,
+		EnableDepsCache:             *enableDepsCache,
+		LogDir:                      logDir,
+		DepsCacheMaxMb:              *depsCacheMaxMb,
+		ClangDepsScanIgnoredPlugins: clangDepScanIgnoredPlugins,
+		CppLinkDeepScan:             *cppLinkDeepScan,
+		IPTimeout:                   *ipTimeout,
+		DepsScannerAddress:          *depsScannerAddress,
+		ProxyServerAddress:          *serverAddr,
+	}
+	go func() {
+		log.Infof("Setting up input processor")
+		ip, cleanup, err := inputprocessor.NewInputProcessor(initCtx, exec, resMgr, st, l, ipOpts)
+		if err != nil {
+			log.Errorf("Failed to initialize input processor: %+v", err)
+			server.SetStartupErr(status.Error(codes.Internal, err.Error()))
+			cancelInit()
+		} else {
+			log.Infof("Finished setting up input processor")
+			server.SetInputProcessor(ip, cleanup)
+		}
+	}()
+
+	if *remoteDisabled {
+		server.SetREClient(&rexec.Client{st, nil})
+	} else {
 		// Backward compatibility until useUnifiedCASOps is deprecated:
 		if *useUnifiedCASOps {
 			*useUnifiedUploads = true
@@ -281,62 +323,22 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		if ts := c.TokenSource(); ts != nil {
 			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
 		}
-		log.Infof("Creating a new SDK client")
-		grpcClient, err = rflags.NewClientFromFlags(ctx, clientOpts...)
-		if err != nil {
-			cancelIPStartup()
-			log.Errorf("Failed to initialize remote-execution client: %+v", err)
-			if ce, ok := err.(*client.InitError); ok {
-				// Error codes 10-19 are considered auth errors by bootstrap.
-				switch ce.AuthUsed {
-				case client.NoAuth:
-					os.Exit(auth.ExitCodeNoAuth)
-				case client.CredsFileAuth:
-					os.Exit(auth.ExitCodeCredsFileAuth)
-				case client.GCECredsAuth:
-					os.Exit(auth.ExitCodeGCECredsAuth)
-				case client.ExternalTokenAuth:
-					os.Exit(auth.ExitCodeExternalTokenAuth)
-				case client.ApplicationDefaultCredsAuth:
-					os.Exit(auth.ExitCodeAppDefCredsAuth)
+		go func() {
+			log.Infof("Creating a new SDK client")
+			grpcClient, err := rflags.NewClientFromFlags(initCtx, clientOpts...)
+			if err != nil {
+				log.Errorf("Failed to initialize SDK client: %+v", err)
+				if ce, ok := err.(*client.InitError); ok {
+					err = formatAuthError(c.Mechanism(), ce)
 				}
-				os.Exit(auth.ExitCodeUnknown)
+				server.SetStartupErr(err)
+				cancelInit()
+			} else {
+				log.Infof("Finished setting up SDK client")
+				server.SetREClient(&rexec.Client{st, grpcClient})
 			}
-			if st, ok := status.FromError(err); ok && st.Code() == codes.Unauthenticated {
-				os.Exit(auth.ExitCodeUnknown)
-			}
-			os.Exit(20)
-		}
-		log.Infof("Finished setting up SDK client")
-		log.Flush()
-		defer grpcClient.Close()
+		}()
 	}
-
-	ipRes := <-ipResCh
-	defer ipRes.cleanup()
-	if ipRes.err != nil {
-		log.Exitf("Failed to start input processor: %v", ipRes.err)
-	}
-	server := &reproxy.Server{
-		InputProcessor:            ipRes.ip,
-		FileMetadataStore:         st,
-		REClient:                  &rexec.Client{st, grpcClient},
-		LocalPool:                 reproxy.NewLocalPool(exec, resMgr),
-		KeepLastRecords:           *keepRecords,
-		CacheSilo:                 *cacheSilo,
-		VersionCacheSilo:          *versionCacheSilo,
-		RemoteDisabled:            *remoteDisabled,
-		DumpInputTree:             *dumpInputTree,
-		Forecast:                  &reproxy.Forecast{},
-		StartTime:                 start,
-		FailEarlyMinActionCount:   *failEarlyMinActionCount,
-		FailEarlyMinFallbackRatio: *failEarlyMinFallbackRatio,
-		RacingBias:                *racingBias,
-		RacingTmp:                 *racingTmp,
-		MaxHoldoff:                time.Minute,
-		Logger:                    l,
-	}
-	server.Init()
 	go server.Forecast.Run(ctx)
 	go server.MonitorFailBuildConditions(ctx)
 	go reproxy.IdleTimeout(ctx, *idleTimeout)
@@ -346,7 +348,6 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	} else {
 		log.Warningf("nil logger pointer")
 	}
-	ipRes.ip.SetLogger(l)
 	// Delete old logs in the background.
 	go reproxy.DeleteOldLogFiles(*logKeepDuration, logDir)
 	pb.RegisterCommandsServer(grpcServer, server)
@@ -382,8 +383,6 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			pprof.StopCPUProfile()
 		}
 		grpcServer.GracefulStop()
-		// Input processor must be cleaned up after DrainAndReleaseResources() to ensure that all contexts are cancelled first.
-		ipRes.cleanup()
 		log.Infof("Finished shutting down and wrote log records...")
 		log.Flush()
 		wg.Done()
@@ -395,34 +394,21 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	wg.Wait()
 }
 
-type newIPResult struct {
-	ip      *inputprocessor.InputProcessor
-	cleanup func()
-	err     error
-}
-
-func startIP(ctx context.Context, logDir string, exec *subprocess.SystemExecutor, resMgr *localresources.Manager, st filemetadata.Cache, l *logger.Logger, out chan<- newIPResult) {
-	var res newIPResult
-	res.ip, res.cleanup, res.err = inputprocessor.NewInputProcessor(
-		ctx, exec, resMgr, st, l, &inputprocessor.Options{
-			CacheDir:                    *cacheDir,
-			EnableDepsCache:             *enableDepsCache,
-			LogDir:                      logDir,
-			DepsCacheMaxMb:              *depsCacheMaxMb,
-			ClangDepsScanIgnoredPlugins: clangDepScanIgnoredPlugins,
-			CppLinkDeepScan:             *cppLinkDeepScan,
-			IPTimeout:                   *ipTimeout,
-			DepsScannerAddress:          *depsScannerAddress,
-			ProxyServerAddress:          *serverAddr,
-		})
-	select {
-	case out <- res:
-	case <-ctx.Done():
-		if res.err != nil {
-			log.Errorf("Failed to start input processor: %v", res.err)
-		}
-		res.cleanup()
+func formatAuthError(m auth.Mechanism, ce *client.InitError) error {
+	if errors.Is(ce.Err, context.Canceled) {
+		return ce.Err
 	}
+	errMsg := "Unable to authenticate with RBE"
+	switch ce.AuthUsed {
+	case client.ExternalTokenAuth:
+		errMsg += ", externally provided auth token was invalid"
+	case client.ApplicationDefaultCredsAuth:
+		errMsg += ", try restarting the build after running the following command:\n"
+		errMsg += "    gcloud auth application-default login --disable-quota-project\n"
+		errMsg += "If this is a headless machine, use:\n"
+		errMsg += "    gcloud auth application-default login --no-launch-browser --disable-quota-project"
+	}
+	return status.Errorf(codes.Unauthenticated, errMsg+"\n%s", ce.Error())
 }
 
 // mustBuildCredentials either returns a valid auth.Credentials struct or exits

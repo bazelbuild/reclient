@@ -148,10 +148,10 @@ func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localreso
 	if err != nil {
 		return nil, func() {}, err
 	}
-	ip := newInputProcessor(depScanner, opt.IPTimeout, opt.CppLinkDeepScan, executor, resMgr, fmc)
+	ip := newInputProcessor(depScanner, opt.IPTimeout, opt.CppLinkDeepScan, executor, resMgr, fmc, l)
 	cleanup := func() {}
 	if depsCacheMode == reproxyDepsCache {
-		ip.depsCache, cleanup = newDepsCache(fmc, opt.CacheDir)
+		ip.depsCache, cleanup = newDepsCache(fmc, opt.CacheDir, l)
 	}
 	return ip, onceFunc(func() {
 		cleanup()
@@ -175,10 +175,10 @@ func getDepsCacheMode(depsCacheDir string, enableDepsCache bool) depsCacheMode {
 // NewInputProcessorWithStubDependencyScanner creates a new input processor with given parallelism
 // and a stub CPP dependency scanner. It is meant to be only used for testing.
 func NewInputProcessorWithStubDependencyScanner(ds cppcompile.CPPDependencyScanner, cppLinkDeepScan bool, executor Executor, resMgr *localresources.Manager) *InputProcessor {
-	return newInputProcessor(ds, 0, cppLinkDeepScan, executor, resMgr, nil)
+	return newInputProcessor(ds, 0, cppLinkDeepScan, executor, resMgr, nil, nil)
 }
 
-func newInputProcessor(ds cppcompile.CPPDependencyScanner, depScanTimeout time.Duration, cppLinkDeepScan bool, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache) *InputProcessor {
+func newInputProcessor(ds cppcompile.CPPDependencyScanner, depScanTimeout time.Duration, cppLinkDeepScan bool, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache, l *logger.Logger) *InputProcessor {
 	return &InputProcessor{
 		cppDepScanner:   ds,
 		cppLinkDeepScan: cppLinkDeepScan,
@@ -187,22 +187,16 @@ func newInputProcessor(ds cppcompile.CPPDependencyScanner, depScanTimeout time.D
 		resMgr:          resMgr,
 		fmc:             fmc,
 		slots:           semaphore.NewWeighted(int64(runtime.NumCPU())),
+		logger:          l,
 	}
 }
 
-func newDepsCache(fmc filemetadata.Cache, depsCacheDir string) (*depscache.Cache, func()) {
+func newDepsCache(fmc filemetadata.Cache, depsCacheDir string, l *logger.Logger) (*depscache.Cache, func()) {
 	dc := depscache.New(fmc)
+	dc.Logger = l
 	go dc.LoadFromDir(depsCacheDir)
 	return dc, func() {
 		dc.WriteToDisk(depsCacheDir)
-	}
-}
-
-// SetLogger sets the logger on the input processor.
-func (p *InputProcessor) SetLogger(l *logger.Logger) {
-	p.logger = l
-	if p.depsCache != nil {
-		p.depsCache.Logger = l
 	}
 }
 
