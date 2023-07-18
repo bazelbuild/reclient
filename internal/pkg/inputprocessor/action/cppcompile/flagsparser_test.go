@@ -84,6 +84,23 @@ func TestParseFlags(t *testing.T) {
 			},
 		},
 		{
+			name:       "Simple clang command with rsp file",
+			workingDir: ".",
+			command:    []string{"clang++", "@rsp", "-c", "-o", "test.o", "-MF", "test.d", "test.cpp"},
+			want: &flags.CommandFlags{
+				ExecutablePath: "clang++",
+				Flags: []*flags.Flag{
+					&flags.Flag{Key: "-c"},
+				},
+				TargetFilePaths:       []string{"test.cpp"},
+				EmittedDependencyFile: "test.d",
+				WorkingDirectory:      ".",
+				ExecRoot:              er,
+				Dependencies:          []string{"rsp"},
+				OutputFilePaths:       []string{"test.o", "test.d"},
+			},
+		},
+		{
 			name:       "Simple clang command with outputs and working directory",
 			workingDir: "foo",
 			command:    []string{"clang++", "-c", "-o", "test.o", "-MF", "test.d", "test.cpp"},

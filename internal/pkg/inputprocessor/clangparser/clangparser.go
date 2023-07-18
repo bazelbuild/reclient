@@ -140,8 +140,12 @@ func (s *State) HandleClangFlags(nextRes *args.NextResult, f *flags.CommandFlags
 			return err
 		}
 	case "":
-		// This should be a file to compile.
-		f.TargetFilePaths = append(f.TargetFilePaths, values...)
+		if len(values) > 0 && strings.HasPrefix(values[0], "@") {
+			f.Dependencies = append(f.Dependencies, values[0][1:])
+		} else {
+			// This should be a file to compile.
+			f.TargetFilePaths = append(f.TargetFilePaths, values...)
+		}
 	}
 	if normalizedKey == "" {
 		return nil
