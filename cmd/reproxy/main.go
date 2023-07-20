@@ -303,7 +303,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	}()
 
 	if *remoteDisabled {
-		server.SetREClient(&rexec.Client{st, nil})
+		server.SetREClient(&rexec.Client{st, nil}, func() {})
 	} else {
 		// Backward compatibility until useUnifiedCASOps is deprecated:
 		if *useUnifiedCASOps {
@@ -335,7 +335,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 				cancelInit()
 			} else {
 				log.Infof("Finished setting up SDK client")
-				server.SetREClient(&rexec.Client{st, grpcClient})
+				server.SetREClient(&rexec.Client{st, grpcClient}, func() { grpcClient.Close() })
 			}
 		}()
 	}
@@ -383,6 +383,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			pprof.StopCPUProfile()
 		}
 		grpcServer.GracefulStop()
+		<-server.WaitForCleanupDone()
 		log.Infof("Finished shutting down and wrote log records...")
 		log.Flush()
 		wg.Done()

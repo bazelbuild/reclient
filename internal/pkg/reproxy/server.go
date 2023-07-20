@@ -115,6 +115,7 @@ type Server struct {
 	shutdownCmd               chan bool
 	shutdownOnce              sync.Once
 	drain                     chan bool
+	cleanupDone               chan bool
 	rrOnce                    sync.Once
 	stats                     *spb.Stats // Only populated after DrainAndReleaseResources() is called
 	started                   chan bool
@@ -154,6 +155,7 @@ func (s *Server) Init() {
 	s.shutdownCmd = make(chan bool)
 	s.drain = make(chan bool)
 	s.started = make(chan bool)
+	s.cleanupDone = make(chan bool)
 }
 
 // SetInputProcessor sets the InputProcessor property of Server and then unblocks startup.
@@ -173,15 +175,9 @@ func (s *Server) SetInputProcessor(ip *inputprocessor.InputProcessor, cleanup fu
 // SetREClient sets the REClient property of Server and then unblocks startup.
 // If rclient.GrpcClient is not nil then rclient.GrpcClient will be closed in
 // Server.DrainAndReleaseResources()
-func (s *Server) SetREClient(rclient *rexec.Client) {
+func (s *Server) SetREClient(rclient *rexec.Client, cleanup func()) {
 	s.smu.Lock()
 	defer s.smu.Unlock()
-	cleanup := func() {}
-	if rclient.GrpcClient != nil {
-		cleanup = func() {
-			rclient.GrpcClient.Close()
-		}
-	}
 	if s.startErr != nil {
 		cleanup()
 		return
@@ -288,6 +284,11 @@ func (s *Server) WaitForShutdownCommand() <-chan bool {
 	return s.shutdownCmd
 }
 
+// WaitForCleanupDone returns a channel that is closed when all cleanup has been completed.
+func (s *Server) WaitForCleanupDone() <-chan bool {
+	return s.cleanupDone
+}
+
 // DrainAndReleaseResources closes all external resources, cancels all inflight RunCommand rpcs
 // and prevents future RunCommand rpcs in preparation for server exit.
 // s.stats is populated with aggregated build metrics.
@@ -310,11 +311,14 @@ func (s *Server) DrainAndReleaseResources() {
 			s.Logger.AddEventTimeToProxyInfo(logger.EventProxyUptime, s.StartTime, time.Now())
 		}
 		s.stats = s.Logger.CloseAndAggregate()
-		for _, cleanup := range s.cleanupFns {
-			if cleanup != nil {
-				cleanup()
+		go func() {
+			defer close(s.cleanupDone)
+			for _, cleanup := range s.cleanupFns {
+				if cleanup != nil {
+					cleanup()
+				}
 			}
-		}
+		}()
 	})
 }
 
