@@ -61,6 +61,9 @@ import (
 // Name of the include scanner.
 const Name = "ClangScanDeps"
 
+// IsStub reflects that this is not a stub deps scanner.
+const IsStub = false
+
 // DepsScanner wraps LLVM/Clang's scan deps scanner.
 type DepsScanner struct {
 	impl              unsafe.Pointer

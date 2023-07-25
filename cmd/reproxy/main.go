@@ -167,6 +167,8 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		// There will be at most NumCPU actions at any given time; this gives us approximately
 		// two failures before aborting the build on the third.
 		reproxy.AllowedIPTimeouts += int64(runtime.NumCPU() * 2)
+	} else if cppdependencyscanner.IsStub() {
+		log.Fatalf("--depsscanner_address must be specified")
 	}
 	log.Infof("IncludeScanner = %v", cppdependencyscanner.Name())
 	log.Flush()

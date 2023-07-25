@@ -31,6 +31,9 @@ import (
 // Name of the include scanner. This is overridden at link time by x_defs in BUILD.bazel.
 var Name = ""
 
+// IsStub reflects that this is a stub deps scanner.
+const IsStub = true
+
 // StubClient is a stub implementation of DepsScanner.
 type StubClient struct{}
 

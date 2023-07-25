@@ -68,6 +68,14 @@ var (
 	UseGomaDepsScannerService = false
 )
 
+// IsStub reflects if the built-in deps scanner is a stub.
+// This function exists to allow cmd/reproxy/main.go to not depend directly on
+// internal/pkg/cppdependencyscanner/includescanner which simplifies the bazel
+// build rules.
+func IsStub() bool {
+	return includescanner.IsStub
+}
+
 // Type returns the type of include scaner being used.
 func Type() ScannerType {
 	if UseGomaDepsScannerService {

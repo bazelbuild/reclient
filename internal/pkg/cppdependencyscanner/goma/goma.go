@@ -56,6 +56,9 @@ import "C"
 // Name of the include scanner.
 const Name = "Goma"
 
+// IsStub reflects that this is not a stub deps scanner.
+const IsStub = false
+
 // TODO(b/233275188): add unit test.
 
 const (
