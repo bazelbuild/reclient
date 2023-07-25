@@ -707,7 +707,7 @@ func (s *Server) rerunAction(ctx context.Context, a *action) {
 		for _, dir := range act.cmd.OutputDirs {
 			outPaths = append(outPaths, dir)
 		}
-		blobs, resPb, err := s.REClient.GrpcClient.ComputeOutputsToUpload(act.cmd.ExecRoot, act.cmd.WorkingDir, outPaths, filemetadata.NewSingleFlightCache(), act.cmd.InputSpec.SymlinkBehavior)
+		blobs, resPb, err := s.REClient.GrpcClient.ComputeOutputsToUpload(act.cmd.ExecRoot, act.cmd.WorkingDir, outPaths, filemetadata.NewSingleFlightCache(), act.cmd.InputSpec.SymlinkBehavior, act.cmd.InputSpec.InputNodeProperties)
 		if err != nil {
 			log.Warningf("Error computing output directory digests during local rerun attempt:%v with %v", attemptNum, err)
 		}
