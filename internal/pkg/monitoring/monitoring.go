@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -49,11 +50,13 @@ import (
 var (
 	defaultZone = "us-central1-a"
 
-	osFamilyKey     = tag.MustNewKey("os_family")
-	versionKey      = tag.MustNewKey("reclient_version")
-	labelsKey       = tag.MustNewKey("action_labels")
-	statusKey       = tag.MustNewKey("status")
-	remoteStatusKey = tag.MustNewKey("remote_status")
+	osFamilyKey       = tag.MustNewKey("os_family")
+	versionKey        = tag.MustNewKey("reclient_version")
+	labelsKey         = tag.MustNewKey("action_labels")
+	statusKey         = tag.MustNewKey("status")
+	remoteStatusKey   = tag.MustNewKey("remote_status")
+	exitCodeKey       = tag.MustNewKey("exit_code")
+	remoteExitCodeKey = tag.MustNewKey("remote_exit_code")
 
 	mu         = sync.Mutex{}
 	staticKeys = make(map[tag.Key]string, 0)
@@ -145,12 +148,12 @@ func SetupViews(labels map[string]string) error {
 	views := []*view.View{
 		{
 			Measure:     ActionLatency,
-			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey),
+			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey, exitCodeKey, remoteExitCodeKey),
 			Aggregation: view.Distribution(1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000),
 		},
 		{
 			Measure:     ActionCount,
-			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey),
+			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey, exitCodeKey, remoteExitCodeKey),
 			Aggregation: view.Sum(),
 		},
 		{
@@ -205,7 +208,6 @@ func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord) {
 		osFamilyKey: runtime.GOOS,
 		versionKey:  version.CurrentVersion(),
 	})
-	lbls := r.GetLocalMetadata().GetLabels()
 	times := r.GetLocalMetadata().GetEventTimes()
 	var latency float64
 	if tPb, ok := times[logger.EventProxyExecution]; ok {
@@ -214,17 +216,18 @@ func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord) {
 			latency = float64(ti.To.Sub(ti.From).Milliseconds())
 		}
 	}
-	st := r.GetResult().GetStatus()
-	e.recorder.recordWithTags(aCtx, map[tag.Key]string{
-		labelsKey:       labels.ToKey(lbls),
-		statusKey:       st.String(),
-		remoteStatusKey: r.GetRemoteMetadata().GetResult().GetStatus().String(),
-	}, ActionCount.M(1))
-	e.recorder.recordWithTags(aCtx, map[tag.Key]string{
-		labelsKey:       labels.ToKey(lbls),
-		statusKey:       st.String(),
-		remoteStatusKey: r.GetRemoteMetadata().GetResult().GetStatus().String(),
-	}, ActionLatency.M(latency))
+	e.recorder.recordWithTags(aCtx, makeActionTags(r), ActionCount.M(1))
+	e.recorder.recordWithTags(aCtx, makeActionTags(r), ActionLatency.M(latency))
+}
+
+func makeActionTags(r *lpb.LogRecord) map[tag.Key]string {
+	return map[tag.Key]string{
+		labelsKey:         labels.ToKey(r.GetLocalMetadata().GetLabels()),
+		statusKey:         r.GetResult().GetStatus().String(),
+		remoteStatusKey:   r.GetRemoteMetadata().GetResult().GetStatus().String(),
+		exitCodeKey:       strconv.FormatInt(int64(r.GetResult().GetExitCode()), 10),
+		remoteExitCodeKey: strconv.FormatInt(int64(r.GetRemoteMetadata().GetResult().GetExitCode()), 10),
+	}
 }
 
 // ExportBuildMetrics exports overall build metrics to opencensus.

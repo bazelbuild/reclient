@@ -46,14 +46,14 @@ func TestExportMetrics(t *testing.T) {
 	t2 := t1.Add(time.Second)
 	t3 := t1.Add(10 * time.Second)
 	recs := []*lpb.LogRecord{
-		&lpb.LogRecord{
+		{
 			Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
 			RemoteMetadata: &lpb.RemoteMetadata{
 				Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				EventTimes: map[string]*cpb.TimeInterval{
-					"ProxyExecution": &cpb.TimeInterval{
+					"ProxyExecution": {
 						From: command.TimeToProto(t1),
 						To:   command.TimeToProto(t2),
 					},
@@ -61,14 +61,14 @@ func TestExportMetrics(t *testing.T) {
 				Labels: map[string]string{"type": "tool"},
 			},
 		},
-		&lpb.LogRecord{
+		{
 			Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			RemoteMetadata: &lpb.RemoteMetadata{
 				Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				EventTimes: map[string]*cpb.TimeInterval{
-					"ProxyExecution": &cpb.TimeInterval{
+					"ProxyExecution": {
 						From: command.TimeToProto(t1),
 						To:   command.TimeToProto(t3),
 					},
@@ -76,15 +76,18 @@ func TestExportMetrics(t *testing.T) {
 				Labels: map[string]string{"type": "tool"},
 			},
 		},
-		&lpb.LogRecord{
+		{
 			Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			RemoteMetadata: &lpb.RemoteMetadata{
-				Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_NON_ZERO_EXIT},
+				Result: &cpb.CommandResult{
+					Status:   cpb.CommandResultStatus_NON_ZERO_EXIT,
+					ExitCode: 99,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 				EventTimes: map[string]*cpb.TimeInterval{
-					"ProxyExecution": &cpb.TimeInterval{
+					"ProxyExecution": {
 						From: command.TimeToProto(t1),
 						To:   command.TimeToProto(t3),
 					},
@@ -111,74 +114,85 @@ func TestExportMetrics(t *testing.T) {
 	}
 	e.Close()
 	wantReports := []*metricReport{
-		&metricReport{
+		{
 			Name: ActionCount.Name(),
 			Val:  1,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "CACHE_HIT",
-
-				statusKey.Name(): "CACHE_HIT",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "CACHE_HIT",
+				statusKey.Name():         "CACHE_HIT",
+				remoteExitCodeKey.Name(): "0",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: ActionLatency.Name(),
 			Val:  1000,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "CACHE_HIT",
-				statusKey.Name():       "CACHE_HIT",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "CACHE_HIT",
+				statusKey.Name():         "CACHE_HIT",
+				remoteExitCodeKey.Name(): "0",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: ActionCount.Name(),
 			Val:  1,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "SUCCESS",
-				statusKey.Name():       "SUCCESS",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "SUCCESS",
+				statusKey.Name():         "SUCCESS",
+				remoteExitCodeKey.Name(): "0",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: ActionLatency.Name(),
 			Val:  10000,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "SUCCESS",
-				statusKey.Name():       "SUCCESS",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "SUCCESS",
+				statusKey.Name():         "SUCCESS",
+				remoteExitCodeKey.Name(): "0",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: ActionCount.Name(),
 			Val:  1,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "NON_ZERO_EXIT",
-				statusKey.Name():       "SUCCESS",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "NON_ZERO_EXIT",
+				statusKey.Name():         "SUCCESS",
+				remoteExitCodeKey.Name(): "99",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: ActionLatency.Name(),
 			Val:  10000,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "NON_ZERO_EXIT",
-				statusKey.Name():       "SUCCESS",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "NON_ZERO_EXIT",
+				statusKey.Name():         "SUCCESS",
+				remoteExitCodeKey.Name(): "99",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: BuildCount.Name(),
 			Val:  1,
 			Tags: map[string]string{
@@ -187,7 +201,7 @@ func TestExportMetrics(t *testing.T) {
 				statusKey.Name():   "SUCCESS",
 			},
 		},
-		&metricReport{
+		{
 			Name: BuildLatency.Name(),
 			Val:  10,
 			Tags: map[string]string{
@@ -195,7 +209,7 @@ func TestExportMetrics(t *testing.T) {
 				versionKey.Name():  version.CurrentVersion(),
 			},
 		},
-		&metricReport{
+		{
 			Name: BuildCacheHitRatio.Name(),
 			Val:  1.0 / 3.0,
 			Tags: map[string]string{
@@ -216,14 +230,14 @@ func TestExportBuildFailureMetrics(t *testing.T) {
 	t1 := time.Now()
 	t2 := t1.Add(time.Second)
 	recs := []*lpb.LogRecord{
-		&lpb.LogRecord{
+		{
 			Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
 			RemoteMetadata: &lpb.RemoteMetadata{
 				Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				EventTimes: map[string]*cpb.TimeInterval{
-					"ProxyExecution": &cpb.TimeInterval{
+					"ProxyExecution": {
 						From: command.TimeToProto(t1),
 						To:   command.TimeToProto(t2),
 					},
@@ -257,29 +271,33 @@ func TestExportBuildFailureMetrics(t *testing.T) {
 	}
 	e.Close()
 	wantReports := []*metricReport{
-		&metricReport{
+		{
 			Name: ActionCount.Name(),
 			Val:  1,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "CACHE_HIT",
-				statusKey.Name():       "CACHE_HIT",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "CACHE_HIT",
+				statusKey.Name():         "CACHE_HIT",
+				remoteExitCodeKey.Name(): "0",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: ActionLatency.Name(),
 			Val:  1000,
 			Tags: map[string]string{
-				labelsKey.Name():       "[type=tool]",
-				osFamilyKey.Name():     runtime.GOOS,
-				versionKey.Name():      version.CurrentVersion(),
-				remoteStatusKey.Name(): "CACHE_HIT",
-				statusKey.Name():       "CACHE_HIT",
+				labelsKey.Name():         "[type=tool]",
+				osFamilyKey.Name():       runtime.GOOS,
+				versionKey.Name():        version.CurrentVersion(),
+				remoteStatusKey.Name():   "CACHE_HIT",
+				statusKey.Name():         "CACHE_HIT",
+				remoteExitCodeKey.Name(): "0",
+				exitCodeKey.Name():       "0",
 			},
 		},
-		&metricReport{
+		{
 			Name: BuildCount.Name(),
 			Val:  1,
 			Tags: map[string]string{
@@ -288,7 +306,7 @@ func TestExportBuildFailureMetrics(t *testing.T) {
 				statusKey.Name():   "FAILURE",
 			},
 		},
-		&metricReport{
+		{
 			Name: BuildLatency.Name(),
 			Val:  1,
 			Tags: map[string]string{
@@ -296,7 +314,7 @@ func TestExportBuildFailureMetrics(t *testing.T) {
 				versionKey.Name():  version.CurrentVersion(),
 			},
 		},
-		&metricReport{
+		{
 			Name: BuildCacheHitRatio.Name(),
 			Val:  1.0,
 			Tags: map[string]string{
@@ -361,7 +379,7 @@ func (s *stubRecorder) tagsContext(ctx context.Context, labels map[tag.Key]strin
 
 func (s *stubRecorder) recordWithTags(ctx context.Context, labels map[tag.Key]string, val stats.Measurement) {
 	tagVals := make(map[string]string)
-	for _, k := range []tag.Key{osFamilyKey, versionKey, remoteStatusKey, statusKey, labelsKey} {
+	for _, k := range []tag.Key{osFamilyKey, versionKey, remoteStatusKey, statusKey, labelsKey, exitCodeKey, remoteExitCodeKey} {
 		v, ok := tag.FromContext(ctx).Value(k)
 		if !ok {
 			v, ok = labels[k]

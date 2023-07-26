@@ -69,6 +69,11 @@ const (
 	cacheSiloKey = "cache-silo"
 )
 
+const (
+	// ReclientTimeoutExitCode is an exit code corresponding to a timeout within reproxy
+	ReclientTimeoutExitCode = command.RemoteErrorExitCode + /*SIGALRM=*/ 14
+)
+
 var (
 	// runtime.GOOS -> RE OSFamily.
 	// https://cloud.google.com/remote-build-execution/docs/remote-execution-properties#google_internal_properties
@@ -801,10 +806,21 @@ func (s *Server) runRemote(ctx context.Context, a *action) {
 	rCtx, cancel := cancelWithCause(ctx)
 	done := make(chan struct{})
 	defer close(done)
+	var errReclientTimeout = errors.New("remote action timed out by reclient timeout")
+	defer func() {
+		if errors.Is(a.res.Err, context.Canceled) && errors.Is(rCtx.Err(), errReclientTimeout) {
+			a.res = &command.Result{
+				Status:   command.TimeoutResultStatus,
+				Err:      fmt.Errorf("%v: %w", errReclientTimeout, a.res.Err),
+				ExitCode: ReclientTimeoutExitCode,
+			}
+			a.rec.RemoteMetadata.Result = command.ResultToProto(a.res)
+		}
+	}()
 	go func() {
 		select {
 		case <-time.After(time.Duration(a.reclientTimeout) * time.Second):
-			cancel(fmt.Errorf("remote action timed out by reclient timeout"))
+			cancel(errReclientTimeout)
 		case <-done:
 		}
 	}()
