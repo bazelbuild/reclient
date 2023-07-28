@@ -808,10 +808,10 @@ func (s *Server) runRemote(ctx context.Context, a *action) {
 	defer close(done)
 	var errReclientTimeout = errors.New("remote action timed out by reclient timeout")
 	defer func() {
-		if errors.Is(a.res.Err, context.Canceled) && errors.Is(rCtx.Err(), errReclientTimeout) {
+		if errors.Is(a.res.Err, errReclientTimeout) || (errors.Is(a.res.Err, context.Canceled) && errors.Is(rCtx.Err(), errReclientTimeout)) {
 			a.res = &command.Result{
 				Status:   command.TimeoutResultStatus,
-				Err:      fmt.Errorf("%v: %w", errReclientTimeout, a.res.Err),
+				Err:      errReclientTimeout,
 				ExitCode: ReclientTimeoutExitCode,
 			}
 			a.rec.RemoteMetadata.Result = command.ResultToProto(a.res)
