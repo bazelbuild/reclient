@@ -21,15 +21,16 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
+	"time"
+
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	"github.com/bazelbuild/reclient/internal/pkg/ipc"
+	"github.com/bazelbuild/reclient/internal/pkg/printer"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/reproxystatus"
 	"github.com/fatih/color"
 	"google.golang.org/grpc"
-	"strings"
-	ppb "team/foundry-x/re-client/api/proxy"
-	"team/foundry-x/re-client/internal/pkg/ipc"
-	"team/foundry-x/re-client/internal/pkg/printer"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
-	"team/foundry-x/re-client/internal/pkg/reproxystatus"
-	"time"
 )
 
 var (

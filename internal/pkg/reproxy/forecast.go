@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/labels"
+	"github.com/bazelbuild/reclient/internal/pkg/labels"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 

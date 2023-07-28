@@ -25,9 +25,9 @@ using grpc::ServerContext;
 using grpc::Status;
 using grpc::StatusCode;
 
-using includescanner::CPPProcessInputsRequest;
-using includescanner::CPPProcessInputsResponse;
-using includescanner::StatusResponse;
+using scandeps::CPPProcessInputsRequest;
+using scandeps::CPPProcessInputsResponse;
+using scandeps::StatusResponse;
 
 // TODO(b/268656738): Refactor common code between this class and GomaIPServiceImpl.
 struct ClangscandepsIPServiceImpl::ClangScanDepsResult {
@@ -37,7 +37,7 @@ struct ClangscandepsIPServiceImpl::ClangScanDepsResult {
 };
 
 // Implementation of newDepsScanner from scandeps.h
-includescanner::CPPDepsScanner::Service* newDepsScanner(
+scandeps::CPPDepsScanner::Service* newDepsScanner(
     std::function<void()> shutdown_server,
     const char *process_name,
     const char *cache_dir, const char *log_dir,
@@ -49,7 +49,7 @@ includescanner::CPPDepsScanner::Service* newDepsScanner(
 
 // Implementation of deleteDepsScanner from scandeps.h
 bool deleteDepsScanner(
-    includescanner::CPPDepsScanner::Service* grpc_service_impl) {
+    scandeps::CPPDepsScanner::Service* grpc_service_impl) {
   ClangscandepsIPServiceImpl* clangscandepsip_service =
       static_cast<ClangscandepsIPServiceImpl*>(grpc_service_impl);
   // Do necessary shutdown of the dependency scanner
@@ -239,7 +239,7 @@ Status ClangscandepsIPServiceImpl::Shutdown(ServerContext* context,
   return grpc::Status::OK;
 }
 
-void ClangscandepsIPServiceImpl::PopulateStatusResponse(includescanner::StatusResponse* response) {
+void ClangscandepsIPServiceImpl::PopulateStatusResponse(scandeps::StatusResponse* response) {
   response->set_name("ClangscandepsIP");
   response->set_version("1.0.0-beta");
   google::protobuf::Duration* uptime = new google::protobuf::Duration();

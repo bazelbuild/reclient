@@ -11,7 +11,7 @@ cc_library(
     }),
     visibility = ["//:__subpackages__"],
     deps = [
-        "//api/scandeps:cppscandeps_cc",
+        "//api/scandeps:scandeps_cc",
         "//internal/pkg/cppdependencyscanner/gomaservice:gomacpplib",
         "@com_github_grpc_grpc//:grpc++",
     ],

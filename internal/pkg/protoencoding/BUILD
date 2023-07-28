@@ -17,7 +17,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "protoencoding",
     srcs = ["protoencoding.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/protoencoding",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/protoencoding",
     visibility = ["//:__subpackages__"],
     deps = ["@org_golang_google_protobuf//encoding/prototext"],
 )

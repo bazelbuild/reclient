@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/depscache"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/pathtranslator"
+	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"golang.org/x/sync/semaphore"

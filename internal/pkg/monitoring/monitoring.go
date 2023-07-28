@@ -26,11 +26,11 @@ import (
 	"sync"
 	"time"
 
-	lpb "team/foundry-x/re-client/api/log"
-	spb "team/foundry-x/re-client/api/stats"
-	"team/foundry-x/re-client/internal/pkg/labels"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/pkg/version"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	spb "github.com/bazelbuild/reclient/api/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/labels"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	log "github.com/golang/glog"

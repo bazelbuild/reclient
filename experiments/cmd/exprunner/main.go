@@ -28,9 +28,9 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"team/foundry-x/re-client/experiments/internal/pkg/perfgate"
-	"team/foundry-x/re-client/experiments/internal/pkg/runner"
-	"team/foundry-x/re-client/experiments/internal/pkg/tabulator"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/perfgate"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/runner"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/tabulator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 

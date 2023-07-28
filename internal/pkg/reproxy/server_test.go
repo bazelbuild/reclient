@@ -28,14 +28,14 @@ import (
 	"testing"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/deps"
-	"team/foundry-x/re-client/internal/pkg/execroot"
-	"team/foundry-x/re-client/internal/pkg/localresources"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/stats"
-	"team/foundry-x/re-client/internal/pkg/subprocess"
-	"team/foundry-x/re-client/pkg/inputprocessor"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/deps"
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
+	"github.com/bazelbuild/reclient/internal/pkg/localresources"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
+	"github.com/bazelbuild/reclient/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
@@ -47,8 +47,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

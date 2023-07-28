@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "vm",
     srcs = ["vm.go"],
-    importpath = "team/foundry-x/re-client/experiments/internal/pkg/vm",
+    importpath = "github.com/bazelbuild/reclient/experiments/internal/pkg/vm",
     visibility = ["//experiments:__subpackages__"],
     deps = [
         "//experiments/api/experiment",

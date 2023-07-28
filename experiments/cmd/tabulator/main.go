@@ -24,7 +24,7 @@ package main
 import (
 	"flag"
 
-	"team/foundry-x/re-client/experiments/internal/pkg/tabulator"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/tabulator"
 
 	log "github.com/golang/glog"
 )

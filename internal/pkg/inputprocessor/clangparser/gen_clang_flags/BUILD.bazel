@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "gen_clang_flags_lib",
     srcs = ["main.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/clangparser/gen_clang_flags",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/clangparser/gen_clang_flags",
     visibility = ["//visibility:private"],
 )
 

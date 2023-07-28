@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"os"
 
-	"team/foundry-x/re-client/internal/pkg/bigquery"
-	"team/foundry-x/re-client/internal/pkg/monitoring"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
-	"team/foundry-x/re-client/internal/pkg/stats"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
+	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/stats"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"
@@ -33,7 +33,7 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/protobuf/proto"
 
-	spb "team/foundry-x/re-client/api/stats"
+	spb "github.com/bazelbuild/reclient/api/stats"
 )
 
 var (

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "tabulator_lib",
     srcs = ["main.go"],
-    importpath = "team/foundry-x/re-client/experiments/cmd/tabulator",
+    importpath = "github.com/bazelbuild/reclient/experiments/cmd/tabulator",
     visibility = ["//visibility:private"],
     deps = [
         "//experiments/internal/pkg/tabulator",

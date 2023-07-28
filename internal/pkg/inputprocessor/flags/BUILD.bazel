@@ -3,6 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "flags",
     srcs = ["flags.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/flags",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags",
     visibility = ["//visibility:public"],
 )

@@ -8,7 +8,7 @@ go_library(
         "tsfile_parser.go",
         "tsinputs.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/typescript",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/typescript",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/inputprocessor",

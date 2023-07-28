@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "rsp",
     srcs = ["rsp.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/rsp",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/rsp",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/inputprocessor/args",

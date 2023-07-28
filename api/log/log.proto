@@ -19,6 +19,8 @@ package log;
 import "bq_table.proto";
 import "go/api/command/command.proto";
 
+option go_package = "github.com/bazelbuild/reclient/api/log";
+
 // The full record of a single command execution.
 // This needs to be at the top of the file because protoc-gen-bq-schema only cares about the first message.
 message LogRecord {

@@ -9,7 +9,7 @@ go_library(
         "//cmd/reproxy",
         "//cmd/rewrapper",
     ],
-    importpath = "team/foundry-x/re-client/experiments/internal/pkg/experiment",
+    importpath = "github.com/bazelbuild/reclient/experiments/internal/pkg/experiment",
     visibility = ["//experiments:__subpackages__"],
     deps = [
         "//experiments/api/experiment",

@@ -14,10 +14,12 @@
 
 syntax = "proto3";
 
-package includescanner;
+package scandeps;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+
+option go_package = "github.com/bazelbuild/reclient/api/scandeps";
 
 service CPPDepsScanner {
    // Process the provided inputs; direct mapping to DespScanner.ProcessInputs().

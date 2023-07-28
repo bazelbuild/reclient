@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/rsp"
+	"github.com/bazelbuild/reclient/internal/pkg/rsp"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/retry"
@@ -32,7 +32,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ppb "team/foundry-x/re-client/api/proxy"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

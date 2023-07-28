@@ -22,10 +22,10 @@ import (
 	"flag"
 	"os"
 
-	"team/foundry-x/re-client/internal/pkg/bootstrap"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
-	"team/foundry-x/re-client/internal/pkg/stats"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/bootstrap"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/stats"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"

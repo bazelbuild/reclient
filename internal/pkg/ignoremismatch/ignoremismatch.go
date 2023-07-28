@@ -23,8 +23,8 @@ import (
 	log "github.com/golang/glog"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 )
 
 // MismatchIgnorer checkes mismatches in the log records and mark a mismatch as ignored if any mismatch ignoring rule matches it.

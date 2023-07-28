@@ -29,12 +29,12 @@ import (
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"google.golang.org/grpc/connectivity"
-	"team/foundry-x/re-client/internal/pkg/logger"
 
-	ppb "team/foundry-x/re-client/api/proxy"
-	spb "team/foundry-x/re-client/api/stats"
-	"team/foundry-x/re-client/internal/pkg/ipc"
-	"team/foundry-x/re-client/internal/pkg/reproxypid"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	spb "github.com/bazelbuild/reclient/api/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/ipc"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/reproxypid"
 
 	log "github.com/golang/glog"
 )

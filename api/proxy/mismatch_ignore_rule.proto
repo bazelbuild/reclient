@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package proxy;
 
+option go_package = "github.com/bazelbuild/reclient/api/proxy";
+
 // A collection of rules. If any of the rule decides to ignore a mismatch, the
 // mismatch will be marked as ignored.
 message MismatchIgnoreConfig {

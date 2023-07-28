@@ -19,6 +19,8 @@ package stats;
 import "api/log/log.proto";
 import "api/stat/stat.proto";
 
+option go_package = "github.com/bazelbuild/reclient/api/stats";
+
 // The full aggregated build stats and properties.
 message Stats {
   // Number of actions in the build.

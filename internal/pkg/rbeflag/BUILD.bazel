@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "rbeflag",
     srcs = ["rbeflag.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/rbeflag",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/rbeflag",
     visibility = ["//:__subpackages__"],
     deps = ["@com_github_golang_glog//:go_default_library"],
 )

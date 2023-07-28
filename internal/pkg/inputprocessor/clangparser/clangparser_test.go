@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"team/foundry-x/re-client/internal/pkg/execroot"
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 
 	"github.com/google/go-cmp/cmp"
 )

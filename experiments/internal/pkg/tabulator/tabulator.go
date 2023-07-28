@@ -23,13 +23,13 @@ import (
 	"strconv"
 	"strings"
 
-	"team/foundry-x/re-client/experiments/internal/pkg/gcs"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/gcs"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	spb "team/foundry-x/re-client/api/stats"
-	epb "team/foundry-x/re-client/experiments/api/experiment"
+	spb "github.com/bazelbuild/reclient/api/stats"
+	epb "github.com/bazelbuild/reclient/experiments/api/experiment"
 
 	log "github.com/golang/glog"
 )

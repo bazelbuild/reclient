@@ -43,12 +43,12 @@ import (
 	"sync"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/bigquery"
-	"team/foundry-x/re-client/internal/pkg/bigquerytranslator"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 
 	log "github.com/golang/glog"
 	"golang.org/x/sync/errgroup"

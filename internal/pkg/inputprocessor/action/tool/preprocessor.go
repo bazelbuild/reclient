@@ -16,7 +16,8 @@ package tool
 
 import (
 	"fmt"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
+
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 )
 
 // Preprocessor is the context for processing tool type actions.

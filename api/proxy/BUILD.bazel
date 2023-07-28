@@ -24,7 +24,7 @@ proto_library(
 go_proto_library(
     name = "proxy_go_proto",
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "team/foundry-x/re-client/api/proxy",
+    importpath = "github.com/bazelbuild/reclient/api/proxy",
     proto = ":proxy_proto",
     visibility = ["//visibility:public"],
     deps = [
@@ -37,6 +37,6 @@ go_proto_library(
 go_library(
     name = "proxy",
     embed = [":proxy_go_proto"],
-    importpath = "team/foundry-x/re-client/api/proxy",
+    importpath = "github.com/bazelbuild/reclient/api/proxy",
     visibility = ["//visibility:public"],
 )

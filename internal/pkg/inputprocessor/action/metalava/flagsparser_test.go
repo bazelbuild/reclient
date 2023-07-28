@@ -15,10 +15,11 @@
 package metalava
 
 import (
-	"team/foundry-x/re-client/internal/pkg/execroot"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
 	"testing"
+
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"

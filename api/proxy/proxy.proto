@@ -18,6 +18,8 @@ import "go/api/command/command.proto";
 import "api/log/log.proto";
 import "api/stats/stats.proto";
 
+option go_package = "github.com/bazelbuild/reclient/api/proxy";
+
 package proxy;
 
 service Commands {

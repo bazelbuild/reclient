@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "reproxypid",
     srcs = ["reproxypid.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/reproxypid",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/reproxypid",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/subprocess",

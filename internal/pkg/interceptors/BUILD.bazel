@@ -6,7 +6,7 @@ go_library(
         "interceptors.go",
         "truncate.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/interceptors",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/interceptors",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/proxy",

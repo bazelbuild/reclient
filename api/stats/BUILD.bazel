@@ -14,7 +14,7 @@ proto_library(
 
 go_proto_library(
     name = "stats_go_proto",
-    importpath = "team/foundry-x/re-client/api/stats",
+    importpath = "github.com/bazelbuild/reclient/api/stats",
     proto = ":stats_proto",
     visibility = ["//visibility:public"],
     deps = [
@@ -26,6 +26,6 @@ go_proto_library(
 go_library(
     name = "stats",
     embed = [":stats_go_proto"],
-    importpath = "team/foundry-x/re-client/api/stats",
+    importpath = "github.com/bazelbuild/reclient/api/stats",
     visibility = ["//visibility:public"],
 )

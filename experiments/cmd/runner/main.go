@@ -26,7 +26,7 @@ import (
 	"flag"
 	"fmt"
 
-	"team/foundry-x/re-client/experiments/internal/pkg/runner"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/runner"
 
 	log "github.com/golang/glog"
 )

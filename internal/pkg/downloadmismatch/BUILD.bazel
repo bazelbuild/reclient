@@ -6,7 +6,7 @@ go_library(
         "diff.go",
         "download.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/downloadmismatch",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/downloadmismatch",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/stats",

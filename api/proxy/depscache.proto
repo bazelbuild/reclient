@@ -18,6 +18,8 @@ package proxy;
 
 import "google/protobuf/timestamp.proto";
 
+option go_package = "github.com/bazelbuild/reclient/api/proxy";
+
 message DepsDatabase {
   // List of FileInfo objects in the database.
   repeated FileInfo files = 1;

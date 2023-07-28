@@ -25,12 +25,12 @@ import (
 	"runtime"
 	"sort"
 
-	"team/foundry-x/re-client/internal/pkg/labels"
-	"team/foundry-x/re-client/internal/pkg/localresources"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/protoencoding"
-	"team/foundry-x/re-client/internal/pkg/reproxystatus"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/labels"
+	"github.com/bazelbuild/reclient/internal/pkg/localresources"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/internal/pkg/reproxystatus"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -38,9 +38,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	lpb "team/foundry-x/re-client/api/log"
-	stpb "team/foundry-x/re-client/api/stat"
-	spb "team/foundry-x/re-client/api/stats"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	stpb "github.com/bazelbuild/reclient/api/stat"
+	spb "github.com/bazelbuild/reclient/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	log "github.com/golang/glog"

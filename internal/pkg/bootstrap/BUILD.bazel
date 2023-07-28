@@ -7,7 +7,7 @@ go_library(
         "sigint_unix.go",
         "sigint_windows.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/bootstrap",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/bootstrap",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/proxy",

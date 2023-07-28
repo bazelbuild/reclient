@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/subprocess"
+	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
 
 	log "github.com/golang/glog"
 )

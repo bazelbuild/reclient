@@ -23,7 +23,7 @@ go_library(
         "fs_unix.go",
         "inputprocessor.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/inputprocessor/flags",

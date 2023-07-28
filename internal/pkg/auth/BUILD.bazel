@@ -6,7 +6,7 @@ go_library(
         "auth.go",
         "cache.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/auth",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/auth",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/auth",

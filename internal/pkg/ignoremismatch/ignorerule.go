@@ -17,8 +17,8 @@ package ignoremismatch
 import (
 	"fmt"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 )
 
 type ignoreRule interface {

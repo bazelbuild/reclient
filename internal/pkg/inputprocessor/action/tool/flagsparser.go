@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 )
 
 // parseFlags is used to parse the flags in a tool invocation command.

@@ -19,14 +19,14 @@ import (
 	"os/exec"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/labels"
-	"team/foundry-x/re-client/internal/pkg/localresources"
-	"team/foundry-x/re-client/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/labels"
+	"github.com/bazelbuild/reclient/internal/pkg/localresources"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 )
 
 type requirements struct {

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "rpl2cloudtrace_lib",
     srcs = ["rpl2cloudtrace.go"],
-    importpath = "team/foundry-x/re-client/cmd/rpl2cloudtrace",
+    importpath = "github.com/bazelbuild/reclient/cmd/rpl2cloudtrace",
     visibility = ["//visibility:private"],
     deps = [
         "//api/log",

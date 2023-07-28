@@ -47,7 +47,7 @@ import (
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 
-	"team/foundry-x/re-client/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	log "github.com/golang/glog"
 )

@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/args"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/args"
 
 	"github.com/google/go-cmp/cmp"
 )

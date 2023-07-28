@@ -20,17 +20,17 @@
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
 
-class ClangscandepsIPServiceImpl final : public includescanner::CPPDepsScanner::Service {
+class ClangscandepsIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
  public:
   ClangscandepsIPServiceImpl(const char* process_name, std::function<void()> shutdown_server);
   ~ClangscandepsIPServiceImpl();
   grpc::Status ProcessInputs(grpc::ServerContext*,
-                             const includescanner::CPPProcessInputsRequest*,
-                             includescanner::CPPProcessInputsResponse*) override;
+                             const scandeps::CPPProcessInputsRequest*,
+                             scandeps::CPPProcessInputsResponse*) override;
   grpc::Status Status(grpc::ServerContext*, const google::protobuf::Empty*,
-                      includescanner::StatusResponse*) override;
+                      scandeps::StatusResponse*) override;
   grpc::Status Shutdown(grpc::ServerContext*, const google::protobuf::Empty*,
-                        includescanner::StatusResponse*) override;
+                        scandeps::StatusResponse*) override;
   void InitClangscandeps();
 
  private:
@@ -45,7 +45,7 @@ class ClangscandepsIPServiceImpl final : public includescanner::CPPDepsScanner::
   void *deps_scanner_cache_;
 
   std::vector<std::string> Parse(std::string deps);
-  void PopulateStatusResponse(includescanner::StatusResponse*);
+  void PopulateStatusResponse(scandeps::StatusResponse*);
   void ScanDependenciesResult(ClangScanDepsResult& clangscandeps_result,
                               void *impl, int argc, const char** argv,
                               const char* filename, const char* dir,

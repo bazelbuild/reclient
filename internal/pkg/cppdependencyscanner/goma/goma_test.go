@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/stats"
 
 	"github.com/google/go-cmp/cmp"
 )

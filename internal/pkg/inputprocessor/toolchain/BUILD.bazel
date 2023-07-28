@@ -6,7 +6,7 @@ go_library(
         "inputfiles.go",
         "toolchain.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/toolchain",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/toolchain",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/pathtranslator",

@@ -12,7 +12,7 @@ go_library(
         "stash.go",
         "timeout.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/reproxy",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/reproxy",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/log",

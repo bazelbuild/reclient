@@ -22,9 +22,9 @@ import (
 	"context"
 	"errors"
 
-	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner/depsscannerclient"
-	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner/includescanner"
-	"team/foundry-x/re-client/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/depsscannerclient"
+	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/includescanner"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"

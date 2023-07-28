@@ -20,8 +20,8 @@ import (
 	"regexp"
 	"testing"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/action/cppcompile"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 )
 
 func TestComputeSpec(t *testing.T) {

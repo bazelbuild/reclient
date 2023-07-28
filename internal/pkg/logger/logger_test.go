@@ -30,9 +30,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
-	spb "team/foundry-x/re-client/api/stats"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	spb "github.com/bazelbuild/reclient/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

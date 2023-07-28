@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "bigquery_lib",
     srcs = ["main.go"],
-    importpath = "team/foundry-x/re-client/cmd/bigquery",
+    importpath = "github.com/bazelbuild/reclient/cmd/bigquery",
     visibility = ["//visibility:private"],
     deps = [
         "//api/log",

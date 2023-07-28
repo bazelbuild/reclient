@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "labels",
     srcs = ["labels.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/labels",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/labels",
     visibility = ["//:__subpackages__"],
     deps = [
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",

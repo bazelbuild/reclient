@@ -22,11 +22,11 @@ import (
 	"sync"
 	"testing"
 
-	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner"
-	"team/foundry-x/re-client/internal/pkg/execroot"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/depscache"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"

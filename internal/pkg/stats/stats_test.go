@@ -30,9 +30,9 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	lpb "team/foundry-x/re-client/api/log"
-	stpb "team/foundry-x/re-client/api/stat"
-	spb "team/foundry-x/re-client/api/stats"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	stpb "github.com/bazelbuild/reclient/api/stat"
+	spb "github.com/bazelbuild/reclient/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

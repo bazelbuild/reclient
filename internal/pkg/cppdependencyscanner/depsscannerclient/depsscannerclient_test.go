@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	pb "team/foundry-x/re-client/api/cppscandeps"
+	pb "github.com/bazelbuild/reclient/api/scandeps"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"

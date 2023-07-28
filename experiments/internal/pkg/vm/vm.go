@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	epb "team/foundry-x/re-client/experiments/api/experiment"
+	epb "github.com/bazelbuild/reclient/experiments/api/experiment"
 
 	log "github.com/golang/glog"
 )

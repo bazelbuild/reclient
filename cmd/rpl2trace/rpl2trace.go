@@ -28,9 +28,9 @@ import (
 	"strings"
 	"time"
 
-	lpb "team/foundry-x/re-client/api/log"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"

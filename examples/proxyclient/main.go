@@ -22,8 +22,8 @@ import (
 
 	"google.golang.org/grpc"
 
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
-	ppb "team/foundry-x/re-client/api/proxy"
 )
 
 var (

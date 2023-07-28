@@ -21,13 +21,13 @@
 // newDepsScanner is responsible for creating the implemented dependency
 // scanner.
 // TODO (b/268656738): remove experimental_deadlock and experimental_segfault
-includescanner::CPPDepsScanner::Service* newDepsScanner(
+scandeps::CPPDepsScanner::Service* newDepsScanner(
     std::function<void()> shutdown_server, const char* process_name, const char *cache_dir,
     const char *log_dir, int deps_cache_max_mb, bool enable_deps_cache,
     uint32_t experimental_deadlock, uint32_t experimental_segfault);
 
 // deleteDepsScanner is responsible for destroying the implemented dependency
 // scanner.
-bool deleteDepsScanner(includescanner::CPPDepsScanner::Service* grpc_service_impl);
+bool deleteDepsScanner(scandeps::CPPDepsScanner::Service* grpc_service_impl);
 
 #endif  // CMD_SCANDEPS_SERVER_SCANDEPS_H_

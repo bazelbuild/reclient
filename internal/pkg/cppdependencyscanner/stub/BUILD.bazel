@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "stub",
     srcs = ["stub.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/includescanner",  # keep
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/includescanner",  # keep
     target_compatible_with = select({
         "//:clangscandeps_input_processor_service_config": [],
         "//:goma_input_processor_service_config": [],

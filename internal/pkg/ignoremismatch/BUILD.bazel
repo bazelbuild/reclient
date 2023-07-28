@@ -8,7 +8,7 @@ go_library(
         "ignorerule.go",
         "outputfilepathrule.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/ignoremismatch",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/ignoremismatch",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/log",

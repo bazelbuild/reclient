@@ -3,13 +3,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "sampleclient_lib",
     srcs = ["main.go"],
-    importpath = "team/foundry-x/re-client/cmd/scandeps/sampleclient",
+    importpath = "github.com/bazelbuild/reclient/cmd/scandeps/sampleclient",
     tags = [
         "manual",
     ],
     visibility = ["//visibility:private"],
     deps = [
-        "//api/scandeps:cppscandeps",
+        "//api/scandeps",
         "//internal/pkg/ipc",
         "@com_github_golang_glog//:go_default_library",
         "@com_github_google_uuid//:uuid",

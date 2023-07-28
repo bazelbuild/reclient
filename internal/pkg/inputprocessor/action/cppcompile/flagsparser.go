@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/clangparser"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/clangparser"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 )
 
 // ClangParser parses clang command args to produce a CommandFlags object.

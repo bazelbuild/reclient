@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "logger",
     srcs = ["logger.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/logger",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/logger",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/log",

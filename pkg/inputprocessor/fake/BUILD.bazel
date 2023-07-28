@@ -4,7 +4,7 @@ go_library(
     name = "fake",
     testonly = 1,
     srcs = ["executor.go"],
-    importpath = "team/foundry-x/re-client/pkg/inputprocessor/fake",
+    importpath = "github.com/bazelbuild/reclient/pkg/inputprocessor/fake",
     visibility = ["//visibility:public"],
     deps = ["@com_github_bazelbuild_remote_apis_sdks//go/pkg/command"],
 )

@@ -24,8 +24,8 @@ import (
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	log "github.com/golang/glog"
-	"team/foundry-x/re-client/internal/pkg/logger"
 )
 
 // Name of the include scanner. This is overridden at link time by x_defs in BUILD.bazel.

@@ -43,8 +43,8 @@ import (
 	"log"
 	"path/filepath"
 
-	"team/foundry-x/re-client/internal/pkg/downloadmismatch"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/downloadmismatch"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 
 	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
 )

@@ -20,13 +20,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"google.golang.org/protobuf/proto"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"

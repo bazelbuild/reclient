@@ -24,11 +24,11 @@ import (
 	"strconv"
 	"strings"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flagsparser"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/toolchain"
-	"team/foundry-x/re-client/internal/pkg/localresources"
-	"team/foundry-x/re-client/internal/pkg/pathtranslator"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flagsparser"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/toolchain"
+	"github.com/bazelbuild/reclient/internal/pkg/localresources"
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/cache"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"

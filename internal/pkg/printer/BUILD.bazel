@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "printer",
     srcs = ["printer.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/printer",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/printer",
     visibility = ["//:__subpackages__"],
     deps = [
         "@com_github_fatih_color//:color",

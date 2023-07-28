@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package stats;
 
+option go_package = "github.com/bazelbuild/reclient/api/stat";
+
 // Outlier represents a command with an unusually large value in the stat.
 message Outlier {
   string command_id = 1;

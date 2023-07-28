@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 
 	log "github.com/golang/glog"
 )

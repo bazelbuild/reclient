@@ -24,7 +24,7 @@
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
 
-class GomaIPServiceImpl final : public includescanner::CPPDepsScanner::Service {
+class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
  public:
   GomaIPServiceImpl(std::function<void()> shutdown_server,
                     const char* process_name, std::string cache_dir,
@@ -32,12 +32,12 @@ class GomaIPServiceImpl final : public includescanner::CPPDepsScanner::Service {
                     uint32_t experimental_deadlock, uint32_t experimental_segfault);
   ~GomaIPServiceImpl();
   grpc::Status ProcessInputs(grpc::ServerContext*,
-                             const includescanner::CPPProcessInputsRequest*,
-                             includescanner::CPPProcessInputsResponse*) override;
+                             const scandeps::CPPProcessInputsRequest*,
+                             scandeps::CPPProcessInputsResponse*) override;
   grpc::Status Status(grpc::ServerContext*, const google::protobuf::Empty*,
-                      includescanner::StatusResponse*) override;
+                      scandeps::StatusResponse*) override;
   grpc::Status Shutdown(grpc::ServerContext*, const google::protobuf::Empty*,
-                        includescanner::StatusResponse*) override;
+                        scandeps::StatusResponse*) override;
 
   void InitGoma();
  private:
@@ -63,7 +63,7 @@ class GomaIPServiceImpl final : public includescanner::CPPDepsScanner::Service {
   uint32_t experimental_deadlock_;
   uint32_t experimental_segfault_;
 
-  void PopulateStatusResponse(includescanner::StatusResponse*);
+  void PopulateStatusResponse(scandeps::StatusResponse*);
 };
 
 #endif  // CMD_SCANDEPS_SKELETON_SKELETON_H_

@@ -3,7 +3,7 @@ cc_library(
     srcs = ["scandeps.cc"],
     tags = ["manual"],
     deps = [
-        "//api/scandeps:cppscandeps_cc",
+        "//api/scandeps:scandeps_cc",
         "//cmd/scandeps/server:scandeps_server_lib",
         "@com_github_gflags_gflags//:gflags",
         "@com_github_grpc_grpc//:grpc++",

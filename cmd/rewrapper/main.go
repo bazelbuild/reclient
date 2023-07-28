@@ -36,15 +36,15 @@ import (
 	"strings"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/ipc"
-	"team/foundry-x/re-client/internal/pkg/protoencoding"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
-	"team/foundry-x/re-client/internal/pkg/rewrapper"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/ipc"
+	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/rewrapper"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 
-	pb "team/foundry-x/re-client/api/proxy"
+	pb "github.com/bazelbuild/reclient/api/proxy"
 
 	log "github.com/golang/glog"
 )

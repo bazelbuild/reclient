@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 proto_library(
-    name = "proxy_proto",
+    name = "experiment_proto",
     srcs = ["experiment.proto"],
     visibility = ["//visibility:public"],
     deps = [
@@ -14,9 +14,9 @@ proto_library(
 )
 
 go_proto_library(
-    name = "proxy_go_proto",
-    importpath = "team/foundry-x/re-client/experiments/api/experiment",
-    proto = ":proxy_proto",
+    name = "experiment_go_proto",
+    importpath = "github.com/bazelbuild/reclient/experiments/api/experiment",
+    proto = ":experiment_proto",
     visibility = ["//visibility:public"],
     deps = [
         "//api/log",
@@ -27,7 +27,7 @@ go_proto_library(
 
 go_library(
     name = "experiment",
-    embed = [":proxy_go_proto"],
-    importpath = "team/foundry-x/re-client/experiments/api/experiment",
+    embed = [":experiment_go_proto"],
+    importpath = "github.com/bazelbuild/reclient/experiments/api/experiment",
     visibility = ["//visibility:public"],
 )

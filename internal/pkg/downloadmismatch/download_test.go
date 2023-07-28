@@ -17,16 +17,17 @@ package downloadmismatch
 import (
 	"bytes"
 	"context"
-	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+
+	lpb "github.com/bazelbuild/reclient/api/log"
+	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/fakes"
-	lpb "team/foundry-x/re-client/api/log"
-	spb "team/foundry-x/re-client/api/stats"
 )
 
 func TestReading(t *testing.T) {

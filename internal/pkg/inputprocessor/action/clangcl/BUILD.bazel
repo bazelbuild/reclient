@@ -6,7 +6,7 @@ go_library(
         "flagsparser.go",
         "preprocessor.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/clangcl",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/clangcl",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/cppdependencyscanner",

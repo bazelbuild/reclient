@@ -18,7 +18,7 @@ import (
 	"os"
 	"time"
 
-	apb "team/foundry-x/re-client/api/auth"
+	apb "github.com/bazelbuild/reclient/api/auth"
 
 	log "github.com/golang/glog"
 	"github.com/hectane/go-acl"

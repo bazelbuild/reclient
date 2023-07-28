@@ -7,7 +7,7 @@ go_library(
         "exists_windows.go",
         "subprocess.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/subprocess",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/subprocess",
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

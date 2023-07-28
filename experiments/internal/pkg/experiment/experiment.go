@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"team/foundry-x/re-client/experiments/internal/pkg/gcs"
-	"team/foundry-x/re-client/experiments/internal/pkg/vm"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/gcs"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/vm"
 
-	epb "team/foundry-x/re-client/experiments/api/experiment"
+	epb "github.com/bazelbuild/reclient/experiments/api/experiment"
 
 	"google.golang.org/protobuf/proto"
 

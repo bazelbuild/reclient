@@ -28,17 +28,17 @@ import (
 	"sync"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/ignoremismatch"
-	"team/foundry-x/re-client/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
+	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
-	spb "team/foundry-x/re-client/api/stats"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	spb "github.com/bazelbuild/reclient/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	log "github.com/golang/glog"
@@ -145,7 +145,7 @@ type statCollector interface {
 	ToProto() *spb.Stats
 }
 
-// ExportActionMetricsFunc is the type of "team/foundry-x/re-client/internal/pkg/monitoring".Exporter.ExportActionMetrics
+// ExportActionMetricsFunc is the type of "github.com/bazelbuild/reclient/internal/pkg/monitoring".Exporter.ExportActionMetrics
 type ExportActionMetricsFunc func(ctx context.Context, lr *lpb.LogRecord, remoteDisabled bool)
 
 // Logger logs Records asynchronously into a file.

@@ -16,7 +16,8 @@ package depscache
 
 import (
 	"sync"
-	ppb "team/foundry-x/re-client/api/proxy"
+
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"golang.org/x/sync/singleflight"

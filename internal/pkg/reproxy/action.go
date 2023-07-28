@@ -25,10 +25,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/deps"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/pathtranslator"
-	"team/foundry-x/re-client/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/deps"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
+	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -37,8 +37,8 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/rexec"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 

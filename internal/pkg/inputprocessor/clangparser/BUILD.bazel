@@ -14,7 +14,7 @@ go_library(
         "clang_flags.go",
         "clangparser.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/clangparser",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/clangparser",
     visibility = ["//visibility:public"],
     deps = [
         "//internal/pkg/inputprocessor/args",

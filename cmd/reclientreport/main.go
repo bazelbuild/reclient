@@ -26,9 +26,9 @@ import (
 	"os"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/collectlogfiles"
-	"team/foundry-x/re-client/internal/pkg/rbeflag"
-	"team/foundry-x/re-client/internal/pkg/reproxypid"
+	"github.com/bazelbuild/reclient/internal/pkg/collectlogfiles"
+	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
+	"github.com/bazelbuild/reclient/internal/pkg/reproxypid"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"

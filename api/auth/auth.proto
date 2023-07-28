@@ -18,6 +18,8 @@ import "google/protobuf/timestamp.proto";
 
 package auth;
 
+option go_package = "github.com/bazelbuild/reclient/api/auth";
+
 message AuthMechanism {
   enum Value {
     // Invalid value, should always specify a value.

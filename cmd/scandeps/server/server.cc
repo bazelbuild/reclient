@@ -23,10 +23,10 @@
 #include "api/scandeps/cppscandeps.grpc.pb.h"
 #include "scandeps.h"
 
-using includescanner::CPPDepsScanner;
-using includescanner::CPPProcessInputsRequest;
-using includescanner::CPPProcessInputsResponse;
-using includescanner::StatusResponse;
+using scandeps::CPPDepsScanner;
+using scandeps::CPPProcessInputsRequest;
+using scandeps::CPPProcessInputsResponse;
+using scandeps::StatusResponse;
 
 // Argument to start_server
 typedef struct ScandepsServerWrapper {
@@ -70,7 +70,7 @@ ScandepsServer::ScandepsServer(const std::string &server_address,
 ScandepsServer::~ScandepsServer() {}
 
 bool ScandepsServer::RunServer(const char* process_name) {
-  includescanner::CPPDepsScanner::Service *service =
+  scandeps::CPPDepsScanner::Service *service =
       newDepsScanner([&]() { this->StopServer(); }, process_name, cache_dir_.c_str(), log_dir_.c_str(),
         cache_size_max_mb_, use_deps_cache_, experimental_deadlock_, experimental_segfault_);
 

@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/args"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/args"
 )
 
 // Parse parses the given rsp file to return a list of file paths specified in the file.

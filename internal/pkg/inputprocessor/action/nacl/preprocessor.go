@@ -20,8 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/action/cppcompile"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 )
 
 // Preprocessor is the preprocessor of nacl compile actions.

@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "monitoring",
     srcs = ["monitoring.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/monitoring",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/monitoring",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/log",

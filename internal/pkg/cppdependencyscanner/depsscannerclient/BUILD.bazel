@@ -3,10 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "depsscannerclient",
     srcs = ["depsscannerclient.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/depsscannerclient",  # keep
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/depsscannerclient",  # keep
     visibility = ["//:__subpackages__"],
     deps = [
-        "//api/scandeps:cppscandeps",
+        "//api/scandeps",
         "//internal/pkg/ipc",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
@@ -23,7 +23,7 @@ go_test(
     srcs = ["depsscannerclient_test.go"],
     embed = [":depsscannerclient"],
     deps = [
-        "//api/scandeps:cppscandeps",
+        "//api/scandeps",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
         "@com_github_google_go_cmp//cmp",

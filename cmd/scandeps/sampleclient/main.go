@@ -25,9 +25,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"team/foundry-x/re-client/internal/pkg/ipc"
+	"github.com/bazelbuild/reclient/internal/pkg/ipc"
 
-	pb "team/foundry-x/re-client/api/cppscandeps"
+	pb "github.com/bazelbuild/reclient/api/scandeps"
 
 	log "github.com/golang/glog"
 	"github.com/google/uuid"

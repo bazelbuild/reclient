@@ -19,9 +19,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"team/foundry-x/re-client/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 
 	log "github.com/golang/glog"
 )

@@ -11,7 +11,7 @@ go_library(
         "listen_posix.go",
         "listen_windows.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/ipc",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/ipc",
     visibility = ["//:__subpackages__"],
     deps = select({
         "@io_bazel_rules_go//go/platform:aix": [

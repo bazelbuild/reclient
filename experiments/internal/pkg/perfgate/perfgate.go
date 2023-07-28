@@ -20,7 +20,8 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"team/foundry-x/re-client/experiments/internal/pkg/gcs"
+
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/gcs"
 
 	log "github.com/golang/glog"
 )

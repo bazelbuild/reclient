@@ -29,13 +29,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/features"
-	"team/foundry-x/re-client/internal/pkg/interceptors"
-	"team/foundry-x/re-client/internal/pkg/labels"
-	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/protoencoding"
-	"team/foundry-x/re-client/pkg/inputprocessor"
-	"team/foundry-x/re-client/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/features"
+	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
+	"github.com/bazelbuild/reclient/internal/pkg/labels"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
@@ -47,9 +47,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
-	spb "team/foundry-x/re-client/api/stats"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	spb "github.com/bazelbuild/reclient/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 

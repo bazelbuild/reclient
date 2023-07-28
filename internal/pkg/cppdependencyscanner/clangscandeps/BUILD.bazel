@@ -58,7 +58,7 @@ go_library(
         "-Wno-range-loop-analysis",
         "-std=c++17",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/includescanner",  # keep
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/includescanner",  # keep
     target_compatible_with = select({
         "//:clangscandeps_input_processor_config": [],
         "//conditions:default": ["@platforms//:incompatible"],

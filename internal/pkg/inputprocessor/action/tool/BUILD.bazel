@@ -6,7 +6,7 @@ go_library(
         "flagsparser.go",
         "preprocessor.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/tool",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/tool",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/inputprocessor",

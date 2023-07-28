@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"team/foundry-x/re-client/internal/pkg/execroot"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/google/go-cmp/cmp"

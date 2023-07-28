@@ -19,9 +19,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
-	"team/foundry-x/re-client/internal/pkg/rsp"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/rsp"
 )
 
 // Preprocessor is the preprocessor of archive link actions.

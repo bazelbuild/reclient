@@ -23,13 +23,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	ppb "team/foundry-x/re-client/api/proxy"
-	"team/foundry-x/re-client/internal/pkg/logger"
-
-	"google.golang.org/protobuf/proto"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	log "github.com/golang/glog"
+	"google.golang.org/protobuf/proto"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

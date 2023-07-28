@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "remoteecho_lib",
     srcs = ["main.go"],
-    importpath = "team/foundry-x/re-client/examples/remoteecho",
+    importpath = "github.com/bazelbuild/reclient/examples/remoteecho",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

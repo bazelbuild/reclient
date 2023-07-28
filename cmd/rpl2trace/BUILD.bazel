@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "rpl2trace_lib",
     srcs = ["rpl2trace.go"],
-    importpath = "team/foundry-x/re-client/cmd/rpl2trace",
+    importpath = "github.com/bazelbuild/reclient/cmd/rpl2trace",
     visibility = ["//visibility:private"],
     deps = [
         "//api/log",

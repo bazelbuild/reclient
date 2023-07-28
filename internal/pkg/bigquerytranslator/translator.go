@@ -20,7 +20,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

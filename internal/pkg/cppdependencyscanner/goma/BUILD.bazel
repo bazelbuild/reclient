@@ -86,7 +86,7 @@ go_library(
         ],
         "//conditions:default": [],
     }),
-    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner/includescanner",  # keep
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/includescanner",  # keep
     tags = [
         "manual",
         "no-remote-exec",

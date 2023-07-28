@@ -11,7 +11,7 @@ proto_library(
 
 go_proto_library(
     name = "auth_go_proto",
-    importpath = "team/foundry-x/re-client/api/auth",
+    importpath = "github.com/bazelbuild/reclient/api/auth",
     proto = ":auth_proto",
     visibility = ["//visibility:public"],
 )
@@ -19,6 +19,6 @@ go_proto_library(
 go_library(
     name = "auth",
     embed = [":auth_go_proto"],
-    importpath = "team/foundry-x/re-client/api/auth",
+    importpath = "github.com/bazelbuild/reclient/api/auth",
     visibility = ["//visibility:public"],
 )

@@ -19,7 +19,7 @@ import (
 	"os"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/interceptors"
+	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
 
 	log "github.com/golang/glog"
 )

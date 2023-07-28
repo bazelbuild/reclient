@@ -9,8 +9,8 @@ cc_library(
     tags = ["manual"],
     visibility = ["//:__subpackages__"],
     deps = [
+        "//api/scandeps:scandeps_cc",
         "@com_github_grpc_grpc//:grpc++",
-        "//api/scandeps:cppscandeps_cc",
     ] + select({
         "@io_bazel_rules_go//go/platform:windows": [
             "@com_github_google_glog//:glog",

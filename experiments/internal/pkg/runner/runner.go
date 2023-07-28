@@ -22,12 +22,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"team/foundry-x/re-client/experiments/internal/pkg/experiment"
-	"team/foundry-x/re-client/experiments/internal/pkg/gcs"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/experiment"
+	"github.com/bazelbuild/reclient/experiments/internal/pkg/gcs"
 
 	"google.golang.org/protobuf/encoding/prototext"
 
-	epb "team/foundry-x/re-client/experiments/api/experiment"
+	epb "github.com/bazelbuild/reclient/experiments/api/experiment"
 )
 
 // RunExperiment will create a new experiment based on given experiment textproto

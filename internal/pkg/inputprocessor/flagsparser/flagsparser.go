@@ -20,8 +20,8 @@ import (
 	"context"
 	"errors"
 
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/args"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/args"
+	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 )
 
 // InputProcessor is a basic input processor that retrieves an InputSpec based on the parsed flags.

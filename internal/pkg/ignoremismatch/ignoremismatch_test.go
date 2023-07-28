@@ -18,7 +18,7 @@ import (
 	"os"
 	"testing"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 )
 
 const textConfig = `

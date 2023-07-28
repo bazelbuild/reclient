@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "runner",
     srcs = ["runner.go"],
-    importpath = "team/foundry-x/re-client/experiments/internal/pkg/runner",
+    importpath = "github.com/bazelbuild/reclient/experiments/internal/pkg/runner",
     visibility = ["//experiments:__subpackages__"],
     deps = [
         "//experiments/api/experiment",

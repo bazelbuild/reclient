@@ -19,7 +19,7 @@ proto_library(
 
 go_proto_library(
     name = "log_go_proto",
-    importpath = "team/foundry-x/re-client/api/log",
+    importpath = "github.com/bazelbuild/reclient/api/log",
     proto = ":log_proto",
     visibility = ["//visibility:public"],
     deps = [
@@ -31,6 +31,6 @@ go_proto_library(
 go_library(
     name = "log",
     embed = [":log_go_proto"],
-    importpath = "team/foundry-x/re-client/api/log",
+    importpath = "github.com/bazelbuild/reclient/api/log",
     visibility = ["//visibility:public"],
 )

@@ -9,7 +9,7 @@ go_library(
         "manager_linux.go",
         "manager_windows.go",
     ],
-    importpath = "team/foundry-x/re-client/internal/pkg/localresources",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/localresources",
     visibility = ["//:__subpackages__"],
     deps = [
         "@org_golang_x_sync//semaphore:go_default_library",

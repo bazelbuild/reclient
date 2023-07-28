@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
-	ppb "team/foundry-x/re-client/api/proxy"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

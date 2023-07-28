@@ -28,7 +28,7 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/tool"
 	"google.golang.org/protobuf/proto"
 
-	spb "team/foundry-x/re-client/api/stats"
+	spb "github.com/bazelbuild/reclient/api/stats"
 )
 
 const (

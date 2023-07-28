@@ -17,7 +17,7 @@ package ignoremismatch
 import (
 	"testing"
 
-	ppb "team/foundry-x/re-client/api/proxy"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 )
 
 func TestRuleCreationFailure(t *testing.T) {

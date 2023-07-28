@@ -4,7 +4,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "cppdependencyscanner",
     srcs = ["cppdepscanner.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/cppdependencyscanner",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/cppdependencyscanner/depsscannerclient",

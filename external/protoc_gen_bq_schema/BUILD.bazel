@@ -17,7 +17,7 @@ proto_library(
 
 go_proto_library(
     name = "bq_go_proto",
-    importpath = "team/foundry-x/re-client/protoc-gen-bq-schema/bq",
+    importpath = "github.com/bazelbuild/reclient/protoc-gen-bq-schema/bq",
     proto = ":bq_proto",
     visibility = ["//visibility:public"],
 )

@@ -20,12 +20,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"team/foundry-x/re-client/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
-	ppb "team/foundry-x/re-client/api/proxy"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	log "github.com/golang/glog"
 )

@@ -37,9 +37,9 @@ using grpc::ServerContext;
 using grpc::Status;
 using grpc::StatusCode;
 
-using includescanner::CPPProcessInputsRequest;
-using includescanner::CPPProcessInputsResponse;
-using includescanner::StatusResponse;
+using scandeps::CPPProcessInputsRequest;
+using scandeps::CPPProcessInputsResponse;
+using scandeps::StatusResponse;
 
 struct GomaResult {
   std::string directory;
@@ -65,7 +65,7 @@ void gComputeIncludesDone(uintptr_t req_ptr, std::set<std::string> &res, bool us
 
 // Implementation of newDepsScanner from scandeps.h
 // TODO (b/268656738): remove experimental_deadlock and experimental_segfault
-includescanner::CPPDepsScanner::Service* newDepsScanner(
+scandeps::CPPDepsScanner::Service* newDepsScanner(
     std::function<void()> shutdown_server,
     const char * process_name,
     const char *cache_dir, const char *log_dir,
@@ -77,7 +77,7 @@ includescanner::CPPDepsScanner::Service* newDepsScanner(
 }
 // Implementation of deleteDepsScanner from scandeps.h
 bool deleteDepsScanner(
-    includescanner::CPPDepsScanner::Service* grpc_service_impl) {
+    scandeps::CPPDepsScanner::Service* grpc_service_impl) {
   GomaIPServiceImpl* gomaip_service =
       static_cast<GomaIPServiceImpl*>(grpc_service_impl);
   // Do necessary shutdown of the dependency scanner
@@ -254,7 +254,7 @@ Status GomaIPServiceImpl::Shutdown(ServerContext* context,
 }
 
 void GomaIPServiceImpl::PopulateStatusResponse(
-    includescanner::StatusResponse* response) {
+    scandeps::StatusResponse* response) {
   response->set_name("GomaIP");
   response->set_version("1.0.0-beta");
   google::protobuf::Duration* uptime = new google::protobuf::Duration();

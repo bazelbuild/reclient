@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "pathtranslator",
     srcs = ["pathtranslator.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/pathtranslator",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/pathtranslator",
     visibility = ["//:__subpackages__"],
 )
 

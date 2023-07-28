@@ -18,9 +18,10 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"team/foundry-x/re-client/internal/pkg/execroot"
 	"testing"
 	"time"
+
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"github.com/google/go-cmp/cmp"

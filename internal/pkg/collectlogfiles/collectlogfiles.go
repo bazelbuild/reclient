@@ -24,7 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"team/foundry-x/re-client/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 )
 
 var (

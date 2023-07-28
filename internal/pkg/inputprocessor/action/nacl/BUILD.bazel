@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "nacl",
     srcs = ["preprocessor.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/action/nacl",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/nacl",
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/inputprocessor/action/cppcompile",

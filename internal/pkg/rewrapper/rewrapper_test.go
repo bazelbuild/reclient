@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	ppb "team/foundry-x/re-client/api/proxy"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )

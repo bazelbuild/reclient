@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "bigquerytranslator",
     srcs = ["translator.go"],
-    importpath = "team/foundry-x/re-client/internal/pkg/bigquerytranslator",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/log",

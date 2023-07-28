@@ -24,8 +24,8 @@ import (
 
 	"github.com/fatih/color"
 
-	lpb "team/foundry-x/re-client/api/log"
-	ppb "team/foundry-x/re-client/api/proxy"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 )
 
 // Summary describes the result of calling Status.GetStatusSummary on a reproxy instance at Addr.

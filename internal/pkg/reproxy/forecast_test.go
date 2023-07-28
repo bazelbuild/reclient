@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	lpb "team/foundry-x/re-client/api/log"
-	"team/foundry-x/re-client/internal/pkg/logger"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 

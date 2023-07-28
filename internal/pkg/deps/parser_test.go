@@ -20,14 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"team/foundry-x/re-client/internal/pkg/execroot"
-	"team/foundry-x/re-client/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"github.com/google/go-cmp/cmp"
 
-	lpb "team/foundry-x/re-client/api/log"
+	lpb "github.com/bazelbuild/reclient/api/log"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )
