@@ -29,8 +29,6 @@ import (
 	"runtime/pprof"
 	"sync"
 	"syscall"
-	"time"
-
 	"team/foundry-x/re-client/internal/pkg/auth"
 	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner"
 	"team/foundry-x/re-client/internal/pkg/ignoremismatch"
@@ -46,6 +44,7 @@ import (
 	"team/foundry-x/re-client/internal/pkg/subprocess"
 	"team/foundry-x/re-client/pkg/inputprocessor"
 	"team/foundry-x/re-client/pkg/version"
+	"time"
 
 	"cloud.google.com/go/profiler"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
@@ -111,6 +110,7 @@ var (
 
 	debugPort   = flag.Int("pprof_port", 0, "Enable pprof http server if not zero")
 	cpuProfFile = flag.String("pprof_file", "", "Enable cpu pprof if not empty. Will not work on windows as reproxy shutdowns through an uncatchable sigkill.")
+	memProfFile = flag.String("pprof_mem_file", "", "Enable memory pprof if not empty. Will not work on windows as reproxy shutdowns through an uncatchable sigkill.")
 
 	profilerService   = flag.String("profiler_service", "", "Service name to associate with profiles uploaded to Cloud Profiling. If unset, Cloud Profiling is disabled.")
 	profilerProjectID = flag.String("profiler_project_id", "", "project id used for cloud profiler")
@@ -121,6 +121,7 @@ var (
 
 	credsFile          = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
 	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
+	useCasNg           = flag.Bool("use_casng", false, "Use casng pkg.")
 )
 
 func verifyFlags() {
@@ -194,14 +195,26 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			log.Infof("start http server for pprof at %s", addr)
 			log.Exit(http.ListenAndServe(addr, nil))
 		}()
-	} else if *cpuProfFile != "" {
-		f, err := os.Create(*cpuProfFile)
-		if err != nil {
-			log.Fatal("Could not create CPU profile: ", err)
+	} else {
+		if *cpuProfFile != "" {
+			f, err := os.Create(*cpuProfFile)
+			if err != nil {
+				log.Fatal("Could not create CPU profile: ", err)
+			}
+			defer f.Close()
+			if err := pprof.StartCPUProfile(f); err != nil {
+				log.Fatal("Could not start CPU profile: ", err)
+			}
 		}
-		defer f.Close()
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("Could not start CPU profile: ", err)
+		if *memProfFile != "" {
+			f, err := os.Create(*memProfFile)
+			if err != nil {
+				log.Fatal("Could not create memory profile: ", err)
+			}
+			defer f.Close()
+			if err := pprof.WriteHeapProfile(f); err != nil {
+				log.Fatal("Could not start memory profile: ", err)
+			}
 		}
 	}
 
@@ -321,6 +334,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			client.UnifiedDownloadTickDuration(*downloadTickDuration),
 			client.UseBatchOps(*useBatches),
 			client.CompressedBytestreamThreshold(*compressionThreshold),
+			client.UseCASNG(*useCasNg),
 		}
 		if ts := c.TokenSource(); ts != nil {
 			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
