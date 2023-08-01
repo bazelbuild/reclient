@@ -101,9 +101,8 @@ func main() {
 		log.Fatalf("Failed to determine the token cache file name: %v", err)
 	}
 	var creds *auth.Credentials
-	var usedCredCache bool
 	if !*remoteDisabled {
-		creds, usedCredCache = newCreds(cf)
+		creds = newCreds(cf)
 		creds.SaveToDisk()
 	}
 
@@ -193,12 +192,9 @@ func main() {
 	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
 	if exitCode == 0 {
 		fmt.Println(msg)
-	} else if usedCredCache {
-		fmt.Fprintf(os.Stderr, "\nFailed to start with cached credentials. The cache has been cleared, please try the build again.\n")
-		// Remove cache file if credentials are invalid
-		creds.RemoveFromDisk()
 	} else {
-		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\nCredentials cache file was deleted. Please try again. If this continues to fail, please file a bug.\n", msg)
+		creds.RemoveFromDisk()
 	}
 	log.Flush()
 	os.Exit(exitCode)
@@ -261,7 +257,7 @@ func credsFilePath() (string, error) {
 	return cf, nil
 }
 
-func newCreds(cf string) (*auth.Credentials, bool) {
+func newCreds(cf string) *auth.Credentials {
 	m, err := auth.MechanismFromFlags()
 	if err != nil || m == auth.Unknown {
 		log.Errorf("Failed to determine auth mechanism: %v", err)
@@ -271,7 +267,7 @@ func newCreds(cf string) (*auth.Credentials, bool) {
 	if err != nil {
 		log.Fatalf("Failed to initialize credentials: %v", err)
 	}
-	return c, false
+	return c
 }
 
 func parseLogs() ([]*lpb.LogRecord, []*lpb.ProxyInfo) {
