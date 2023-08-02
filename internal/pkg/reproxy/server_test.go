@@ -25,6 +25,9 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"testing"
+	"time"
+
 	"team/foundry-x/re-client/internal/pkg/deps"
 	"team/foundry-x/re-client/internal/pkg/execroot"
 	"team/foundry-x/re-client/internal/pkg/localresources"
@@ -33,8 +36,6 @@ import (
 	"team/foundry-x/re-client/internal/pkg/subprocess"
 	"team/foundry-x/re-client/pkg/inputprocessor"
 	"team/foundry-x/re-client/pkg/version"
-	"testing"
-	"time"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
@@ -202,6 +203,331 @@ func TestRemote(t *testing.T) {
 	if err != nil {
 		t.Errorf("logger.ParseFromLogDirs failed: %v", err)
 	}
+	rec := &lpb.LogRecord{
+		Command:          command.ToProto(wantCmd),
+		Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+		CompletionStatus: lpb.CompletionStatus_STATUS_CACHE_HIT,
+		RemoteMetadata: &lpb.RemoteMetadata{
+			Result:              &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+			NumInputFiles:       3,
+			NumInputDirectories: 1,
+			NumOutputFiles:      1,
+			TotalOutputBytes:    12, // "output" + "stderr"
+			OutputFileDigests: map[string]string{
+				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+		},
+		LocalMetadata: &lpb.LocalMetadata{
+			Environment: map[string]string{"FOO": "1", "BAR": "2"},
+			Labels:      map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
+		},
+	}
+	wantRecs := []*lpb.LogRecord{rec, rec}
+	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
+		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+	wantSummary := &ppb.GetStatusSummaryResponse{
+		CompletedActionStats: map[string]int32{
+			lpb.CompletionStatus_STATUS_CACHE_HIT.String(): 2,
+		},
+		RunningActions: 0,
+	}
+	if diff := cmp.Diff(wantSummary, gotSummary, protocmp.Transform()); diff != "" {
+		t.Errorf("Status summary returned diff in result: (-want +got)\n%s", diff)
+	}
+}
+
+func TestRemote_CanonicalWorkingDir(t *testing.T) {
+	t.Parallel()
+	// Setup exec root and working directory
+	env, cleanup := fakes.NewTestEnv(t)
+	fmc := filemetadata.NewSingleFlightCache()
+	env.Client.FileMetadataCache = fmc
+	t.Cleanup(cleanup)
+	wd := filepath.Join("some", "wd")
+	absWD := filepath.Join(env.ExecRoot, wd)
+	if err := os.MkdirAll(absWD, 0744); err != nil {
+		t.Errorf("Unable to create working dir %v: %v", absWD, err)
+	}
+	wdABOutPath := filepath.Join(wd, abOutPath)
+	files := []string{"foo.h", "bar.h", executablePath}
+	execroot.AddFiles(t, env.ExecRoot, files)
+
+	// Initialize deps scanner with stub values
+	ds := &stubCPPDependencyScanner{
+		processInputsReturnValue: []string{
+			"foo.h",
+			"bar.h",
+		},
+	}
+
+	// Start reproxy server
+	resMgr := localresources.NewDefaultManager()
+	server := &Server{
+		MaxHoldoff: time.Minute,
+	}
+	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client, func() {})
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
+	if err != nil {
+		t.Errorf("error initializing logger: %v", err)
+	}
+	server.Logger = lg
+
+	// Construct run request with remote exec strategy and CanonicalizeWorkingDir=true
+	ctx := context.Background()
+	st := time.Now()
+	req := &ppb.RunRequest{
+		Command: &cpb.Command{
+			Args:             []string{filepath.Join("..", "..", executablePath), "-c", "c"},
+			ExecRoot:         env.ExecRoot,
+			WorkingDirectory: wd,
+			Output: &cpb.OutputSpec{
+				OutputFiles: []string{wdABOutPath},
+			},
+		},
+		Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
+		ExecutionOptions: &ppb.ProxyExecutionOptions{
+			ExecutionStrategy: ppb.ExecutionStrategy_REMOTE,
+			LogEnvironment:    true,
+			ReclientTimeout:   3600,
+			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
+				AcceptCached:                 true,
+				DoNotCache:                   false,
+				DownloadOutputs:              true,
+				PreserveUnchangedOutputMtime: false,
+				CanonicalizeWorkingDir:       true,
+			},
+		},
+		Metadata: &ppb.Metadata{
+			EventTimes:  map[string]*cpb.TimeInterval{"Event": {From: command.TimeToProto(st)}},
+			Environment: []string{"FOO=1", "BAR=2"},
+		},
+	}
+
+	// Preload desired command and result into the fake rexec cache
+	wantCmd := &command.Command{
+		Identifiers:      &command.Identifiers{},
+		Args:             []string{filepath.Join("..", "..", executablePath), "-c", "c"},
+		ExecRoot:         env.ExecRoot,
+		WorkingDir:       wd,
+		RemoteWorkingDir: toRemoteWorkingDir(wd),
+		InputSpec: &command.InputSpec{
+			Inputs: []string{"foo.h", "bar.h", executablePath},
+		},
+		OutputFiles: []string{abOutPath},
+	}
+	setPlatformOSFamily(wantCmd)
+	res := &command.Result{Status: command.CacheHitResultStatus}
+	wantStdErr := []byte("stderr")
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output"})
+
+	// Run requests
+	for i := 0; i < 2; i++ {
+		got, err := server.RunCommand(ctx, req)
+		if err != nil {
+			t.Errorf("RunCommand() returned error: %v", err)
+		}
+		want := &ppb.RunResponse{
+			Result: &cpb.CommandResult{
+				Status:   cpb.CommandResultStatus_CACHE_HIT,
+				ExitCode: 0,
+			},
+			Stderr: wantStdErr,
+		}
+		if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+			t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
+		}
+		path := filepath.Join(env.ExecRoot, wdABOutPath)
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("Error reading from %s: %v", path, err)
+		}
+		if !bytes.Equal(contents, []byte("output")) {
+			t.Errorf("Expected %s to contain \"output\", got %v", path, contents)
+		}
+	}
+	if fmc.GetCacheHits() != 6 || fmc.GetCacheMisses() != 3 {
+		t.Errorf("Cache Hits/Misses = %v, %v. Want 6, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
+	}
+
+	// Shutdown reproxy and retrieve logs and metrics
+	gotSummary, _ := lg.GetStatusSummary(ctx, &ppb.GetStatusSummaryRequest{})
+	server.DrainAndReleaseResources()
+	recs, _, err := logger.ParseFromLogDirs(logger.TextFormat, []string{env.ExecRoot})
+	if err != nil {
+		t.Errorf("logger.ParseFromLogDirs failed: %v", err)
+	}
+
+	// Validate log records
+	rec := &lpb.LogRecord{
+		Command:          command.ToProto(wantCmd),
+		Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+		CompletionStatus: lpb.CompletionStatus_STATUS_CACHE_HIT,
+		RemoteMetadata: &lpb.RemoteMetadata{
+			Result:              &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+			NumInputFiles:       3,
+			NumInputDirectories: 1,
+			NumOutputFiles:      1,
+			TotalOutputBytes:    12, // "output" + "stderr"
+			OutputFileDigests: map[string]string{
+				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+		},
+		LocalMetadata: &lpb.LocalMetadata{
+			Environment: map[string]string{"FOO": "1", "BAR": "2"},
+			Labels:      map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
+		},
+	}
+	wantRecs := []*lpb.LogRecord{rec, rec}
+	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
+		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+	wantSummary := &ppb.GetStatusSummaryResponse{
+		CompletedActionStats: map[string]int32{
+			lpb.CompletionStatus_STATUS_CACHE_HIT.String(): 2,
+		},
+		RunningActions: 0,
+	}
+	if diff := cmp.Diff(wantSummary, gotSummary, protocmp.Transform()); diff != "" {
+		t.Errorf("Status summary returned diff in result: (-want +got)\n%s", diff)
+	}
+}
+
+func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip()
+	}
+	t.Parallel()
+	// Setup exec root and working directory
+	env, cleanup := fakes.NewTestEnv(t)
+	fmc := filemetadata.NewSingleFlightCache()
+	env.Client.FileMetadataCache = fmc
+	t.Cleanup(cleanup)
+	wd := filepath.Join("some", "wd")
+	absWD := filepath.Join(env.ExecRoot, wd)
+	if err := os.MkdirAll(absWD, 0744); err != nil {
+		t.Errorf("Unable to create working dir %v: %v", absWD, err)
+	}
+	wdABOutPath := filepath.Join(wd, abOutPath)
+	files := []string{"foo.h", "bar.h", executablePath}
+	execroot.AddFiles(t, env.ExecRoot, files)
+
+	// Initialize deps scanner with stub values
+	ds := &stubCPPDependencyScanner{
+		processInputsReturnValue: []string{
+			"foo.h",
+			"bar.h",
+		},
+	}
+
+	// Start reproxy server
+	resMgr := localresources.NewDefaultManager()
+	server := &Server{
+		MaxHoldoff: time.Minute,
+	}
+	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client, func() {})
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
+	if err != nil {
+		t.Errorf("error initializing logger: %v", err)
+	}
+	server.Logger = lg
+
+	// Construct run request with remote exec strategy and CanonicalizeWorkingDir=true and Platform=linux
+	ctx := context.Background()
+	st := time.Now()
+	req := &ppb.RunRequest{
+		Command: &cpb.Command{
+			Args:             []string{filepath.Join("..", "..", executablePath), "-c", "c"},
+			ExecRoot:         env.ExecRoot,
+			WorkingDirectory: wd,
+			Output: &cpb.OutputSpec{
+				OutputFiles: []string{wdABOutPath},
+			},
+			Platform: map[string]string{
+				osFamilyKey: "Linux",
+			},
+		},
+		Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
+		ExecutionOptions: &ppb.ProxyExecutionOptions{
+			ExecutionStrategy: ppb.ExecutionStrategy_REMOTE,
+			LogEnvironment:    true,
+			ReclientTimeout:   3600,
+			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
+				AcceptCached:                 true,
+				DoNotCache:                   false,
+				DownloadOutputs:              true,
+				PreserveUnchangedOutputMtime: false,
+				CanonicalizeWorkingDir:       true,
+			},
+		},
+		Metadata: &ppb.Metadata{
+			EventTimes:  map[string]*cpb.TimeInterval{"Event": {From: command.TimeToProto(st)}},
+			Environment: []string{"FOO=1", "BAR=2"},
+		},
+	}
+	// Preload desired command and result into the fake rexec cache
+	// output files, working directory and remote working directory have slashes flipped from \ to /
+	wantCmd := &command.Command{
+		Identifiers: &command.Identifiers{},
+		// TODO(b/294270859): This should also be normalized to forward slashes
+		Args:             []string{filepath.Join("..", "..", executablePath), "-c", "c"},
+		ExecRoot:         env.ExecRoot,
+		WorkingDir:       filepath.ToSlash(wd),
+		RemoteWorkingDir: filepath.ToSlash(toRemoteWorkingDir(wd)),
+		InputSpec: &command.InputSpec{
+			Inputs: []string{"foo.h", "bar.h", executablePath},
+		},
+		OutputFiles: []string{filepath.ToSlash(abOutPath)},
+		Platform: map[string]string{
+			osFamilyKey: "Linux",
+		},
+	}
+	res := &command.Result{Status: command.CacheHitResultStatus}
+	wantStdErr := []byte("stderr")
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output"})
+
+	// Run requests
+	for i := 0; i < 2; i++ {
+		got, err := server.RunCommand(ctx, req)
+		if err != nil {
+			t.Errorf("RunCommand() returned error: %v", err)
+		}
+		want := &ppb.RunResponse{
+			Result: &cpb.CommandResult{
+				Status:   cpb.CommandResultStatus_CACHE_HIT,
+				ExitCode: 0,
+			},
+			Stderr: wantStdErr,
+		}
+		if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+			t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
+		}
+		path := filepath.Join(env.ExecRoot, wdABOutPath)
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("Error reading from %s: %v", path, err)
+		}
+		if !bytes.Equal(contents, []byte("output")) {
+			t.Errorf("Expected %s to contain \"output\", got %v", path, contents)
+		}
+	}
+	if fmc.GetCacheHits() != 6 || fmc.GetCacheMisses() != 3 {
+		t.Errorf("Cache Hits/Misses = %v, %v. Want 6, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
+	}
+
+	// Shutdown reproxy and retrieve logs and metrics
+	gotSummary, _ := lg.GetStatusSummary(ctx, &ppb.GetStatusSummaryRequest{})
+	server.DrainAndReleaseResources()
+	recs, _, err := logger.ParseFromLogDirs(logger.TextFormat, []string{env.ExecRoot})
+	if err != nil {
+		t.Errorf("logger.ParseFromLogDirs failed: %v", err)
+	}
+
+	// Validate log records
 	rec := &lpb.LogRecord{
 		Command:          command.ToProto(wantCmd),
 		Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
@@ -732,6 +1058,165 @@ func TestLERCNoDeps(t *testing.T) {
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
 		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+	}
+	setPlatformOSFamily(wantCmd)
+	wantRecs := []*lpb.LogRecord{
+		{
+			Command:          command.ToProto(wantCmd),
+			Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+			CompletionStatus: lpb.CompletionStatus_STATUS_LOCAL_EXECUTION,
+			RemoteMetadata: &lpb.RemoteMetadata{
+				NumInputDirectories: 1,
+				NumOutputFiles:      1,
+				TotalOutputBytes:    int64(len(wantOutput)),
+				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+			},
+			LocalMetadata: &lpb.LocalMetadata{
+				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+				ExecutedLocally: true,
+				UpdatedCache:    true,
+				Labels:          map[string]string{"type": "tool", "shallow": "true"},
+			},
+		},
+		{
+			Command:          command.ToProto(wantCmd),
+			Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+			CompletionStatus: lpb.CompletionStatus_STATUS_CACHE_HIT,
+			RemoteMetadata: &lpb.RemoteMetadata{
+				Result:              &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+				CacheHit:            true,
+				NumInputDirectories: 1,
+				NumOutputFiles:      1,
+				TotalOutputBytes:    int64(len(wantOutput)),
+				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+			},
+			LocalMetadata: &lpb.LocalMetadata{
+				ValidCacheHit: true,
+				Labels:        map[string]string{"type": "tool", "shallow": "true"},
+			},
+		},
+	}
+	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
+		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+}
+
+func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
+	t.Parallel()
+	env, cleanup := fakes.NewTestEnv(t)
+	fmc := filemetadata.NewSingleFlightCache()
+	env.Client.FileMetadataCache = fmc
+	t.Cleanup(cleanup)
+	executor := &subprocess.SystemExecutor{}
+	resMgr := localresources.NewDefaultManager()
+	server := &Server{
+		LocalPool:         NewLocalPool(executor, resMgr),
+		FileMetadataStore: fmc,
+		MaxHoldoff:        time.Minute,
+	}
+	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client, func() {})
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
+	if err != nil {
+		t.Errorf("error initializing logger: %v", err)
+	}
+	wd := filepath.Join("some", "wd")
+	absWD := filepath.Join(env.ExecRoot, wd)
+	if err := os.MkdirAll(absWD, 0744); err != nil {
+		t.Errorf("Unable to create working dir %v: %v", absWD, err)
+	}
+	wdABOutPath := filepath.Join(wd, abOutPath)
+	server.Logger = lg
+	var cmdArgs []string
+	var wantOutput []byte
+	if runtime.GOOS == "windows" {
+		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("mkdir %s && echo hello>%s", abPath, abOutPath)}
+		wantOutput = []byte("hello\r\n")
+	} else {
+		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprintf("mkdir -p %s && echo hello > %s", abPath, abOutPath)}
+		wantOutput = []byte("hello\n")
+	}
+	ctx := context.Background()
+	req := &ppb.RunRequest{
+		Command: &cpb.Command{
+			Args:             cmdArgs,
+			ExecRoot:         env.ExecRoot,
+			WorkingDirectory: wd,
+			Output: &cpb.OutputSpec{
+				OutputFiles: []string{wdABOutPath},
+			},
+		},
+		Labels: map[string]string{"type": "tool", "shallow": "true"},
+		ExecutionOptions: &ppb.ProxyExecutionOptions{
+			ExecutionStrategy: ppb.ExecutionStrategy_LOCAL,
+			LocalExecutionOptions: &ppb.LocalExecutionOptions{
+				AcceptCached: true,
+			},
+			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
+				AcceptCached:                 true,
+				DoNotCache:                   false,
+				DownloadOutputs:              true,
+				PreserveUnchangedOutputMtime: false,
+				CanonicalizeWorkingDir:       true,
+			},
+			ReclientTimeout: 3600,
+		},
+	}
+
+	// The first execution will be a cache miss, and will execute locally.
+	got, err := server.RunCommand(ctx, req)
+	if err != nil {
+		t.Errorf("RunCommand() returned error: %v", err)
+	}
+	want := &ppb.RunResponse{Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS}}
+	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
+	}
+	path := filepath.Join(env.ExecRoot, wdABOutPath)
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Errorf("error reading from %s: %v", path, err)
+	}
+	if !bytes.Equal(contents, wantOutput) {
+		t.Errorf(`RunCommand output %s: %q; want %q`, path, contents, wantOutput)
+	}
+
+	os.Remove(path)
+
+	t.Logf("The second execution will be a remote cache hit.")
+	got, err = server.RunCommand(ctx, req)
+	if err != nil {
+		t.Errorf("RunCommand() returned error: %v", err)
+	}
+	want = &ppb.RunResponse{Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT}}
+	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
+	}
+	contents, err = os.ReadFile(path)
+	if err != nil {
+		t.Errorf("error reading from %s: %v", path, err)
+	}
+	if !bytes.Equal(contents, wantOutput) {
+		t.Errorf(`RunCommand output %s: %q; want %q`, path, contents, wantOutput)
+	}
+
+	outDg := digest.NewFromBlob(contents)
+
+	server.DrainAndReleaseResources()
+	recs, _, err := logger.ParseFromLogDirs(logger.TextFormat, []string{env.ExecRoot})
+	if err != nil {
+		t.Errorf("logger.ParseFromLogDirs failed: %v", err)
+	}
+	wantCmd := &command.Command{
+		Identifiers:      &command.Identifiers{},
+		Args:             cmdArgs,
+		InputSpec:        &command.InputSpec{},
+		ExecRoot:         env.ExecRoot,
+		WorkingDir:       wd,
+		RemoteWorkingDir: toRemoteWorkingDir(wd),
+		OutputFiles:      []string{abOutPath},
+		Platform:         map[string]string{platformVersionKey: version.CurrentVersion()},
 	}
 	setPlatformOSFamily(wantCmd)
 	wantRecs := []*lpb.LogRecord{
@@ -4480,6 +4965,137 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
 	}
 	path := filepath.Join(env.ExecRoot, abOutPath)
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Errorf("error reading from %s: %v", path, err)
+	}
+	if !bytes.Equal(contents, wantOutput) {
+		t.Errorf("RunCommand output %s: %q; want %q", path, contents, wantOutput)
+	}
+
+	server.DrainAndReleaseResources()
+	recs, _, err := logger.ParseFromLogDirs(logger.TextFormat, []string{env.ExecRoot})
+	if err != nil {
+		t.Errorf("logger.ParseFromLogDirs failed: %v", err)
+	}
+	wantRecs := []*lpb.LogRecord{
+		{
+			Command:          command.ToProto(cmd),
+			Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+			CompletionStatus: lpb.CompletionStatus_STATUS_CACHE_HIT,
+			LocalMetadata: &lpb.LocalMetadata{
+				UpdatedCache: false,
+				Labels:       map[string]string{"type": "tool"},
+			},
+			RemoteMetadata: &lpb.RemoteMetadata{
+				Result:              &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
+				NumInputDirectories: 1,
+				NumOutputFiles:      1,
+				TotalOutputBytes:    int64(len(wantOutput)),
+				OutputFileDigests: map[string]string{
+					abOutPath: digest.NewFromBlob(wantOutput).String(),
+				},
+			},
+		},
+	}
+	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
+		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+}
+
+func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
+	t.Parallel()
+	env, cleanup := fakes.NewTestEnv(t)
+	fmc := filemetadata.NewSingleFlightCache()
+	env.Client.FileMetadataCache = fmc
+	resMgr := localresources.NewDefaultManager()
+	t.Cleanup(cleanup)
+	server := &Server{
+		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		FileMetadataStore: fmc,
+		Forecast:          &Forecast{},
+		MaxHoldoff:        time.Minute,
+		RacingTmp:         t.TempDir(),
+	}
+	server.Init()
+	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+	server.SetREClient(env.Client, func() {})
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
+	if err != nil {
+		t.Errorf("error initializing logger: %v", err)
+	}
+	server.Logger = lg
+	var cmdArgs []string
+	var wantOutput []byte
+	wd := filepath.Join("some", "wd")
+	absWD := filepath.Join(env.ExecRoot, wd)
+	if err := os.MkdirAll(absWD, 0744); err != nil {
+		t.Errorf("Unable to create working dir %v: %v", absWD, err)
+	}
+	wdABOutPath := filepath.Join(wd, abOutPath)
+	if runtime.GOOS == "windows" {
+		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("mkdir %s && sleep 10 && echo hello>%s", abPath, abOutPath)}
+		wantOutput = []byte("hello\r\n")
+	} else {
+		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprintf("mkdir -p %s && sleep 10 && echo hello > %s", abPath, abOutPath)}
+		wantOutput = []byte("hello\n")
+	}
+	ctx := context.Background()
+	// Lock entire local resources to prevent local execution from running.
+	release, err := resMgr.Lock(ctx, int64(runtime.NumCPU()), 1)
+	if err != nil {
+		t.Fatalf("Failed to lock entire local resources: %v", err)
+	}
+	t.Cleanup(release)
+	req := &ppb.RunRequest{
+		Command: &cpb.Command{
+			Args:             cmdArgs,
+			ExecRoot:         env.ExecRoot,
+			WorkingDirectory: wd,
+			Output: &cpb.OutputSpec{
+				OutputFiles: []string{wdABOutPath},
+			},
+		},
+		Labels: map[string]string{"type": "tool"},
+		ExecutionOptions: &ppb.ProxyExecutionOptions{
+			ExecutionStrategy: ppb.ExecutionStrategy_RACING,
+			ReclientTimeout:   3600,
+			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
+				AcceptCached:                 true,
+				DoNotCache:                   false,
+				DownloadOutputs:              true,
+				PreserveUnchangedOutputMtime: false,
+				CanonicalizeWorkingDir:       true,
+			},
+		},
+	}
+	cmd := &command.Command{
+		Identifiers:      &command.Identifiers{},
+		Args:             cmdArgs,
+		ExecRoot:         env.ExecRoot,
+		WorkingDir:       wd,
+		RemoteWorkingDir: toRemoteWorkingDir(wd),
+		InputSpec:        &command.InputSpec{},
+		OutputFiles:      []string{abOutPath},
+	}
+	setPlatformOSFamily(cmd)
+	res := &command.Result{Status: command.CacheHitResultStatus}
+	opts := command.DefaultExecutionOptions()
+	opts.DownloadOutputs = false
+	env.Set(cmd, opts, res, &fakes.OutputFile{abOutPath, string(wantOutput)})
+	got, err := server.RunCommand(ctx, req)
+	if err != nil {
+		t.Errorf("RunCommand() returned error: %v", err)
+	}
+	want := &ppb.RunResponse{
+		Result: &cpb.CommandResult{
+			Status: cpb.CommandResultStatus_CACHE_HIT,
+		},
+	}
+	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
+	}
+	path := filepath.Join(env.ExecRoot, wdABOutPath)
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Errorf("error reading from %s: %v", path, err)

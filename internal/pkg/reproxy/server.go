@@ -613,6 +613,9 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 	// option for now is to always invalidate cache entries for in-out files at the negligible cost of
 	// redigesting them (there aren't many of such files in a build).
 	defer a.clearInputOutputFileCache()
+	if a.rOpt.GetCanonicalizeWorkingDir() {
+		a.cmd.RemoteWorkingDir = toRemoteWorkingDir(a.cmd.WorkingDir)
+	}
 	switch a.execStrategy {
 	case ppb.ExecutionStrategy_LOCAL:
 		s.runLERC(ctx, a)

@@ -119,9 +119,6 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 		opts.DownloadOutputs = false
 	}
 	cmd := a.cmd
-	if a.rOpt.GetCanonicalizeWorkingDir() {
-		cmd.RemoteWorkingDir = getRemoteWorkingDir(cmd.WorkingDir, a.windowsCross)
-	}
 	if a.rOpt.GetWrapper() != "" {
 		cmd = &command.Command{}
 		*cmd = *a.cmd
@@ -185,21 +182,37 @@ func removeContents(dir string) error {
 	return os.RemoveAll(dir)
 }
 
-func getRemoteWorkingDir(workingDir string, windowsCross bool) string {
+// depth returns the number of segments in a file path
+// Splitting by os.PathSeparator is insufficient as windows considers
+// both / and \ to be valid path separators
+func depth(path string) int {
+	if path == "" {
+		return 0
+	}
+	d := 1
+	for i := 0; i < len(path); i++ {
+		if os.IsPathSeparator(path[i]) {
+			d++
+		}
+	}
+	return d
+}
+
+// toRemoteWorkingDir returns a canonical path that has the same number of
+// segments as workingDir to ensure relative paths in commands still behave
+// correctly.
+// This path is normalized so that all separators are os.PathSeparator
+func toRemoteWorkingDir(workingDir string) string {
 	if workingDir == "" || workingDir == "." {
 		return workingDir
 	}
-	sep := string(os.PathSeparator)
-	if windowsCross {
-		sep = "/"
-	}
-	dirDepth := len(strings.Split(workingDir, sep))
+	dirDepth := depth(filepath.Clean(workingDir))
 	elem := make([]string, dirDepth)
 	elem[0] = "set_by_reclient"
 	for i := 1; i < dirDepth; i++ {
 		elem[i] = "a"
 	}
-	return strings.Join(elem, sep)
+	return filepath.Join(elem...)
 }
 
 type resultType int
@@ -639,7 +652,8 @@ func (a *action) populateCommandIO(ctx context.Context, ip *inputprocessor.Input
 	a.cmd.OutputFiles = pathtranslator.ListRelToWorkingDir(options.ExecRoot, options.WorkingDir, dedup(append(a.cmd.OutputFiles, cmdIO.OutputFiles...)))
 	a.cmd.OutputDirs = pathtranslator.ListRelToWorkingDir(options.ExecRoot, options.WorkingDir, dedup(append(a.cmd.OutputDirs, cmdIO.OutputDirectories...)))
 	if a.windowsCross {
-		a.cmd.WorkingDir = strings.Replace(a.cmd.WorkingDir, `\`, "/", -1)
+		a.cmd.WorkingDir = filepath.ToSlash(a.cmd.WorkingDir)
+		a.cmd.RemoteWorkingDir = filepath.ToSlash(a.cmd.RemoteWorkingDir)
 		for i, p := range a.cmd.OutputFiles {
 			a.cmd.OutputFiles[i] = filepath.ToSlash(p)
 		}
@@ -698,9 +712,6 @@ func (a *action) clearOutputsCache() {
 func (a *action) createExecContext(ctx context.Context, client *rexec.Client) error {
 	if a.execContext != nil {
 		return nil
-	}
-	if a.rOpt.GetCanonicalizeWorkingDir() {
-		a.cmd.RemoteWorkingDir = getRemoteWorkingDir(a.cmd.WorkingDir, a.windowsCross)
 	}
 	var err error
 	if a.execContext, err = client.NewContext(ctx, a.cmd, execOptionsFromProto(a.rOpt), a.oe); err != nil {
