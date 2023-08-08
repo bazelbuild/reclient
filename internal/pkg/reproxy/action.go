@@ -308,14 +308,16 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 	from := time.Now()
 	if winner.t == remote {
 		log.V(2).Infof("%v: Using remote result", a.cmd.Identifiers.ExecutionID)
-		if err := a.moveOutputsFromTemp(tmpDir); err != nil {
-			a.res = command.NewLocalErrorResult(err)
-			return
-		}
-		if opts.PreserveUnchangedOutputMtime {
-			if err = a.restoreUnchangedOutputMtimes(preExecOuts); err != nil {
-				log.Errorf("%v: Was unable to restore mtimes for unchanged outputs: %v",
-					a.cmd.Identifiers.ExecutionID, err)
+		if opts.DownloadOutputs {
+			if err := a.moveOutputsFromTemp(tmpDir); err != nil {
+				a.res = command.NewLocalErrorResult(err)
+				return
+			}
+			if opts.PreserveUnchangedOutputMtime {
+				if err = a.restoreUnchangedOutputMtimes(preExecOuts); err != nil {
+					log.Errorf("%v: Was unable to restore mtimes for unchanged outputs: %v",
+						a.cmd.Identifiers.ExecutionID, err)
+				}
 			}
 		}
 		a.rec.RemoteMetadata = logger.CommandRemoteMetadataToProto(a.execContext.Metadata)
@@ -337,6 +339,7 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 // execution when remote execution is expected to take time.
 func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, lCh chan<- bool, tmpDir string, maxHoldoff time.Duration) raceResult {
 	opts := execOptionsFromProto(a.rOpt)
+	downloadOutputs := opts.DownloadOutputs
 	opts.DownloadOutputs = false // We want to download them to tmpDir instead of execRoot.
 	rcmd := a.cmd
 	// TODO: refactor this so its commonly used in runRemote.
@@ -395,17 +398,19 @@ func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, 
 		log.Warningf("%v: stdout: %s\n stderr: %s", a.cmd.Identifiers.ExecutionID, rOE.Stdout(), rOE.Stderr())
 		return raceResult{t: canceled, res: res}
 	}
-	log.V(2).Infof("Downloading action outputs to temp dir: %v", tmpDir)
-	a.execContext.DownloadOutputs(tmpDir)
-	select {
-	case <-cCtx.Done():
-		// If local has already completed, no need to download outputs.
-		return raceResult{t: canceled}
-	default:
-	}
-	if !a.execContext.Result.IsOk() {
-		// Download failed.
-		return raceResult{t: canceled, res: a.execContext.Result, oe: rOE}
+	if downloadOutputs {
+		log.V(2).Infof("Downloading action outputs to temp dir: %v", tmpDir)
+		a.execContext.DownloadOutputs(tmpDir)
+		select {
+		case <-cCtx.Done():
+			// If local has already completed, no need to download outputs.
+			return raceResult{t: canceled}
+		default:
+		}
+		if !a.execContext.Result.IsOk() {
+			// Download failed.
+			return raceResult{t: canceled, res: a.execContext.Result, oe: rOE}
+		}
 	}
 	if v := ctx.Value(testOnlyBlockRemoteExecKey); v != nil {
 		v.(func())()

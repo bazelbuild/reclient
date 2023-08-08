@@ -4380,6 +4380,126 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	}
 }
 
+// TestRacing_DownloadOutputs verifies that racing respects the --download_outputs flag.
+func TestRacing_DownloadOutputs(t *testing.T) {
+	tests := []struct {
+		name            string
+		downloadOutputs bool
+		winCmdArgs      []string
+		cmdArgs         []string
+		winOutput       string
+		output          string
+	}{
+		{
+			name:            "Test Download Outputs False",
+			downloadOutputs: false,
+			winCmdArgs:      []string{"cmd", "/c", "sleep 10 && echo hello>" + abPath},
+			cmdArgs:         []string{"/bin/bash", "-c", "sleep 10 && echo hello > " + abPath},
+			winOutput:       "hello\r\n",
+			output:          "hello\n",
+		},
+		{
+			name:            "Test Download Outputs True",
+			downloadOutputs: true,
+			winCmdArgs:      []string{"cmd", "/c", "sleep 10 && echo hello>" + abPath},
+			cmdArgs:         []string{"/bin/bash", "-c", "sleep 10 && echo hello > " + abPath},
+			winOutput:       "hello\r\n",
+			output:          "hello\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env, cleanup := fakes.NewTestEnv(t)
+			fmc := filemetadata.NewSingleFlightCache()
+			env.Client.FileMetadataCache = fmc
+			t.Cleanup(cleanup)
+			testFilePath := filepath.Join(env.ExecRoot, abPath)
+			execroot.AddFiles(t, env.ExecRoot, []string{abPath})
+			ctx := context.Background()
+			resMgr := localresources.NewDefaultManager()
+			// Lock entire local resources to prevent local execution from running.
+			release, err := resMgr.Lock(ctx, int64(runtime.NumCPU()), 1)
+			if err != nil {
+				t.Fatalf("Failed to lock entire local resources: %v", err)
+			}
+			t.Cleanup(release)
+			server := &Server{
+				LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+				FileMetadataStore: fmc,
+				Forecast:          &Forecast{},
+				MaxHoldoff:        time.Minute,
+				RacingTmp:         t.TempDir(),
+			}
+			server.Init()
+			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+			server.SetREClient(env.Client, func() {})
+			lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil)
+			if err != nil {
+				t.Errorf("logger.New() returned error: %v", err)
+			}
+			server.Logger = lg
+			cmdArgs := tc.cmdArgs
+			wantOutput := tc.output
+			if runtime.GOOS == "windows" {
+				cmdArgs = tc.winCmdArgs
+				wantOutput = tc.winOutput
+			}
+			outputFiles := []string{abPath}
+			outputDirs := []string{}
+
+			req := &ppb.RunRequest{
+				Command: &cpb.Command{
+					Args:     cmdArgs,
+					ExecRoot: env.ExecRoot,
+					Output: &cpb.OutputSpec{
+						OutputFiles:       outputFiles,
+						OutputDirectories: outputDirs,
+					},
+				},
+				Labels: map[string]string{"type": "tool"},
+				ExecutionOptions: &ppb.ProxyExecutionOptions{
+					ExecutionStrategy: ppb.ExecutionStrategy_RACING,
+					RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
+						DownloadOutputs: tc.downloadOutputs,
+					},
+					ReclientTimeout: 3600,
+				},
+			}
+			wantCmd := &command.Command{
+				Identifiers: &command.Identifiers{},
+				Args:        cmdArgs,
+				ExecRoot:    env.ExecRoot,
+				InputSpec:   &command.InputSpec{},
+				OutputFiles: outputFiles,
+				OutputDirs:  outputDirs,
+			}
+			setPlatformOSFamily(wantCmd)
+			res := &command.Result{Status: command.SuccessResultStatus}
+			env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abPath, wantOutput})
+			oldDigest, err := digest.NewFromFile(testFilePath)
+			if err != nil {
+				t.Fatalf("digest.NewFromFile(%v) returned error: %v", testFilePath, err)
+			}
+			if _, err := server.RunCommand(ctx, req); err != nil {
+				t.Errorf("RunCommand() returned error: %v", err)
+			}
+			server.DrainAndReleaseResources()
+			newDigest, err := digest.NewFromFile(testFilePath)
+			if err != nil {
+				t.Fatalf("digest.NewFromFile(%v) returned error: %v", testFilePath, err)
+			}
+			if tc.downloadOutputs && oldDigest == newDigest {
+				t.Errorf("Digest not updated when output should be changed. Old Digest: %v, New Digest: %v",
+					oldDigest, newDigest)
+			} else if !tc.downloadOutputs && oldDigest != newDigest {
+				t.Errorf("Digest updated when output should be unchanged. Old Digest: %v, New Digest: %v",
+					oldDigest, newDigest)
+			}
+		})
+	}
+}
+
 // Tests that the correct outputs are downloaded when PreserveUnchangedOutputMtime flag is on and
 // the mtimes of unchanged outputs is preserved.
 // Note: For this flag, if local wins then it is the same as testing usual racing with local winning,

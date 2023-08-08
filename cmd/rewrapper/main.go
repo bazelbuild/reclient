@@ -159,6 +159,11 @@ func main() {
 	if strings.HasPrefix(cOpts.WorkDir, "..") {
 		log.Fatalf("Current working directory (%q) is not under the exec root (%q), relative working dir = %q", wd, cOpts.ExecRoot, cOpts.WorkDir)
 	}
+
+	if cOpts.PreserveUnchangedOutputMtime && !cOpts.DownloadOutputs {
+		log.Fatalf("--preserve_unchanged_output_mtime=true is not compatible with --download_outputs=false.")
+	}
+
 	resp, err := rewrapper.RunCommand(ctx, proxy, cmd, cOpts)
 	if cOpts.ActionLog != "" && resp.ActionLog != nil {
 		if err := os.WriteFile(cOpts.ActionLog, []byte(protoencoding.TextWithIndent.Format(resp.ActionLog)), 0644); err != nil {
