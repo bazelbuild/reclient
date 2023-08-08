@@ -37,6 +37,7 @@ message ShutdownResponse {
 service Stats {
   // Return the last saved execution records.
   rpc GetRecords (GetRecordsRequest) returns (GetRecordsResponse) {}
+  rpc AddProxyEvents (AddProxyEventsRequest) returns (AddProxyEventsResponse) {}
 }
 
 service Status {
@@ -58,6 +59,13 @@ message GetRecordsRequest {}
 message GetRecordsResponse {
   repeated log.LogRecord records = 1;
 }
+
+message AddProxyEventsRequest {
+  // Times of various proxy level events to add to metrics.
+  map <string, cmd.TimeInterval> event_times = 1;
+}
+
+message AddProxyEventsResponse {}
 
 // Passed to RunCommand to initiate execution of a remote command.
 message RunRequest {

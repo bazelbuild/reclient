@@ -99,6 +99,12 @@ const (
 	// EventProxyUptime is the uptime of the reproxy.
 	EventProxyUptime = "ProxyUptime"
 
+	// EventBootstrapStartup is the time taken to run bootstrap to start reproxy.
+	EventBootstrapStartup = "BootstrapStartup"
+
+	// EventBootstrapShutdown is the time taken to run bootstrap to shutdown reproxy.
+	EventBootstrapShutdown = "BootstrapShutdown"
+
 	// EventDepsCacheLoad is the load time of the deps cache.
 	EventDepsCacheLoad = "DepsCacheLoad"
 
@@ -411,6 +417,16 @@ func (l *Logger) AddEventTimeToProxyInfo(key string, from, to time.Time) {
 		From: from,
 		To:   to,
 	})
+}
+
+// AddEventTimesToProxyInfo will add a map of reproxy level events to the ProxyInfo object.
+func (l *Logger) AddEventTimesToProxyInfo(m map[string]*cpb.TimeInterval) {
+	// A call to this function should be very rare so locking should be ok.
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for key, val := range m {
+		l.info.EventTimes[key] = val
+	}
 }
 
 // AddMetricIntToProxyInfo will add an reproxy level event to the ProxyInfo object.

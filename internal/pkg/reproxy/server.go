@@ -562,6 +562,18 @@ func (s *Server) GetRecords(ctx context.Context, req *ppb.GetRecordsRequest) (*p
 	return &ppb.GetRecordsResponse{Records: s.records}, nil
 }
 
+// AddProxyEvents saves the provided event times to the proxy level metrics.
+// This method returns immediately and event times are added asynchronously to not block startup.
+func (s *Server) AddProxyEvents(ctx context.Context, req *ppb.AddProxyEventsRequest) (*ppb.AddProxyEventsResponse, error) {
+	m := make(map[string]*cpb.TimeInterval, len(req.EventTimes))
+	for k, v := range req.EventTimes {
+		m[k] = v
+	}
+	// Run asynchronously so that startup is not blocked on obtaining the lock in Logger
+	go s.Logger.AddEventTimesToProxyInfo(m)
+	return &ppb.AddProxyEventsResponse{}, nil
+}
+
 func (s *Server) logRecord(a *action, start time.Time) {
 	a.rec.Command = command.ToProto(a.cmd)
 	if a.res != nil {

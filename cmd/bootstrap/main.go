@@ -43,6 +43,10 @@ import (
 	log "github.com/golang/glog"
 )
 
+// bootstrapStart saves the start time of the bootstrap binary.
+// Must be the first variable to ensure it is the earliest possible timestamp
+var bootstrapStart = time.Now()
+
 var (
 	homeDir, _   = os.UserHomeDir()
 	labels       = make(map[string]string)
@@ -128,6 +132,10 @@ func main() {
 		}
 		down, up := stats.BandwidthStats(s)
 		fmt.Printf("RBE Stats: ↓ %v, ↑ %v, %v\n", down, up, stats.CompletionStats(s))
+		spi.EventTimes[logger.EventBootstrapShutdown] = command.TimeIntervalToProto(&command.TimeInterval{
+			From: bootstrapStart,
+			To:   time.Now(),
+		})
 		if *metricsProject != "" {
 			start := time.Now()
 			var e *monitoring.Exporter
@@ -135,7 +143,7 @@ func main() {
 			if err != nil {
 				log.Warningf("Failed to initialize cloud monitoring: %v", err)
 			} else {
-				e.ExportBuildMetrics(context.Background(), s)
+				e.ExportBuildMetrics(context.Background(), s, spi.EventTimes[logger.EventBootstrapShutdown])
 				defer e.Close()
 			}
 			spi.EventTimes[logger.EventPostBuildMetricsUpload] = command.TimeIntervalToProto(&command.TimeInterval{From: start, To: time.Now()})
@@ -182,7 +190,7 @@ func main() {
 
 	log.V(3).Infof("Trying to authenticate with %s", creds.Mechanism().String())
 	currArgs := args[:]
-	msg, exitCode := bootstrapReproxy(currArgs, creds.Mechanism())
+	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
 	if exitCode == 0 {
 		fmt.Println(msg)
 	} else if usedCredCache {
@@ -210,8 +218,8 @@ func shutdownReproxy() (*spb.Stats, error) {
 	return s, err
 }
 
-func bootstrapReproxy(args []string, m auth.Mechanism) (string, int) {
-	if err := bootstrap.StartProxyWithOutput(context.Background(), *serverAddr, *reProxy, *outputDir, *waitSeconds, *shutdownSeconds, args...); err != nil {
+func bootstrapReproxy(args []string, startTime time.Time) (string, int) {
+	if err := bootstrap.StartProxyWithOutput(context.Background(), *serverAddr, *reProxy, *outputDir, *waitSeconds, *shutdownSeconds, startTime, args...); err != nil {
 		defaultErr := fmt.Sprintf("Error bootstrapping remote execution proxy: %v", err)
 		exiterr, ok := err.(*exec.ExitError)
 		if !ok {
@@ -237,7 +245,7 @@ func newExporter(creds *auth.Credentials) (*monitoring.Exporter, error) {
 	if err := monitoring.SetupViews(labels); err != nil {
 		return nil, err
 	}
-	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, logDir, creds)
+	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, *remoteDisabled, logDir, creds)
 }
 
 func credsFilePath() (string, error) {

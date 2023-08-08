@@ -13,7 +13,10 @@ go_library(
         "//api/proxy",
         "//api/stats",
         "//internal/pkg/ipc",
+        "//internal/pkg/logger",
         "//internal/pkg/reproxypid",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_golang_glog//:go_default_library",
         "@org_golang_google_grpc//connectivity",
     ] + select({

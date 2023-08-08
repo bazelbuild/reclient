@@ -26,7 +26,10 @@ import (
 	"strings"
 	"time"
 
+	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"google.golang.org/grpc/connectivity"
+	"team/foundry-x/re-client/internal/pkg/logger"
 
 	ppb "team/foundry-x/re-client/api/proxy"
 	spb "team/foundry-x/re-client/api/stats"
@@ -130,12 +133,12 @@ func sendShutdownRPC(ctx context.Context, serverAddr string, statCh chan *spb.St
 // StartProxy starts the proxy; if the proxy is already running, it is shut down first.
 func StartProxy(ctx context.Context, serverAddr, proxyPath string, waitSeconds, shutdownSeconds int, args ...string) error {
 	cmd := exec.Command(proxyPath, args...)
-	return startProxy(ctx, serverAddr, cmd, waitSeconds, shutdownSeconds)
+	return startProxy(ctx, serverAddr, cmd, waitSeconds, shutdownSeconds, time.Now())
 }
 
 // StartProxyWithOutput starts the proxy; if the proxy is already running, it is shut down first.
 // Redirects stdout and stderr to file under given output directory.
-func StartProxyWithOutput(ctx context.Context, serverAddr, proxyPath, outputDir string, waitSeconds, shutdownSeconds int, args ...string) error {
+func StartProxyWithOutput(ctx context.Context, serverAddr, proxyPath, outputDir string, waitSeconds, shutdownSeconds int, startTime time.Time, args ...string) error {
 	logFilename := filepath.Join(outputDir, oeFile)
 	logFile, err := os.Create(logFilename)
 	if err != nil {
@@ -146,7 +149,7 @@ func StartProxyWithOutput(ctx context.Context, serverAddr, proxyPath, outputDir 
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	log.Infof("%v", cmd)
-	err = startProxy(ctx, serverAddr, cmd, waitSeconds, shutdownSeconds)
+	err = startProxy(ctx, serverAddr, cmd, waitSeconds, shutdownSeconds, startTime)
 	if err != nil {
 		logFile.Close()
 		// Intimate the user about why reproxy didn't start.
@@ -165,7 +168,7 @@ func StartProxyWithOutput(ctx context.Context, serverAddr, proxyPath, outputDir 
 	return err
 }
 
-func startProxy(ctx context.Context, serverAddr string, cmd *exec.Cmd, waitSeconds, shutdownSeconds int) (err error) {
+func startProxy(ctx context.Context, serverAddr string, cmd *exec.Cmd, waitSeconds, shutdownSeconds int, startTime time.Time) (err error) {
 	defer func() {
 		if err != nil && cmd != nil && cmd.Process != nil {
 			cmd.Process.Kill()
@@ -222,6 +225,18 @@ func startProxy(ctx context.Context, serverAddr string, cmd *exec.Cmd, waitSecon
 			defer conn.Close()
 			if conn.GetState() == connectivity.Ready {
 				log.Info("Proxy started successfully.")
+				_, err := ppb.NewStatsClient(conn).AddProxyEvents(ctx, &ppb.AddProxyEventsRequest{
+					EventTimes: map[string]*cpb.TimeInterval{
+						logger.EventBootstrapStartup: command.TimeIntervalToProto(
+							&command.TimeInterval{
+								From: startTime,
+								To:   time.Now(),
+							}),
+					},
+				})
+				if err != nil {
+					log.Warningf("Error sending startup stats to reproxy: %v", err)
+				}
 				return nil
 			}
 		}

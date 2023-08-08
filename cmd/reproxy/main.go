@@ -469,7 +469,7 @@ func newExporter(creds *auth.Credentials) (*monitoring.Exporter, error) {
 	if err := monitoring.SetupViews(labels); err != nil {
 		return nil, err
 	}
-	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, getLogDir(), creds)
+	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, *remoteDisabled, getLogDir(), creds)
 }
 
 func getLogDir() string {

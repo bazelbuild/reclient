@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	lpb "team/foundry-x/re-client/api/log"
 	spb "team/foundry-x/re-client/api/stats"
 	"team/foundry-x/re-client/internal/pkg/auth"
@@ -57,6 +58,7 @@ var (
 	remoteStatusKey   = tag.MustNewKey("remote_status")
 	exitCodeKey       = tag.MustNewKey("exit_code")
 	remoteExitCodeKey = tag.MustNewKey("remote_exit_code")
+	remoteDisabledKey = tag.MustNewKey("remote_disabled")
 
 	mu         = sync.Mutex{}
 	staticKeys = make(map[tag.Key]string, 0)
@@ -73,6 +75,10 @@ var (
 	BuildLatency = stats.Float64("rbe/build/latency", "Time spent between reproxy receiving the first and last actions of the build", stats.UnitSeconds)
 	// BuildCount is a metric for tracking the number of builds.
 	BuildCount = stats.Int64("rbe/build/count", "Counter for builds", stats.UnitDimensionless)
+	// BootstrapStartupLatency is a metric for tracing the critical path time of starting reproxy with bootstrap.
+	BootstrapStartupLatency = stats.Int64("rbe/build/bootstrap_startup_latency", "Time spent starting reproxy with bootstrap", stats.UnitMilliseconds)
+	// BootstrapShutdownLatency is a metric for tracing the critical path time of shutting down reproxy with bootstrap.
+	BootstrapShutdownLatency = stats.Int64("rbe/build/bootstrap_shutdown_latency", "Time spent shutting down reproxy with bootstrap", stats.UnitMilliseconds)
 )
 
 type recorder interface {
@@ -90,6 +96,8 @@ type Exporter struct {
 	prefix string
 	// MetricNamespace is the namespace of the exported metrics.
 	namespace string
+	// remoteDisabled indicates if this build ran without rbe.
+	remoteDisabled bool
 	// logDir is the directory where reclient log files are stored.
 	logDir string
 	// recorder is responsible for recording metrics.
@@ -99,7 +107,7 @@ type Exporter struct {
 }
 
 // NewExporter returns a new Cloud monitoring metrics exporter.
-func NewExporter(ctx context.Context, project, prefix, namespace, logDir string, creds *auth.Credentials) (*Exporter, error) {
+func NewExporter(ctx context.Context, project, prefix, namespace string, remoteDisabled bool, logDir string, creds *auth.Credentials) (*Exporter, error) {
 	e := &Exporter{
 		project:         project,
 		prefix:          prefix,
@@ -107,6 +115,7 @@ func NewExporter(ctx context.Context, project, prefix, namespace, logDir string,
 		logDir:          logDir,
 		recorder:        &stackDriverRecorder{},
 		authCredentials: creds,
+		remoteDisabled:  remoteDisabled,
 	}
 	if err := e.initCloudMonitoring(ctx); err != nil {
 		return nil, err
@@ -148,28 +157,38 @@ func SetupViews(labels map[string]string) error {
 	views := []*view.View{
 		{
 			Measure:     ActionLatency,
-			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey, exitCodeKey, remoteExitCodeKey),
+			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey, exitCodeKey, remoteExitCodeKey, remoteDisabledKey),
 			Aggregation: view.Distribution(1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000),
 		},
 		{
 			Measure:     ActionCount,
-			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey, exitCodeKey, remoteExitCodeKey),
+			TagKeys:     append(keys, labelsKey, osFamilyKey, versionKey, statusKey, remoteStatusKey, exitCodeKey, remoteExitCodeKey, remoteDisabledKey),
 			Aggregation: view.Sum(),
 		},
 		{
 			Measure:     BuildCacheHitRatio,
-			TagKeys:     append(keys, osFamilyKey, versionKey),
+			TagKeys:     append(keys, osFamilyKey, versionKey, remoteDisabledKey),
 			Aggregation: view.Distribution(0.05, 0.1, 0.15, 0.20, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1),
 		},
 		{
 			Measure:     BuildLatency,
-			TagKeys:     append(keys, osFamilyKey, versionKey),
+			TagKeys:     append(keys, osFamilyKey, versionKey, remoteDisabledKey),
 			Aggregation: view.Distribution(1, 10, 60, 120, 300, 600, 1200, 2400, 3000, 3600, 4200, 4800, 5400, 6000, 6600, 7200, 9000, 10800, 12600, 14400),
 		},
 		{
 			Measure:     BuildCount,
-			TagKeys:     append(keys, osFamilyKey, versionKey, statusKey),
+			TagKeys:     append(keys, osFamilyKey, versionKey, statusKey, remoteDisabledKey),
 			Aggregation: view.Sum(),
+		},
+		{
+			Measure:     BootstrapStartupLatency,
+			TagKeys:     append(keys, osFamilyKey, versionKey, statusKey, remoteDisabledKey),
+			Aggregation: view.Distribution(1, 10, 60, 120, 300, 600, 1200, 2400, 3000, 3600, 4200, 4800, 5400, 6000, 6600, 7200, 9000, 10800, 12600, 14400),
+		},
+		{
+			Measure:     BootstrapShutdownLatency,
+			TagKeys:     append(keys, osFamilyKey, versionKey, statusKey, remoteDisabledKey),
+			Aggregation: view.Distribution(1, 10, 60, 120, 300, 600, 1200, 2400, 3000, 3600, 4200, 4800, 5400, 6000, 6600, 7200, 9000, 10800, 12600, 14400),
 		},
 	}
 	return view.Register(views...)
@@ -216,14 +235,15 @@ func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord) {
 			latency = float64(ti.To.Sub(ti.From).Milliseconds())
 		}
 	}
-	e.recorder.recordWithTags(aCtx, makeActionTags(r), ActionCount.M(1))
-	e.recorder.recordWithTags(aCtx, makeActionTags(r), ActionLatency.M(latency))
+	e.recorder.recordWithTags(aCtx, e.makeActionTags(r), ActionCount.M(1))
+	e.recorder.recordWithTags(aCtx, e.makeActionTags(r), ActionLatency.M(latency))
 }
 
-func makeActionTags(r *lpb.LogRecord) map[tag.Key]string {
+func (e *Exporter) makeActionTags(r *lpb.LogRecord) map[tag.Key]string {
 	return map[tag.Key]string{
 		labelsKey:         labels.ToKey(r.GetLocalMetadata().GetLabels()),
 		statusKey:         r.GetResult().GetStatus().String(),
+		remoteDisabledKey: strconv.FormatBool(e.remoteDisabled),
 		remoteStatusKey:   r.GetRemoteMetadata().GetResult().GetStatus().String(),
 		exitCodeKey:       strconv.FormatInt(int64(r.GetResult().GetExitCode()), 10),
 		remoteExitCodeKey: strconv.FormatInt(int64(r.GetRemoteMetadata().GetResult().GetExitCode()), 10),
@@ -231,12 +251,13 @@ func makeActionTags(r *lpb.LogRecord) map[tag.Key]string {
 }
 
 // ExportBuildMetrics exports overall build metrics to opencensus.
-func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats) {
+func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats, shutdownTimeInterval *cpb.TimeInterval) {
 	numRecs := sp.NumRecords
 	aCtx := e.recorder.tagsContext(ctx, staticKeys)
 	aCtx = e.recorder.tagsContext(aCtx, map[tag.Key]string{
-		osFamilyKey: runtime.GOOS,
-		versionKey:  version.CurrentVersion(),
+		osFamilyKey:       runtime.GOOS,
+		versionKey:        version.CurrentVersion(),
+		remoteDisabledKey: strconv.FormatBool(e.remoteDisabled),
 	})
 	if numRecs == 0 {
 		return
@@ -248,6 +269,17 @@ func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats) {
 		status = "FAILURE"
 	}
 	e.recorder.recordWithTags(aCtx, map[tag.Key]string{statusKey: status}, BuildCount.M(1))
+	for _, pi := range sp.ProxyInfo {
+		if pi.EventTimes == nil {
+			continue
+		}
+		if ti, ok := pi.EventTimes[logger.EventBootstrapStartup]; ok {
+			millis := command.TimeFromProto(ti.To).Sub(command.TimeFromProto(ti.From)).Milliseconds()
+			e.recorder.recordWithTags(aCtx, nil, BootstrapStartupLatency.M(millis))
+		}
+	}
+	millis := command.TimeFromProto(shutdownTimeInterval.To).Sub(command.TimeFromProto(shutdownTimeInterval.From)).Milliseconds()
+	e.recorder.recordWithTags(aCtx, nil, BootstrapShutdownLatency.M(millis))
 }
 
 // Close stops the metrics exporter and waits for the exported data to be uploaded.
