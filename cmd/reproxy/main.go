@@ -154,13 +154,15 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	flag.Var((*moreflag.StringMapValue)(&labels), "metrics_labels", "Comma-separated key value pairs in the form key=value. This is used to add arbitrary labels to exported metrics.")
 	rbeflag.Parse()
 	rbeflag.LogAllFlags(0)
+	defer log.Flush()
 	defer func() {
 		pf, err := reproxypid.ReadFile(*serverAddr)
 		if err != nil {
-			pf.Delete()
+			log.Warningf("Unable to find pid file for deletion: %v", err)
+			return
 		}
+		pf.Delete()
 	}()
-	defer log.Flush()
 	if *depsScannerAddress != "" {
 		cppdependencyscanner.UseGomaDepsScannerService = true
 		// If the depsscanner crashes or times out, all actions in flight will be counted as
