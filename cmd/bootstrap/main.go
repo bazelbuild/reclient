@@ -133,7 +133,7 @@ func main() {
 			var e *monitoring.Exporter
 			e, err = newExporter(creds)
 			if err != nil {
-				log.Errorf("Failed to initialize cloud monitoring: %v", err)
+				log.Warningf("Failed to initialize cloud monitoring: %v", err)
 			} else {
 				e.ExportBuildMetrics(context.Background(), s)
 				defer e.Close()

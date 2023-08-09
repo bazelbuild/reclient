@@ -29,6 +29,8 @@ import (
 	"runtime/pprof"
 	"sync"
 	"syscall"
+	"time"
+
 	"team/foundry-x/re-client/internal/pkg/auth"
 	"team/foundry-x/re-client/internal/pkg/cppdependencyscanner"
 	"team/foundry-x/re-client/internal/pkg/ignoremismatch"
@@ -44,7 +46,6 @@ import (
 	"team/foundry-x/re-client/internal/pkg/subprocess"
 	"team/foundry-x/re-client/pkg/inputprocessor"
 	"team/foundry-x/re-client/pkg/version"
-	"time"
 
 	"cloud.google.com/go/profiler"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
@@ -249,7 +250,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	if *metricsProject != "" {
 		e, err = newExporter(c)
 		if err != nil {
-			log.Errorf("Failed to initialize cloud monitoring: %v", err)
+			log.Warningf("Failed to initialize cloud monitoring: %v", err)
 		} else {
 			exportActionMetrics = e.ExportActionMetrics
 			defer e.Close()
