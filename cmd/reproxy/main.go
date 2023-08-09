@@ -266,9 +266,6 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			defer e.Close()
 		}
 	}
-	if e != nil {
-		exportActionMetrics = e.ExportActionMetrics
-	}
 	mi, err := ignoremismatch.New(*mismatchIgnoreConfigPath)
 	if err != nil {
 		log.Errorf("Failed to create mismatch ignorer: %v", err)
