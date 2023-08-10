@@ -2,14 +2,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "reproxypid",
-    srcs = [
-        "exists_unix.go",
-        "exists_windows.go",
-        "reproxypid.go",
-    ],
+    srcs = ["reproxypid.go"],
     importpath = "team/foundry-x/re-client/internal/pkg/reproxypid",
     visibility = ["//:__subpackages__"],
-    deps = ["@com_github_golang_glog//:go_default_library"],
+    deps = [
+        "//internal/pkg/subprocess",
+        "@com_github_golang_glog//:go_default_library",
+    ],
 )
 
 go_test(

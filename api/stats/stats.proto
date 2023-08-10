@@ -49,6 +49,10 @@ message Stats {
   // action. 0 if there are no actions.
   double build_latency = 11;
 
+  // Whether FATAL log files were found in the log directory when reproxy was
+  // shutdown by bootstrap.
+  bool fatal_exit = 12;
+
   reserved 3, 8;
 }
 

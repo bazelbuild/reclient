@@ -2,7 +2,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "subprocess",
-    srcs = ["subprocess.go"],
+    srcs = [
+        "exists_unix.go",
+        "exists_windows.go",
+        "subprocess.go",
+    ],
     importpath = "team/foundry-x/re-client/internal/pkg/subprocess",
     visibility = ["//visibility:public"],
     deps = [

@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +146,7 @@ type statCollector interface {
 }
 
 // ExportActionMetricsFunc is the type of "team/foundry-x/re-client/internal/pkg/monitoring".Exporter.ExportActionMetrics
-type ExportActionMetricsFunc func(ctx context.Context, lr *lpb.LogRecord)
+type ExportActionMetricsFunc func(ctx context.Context, lr *lpb.LogRecord, remoteDisabled bool)
 
 // Logger logs Records asynchronously into a file.
 type Logger struct {
@@ -155,6 +156,7 @@ type Logger struct {
 	recsFile            *os.File
 	infoFile            *os.File
 	info                *lpb.ProxyInfo
+	remoteDisabled      bool
 	stats               statCollector
 	mi                  *ignoremismatch.MismatchIgnorer
 	exportActionMetrics ExportActionMetricsFunc
@@ -183,7 +185,8 @@ func (s *startActionEvent) apply(l *Logger) {
 }
 
 type endActionEvent struct {
-	lr *LogRecord
+	lr             *LogRecord
+	remoteDisabled bool
 }
 
 func (e *endActionEvent) apply(l *Logger) {
@@ -191,7 +194,7 @@ func (e *endActionEvent) apply(l *Logger) {
 		return
 	}
 	if l.exportActionMetrics != nil {
-		l.exportActionMetrics(context.Background(), e.lr.LogRecord)
+		l.exportActionMetrics(context.Background(), e.lr.LogRecord, l.remoteDisabled)
 	}
 	// Process any mismatches to be ignored for this log record.
 	l.mi.ProcessLogRecord(e.lr.LogRecord)
@@ -477,6 +480,12 @@ func (l *Logger) AddFlagStringToProxyInfo(key string, value string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.info.Flags[key] = value
+	if key == "remote_disabled" {
+		v, err := strconv.ParseBool(value)
+		if err == nil {
+			l.remoteDisabled = v
+		}
+	}
 }
 
 // AddFlags will add all reproxy flags to the ProxyInfo object.

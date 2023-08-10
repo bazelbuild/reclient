@@ -31,3 +31,4 @@ data:
   - file: scandeps_server.exe
   - file: scandeps_server.pdb
   - file: scandeps_server.sym
+  - file: metricsuploader.exe

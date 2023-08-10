@@ -31,3 +31,4 @@ data:
   - file: scandeps_server
   - file: scandeps_server.sym
   - file: remotetool
+  - file: metricsuploader

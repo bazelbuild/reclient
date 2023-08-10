@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"team/foundry-x/re-client/internal/pkg/subprocess"
+
 	log "github.com/golang/glog"
 )
 
@@ -86,7 +88,7 @@ func (f *File) Delete() {
 
 // IsAlive retuns true if the reproxy process is still running.
 func (f *File) IsAlive() (bool, error) {
-	return exists(f.Pid)
+	return subprocess.Exists(f.Pid)
 }
 
 func pathForServerAddr(serverAddr string) (string, error) {

@@ -28,10 +28,8 @@ import (
 	lpb "team/foundry-x/re-client/api/log"
 	spb "team/foundry-x/re-client/api/stats"
 	"team/foundry-x/re-client/internal/pkg/auth"
-	"team/foundry-x/re-client/internal/pkg/bigquery"
 	"team/foundry-x/re-client/internal/pkg/bootstrap"
 	"team/foundry-x/re-client/internal/pkg/logger"
-	"team/foundry-x/re-client/internal/pkg/monitoring"
 	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 	"team/foundry-x/re-client/internal/pkg/rbeflag"
 	"team/foundry-x/re-client/internal/pkg/stats"
@@ -42,6 +40,7 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"
+	"google.golang.org/protobuf/proto"
 )
 
 // bootstrapStart saves the start time of the bootstrap binary.
@@ -50,7 +49,6 @@ var bootstrapStart = time.Now()
 
 var (
 	homeDir, _   = os.UserHomeDir()
-	labels       = make(map[string]string)
 	gcertErrMsg  = fmt.Sprintf("\nTry restarting the build after running %q\n", "gcert")
 	gcloudErrMsg = fmt.Sprintf("\nTry restarting the build after running %q\n", "gcloud auth login")
 	logDir       = os.TempDir()
@@ -68,9 +66,6 @@ var (
 	fastLogCollection    = flag.Bool("fast_log_collection", false, "Enable optimized log aggregation pipeline. Does not work for multileg builds")
 	asyncReproxyShutdown = flag.Bool("async_reproxy_termination", false, "Allows reproxy to finish shutdown asyncronously. Only applicable with fast_log_collection=true")
 	metricsProject       = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
-	metricsPrefix        = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring")
-	metricsNamespace     = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project)")
-	metricsTable         = flag.String("metrics_table", "", "Resource specifier of the BigQuery table to upload the contents of rbe_metrics.pb to. If the project is not provided in the specifier metrics_project will be used.")
 	outputDir            = flag.String("output_dir", os.TempDir(), "The location to which stats should be written.")
 	useADC               = flag.Bool(auth.UseAppDefaultCredsFlag, false, "Indicates whether to use application default credentials for authentication")
 	useGCE               = flag.Bool(auth.UseGCECredsFlag, false, "Indicates whether to use GCE VM credentials for authentication")
@@ -79,12 +74,12 @@ var (
 	credFile             = flag.String(auth.CredentialFileFlag, "", "The name of a file that contains service account credentials to use when calling remote execution. Used only if --use_application_default_credentials and --use_gce_credentials are false.")
 	remoteDisabled       = flag.Bool("remote_disabled", false, "Whether to disable all remote operations and run all actions locally.")
 	cacheDir             = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
+	metricsUploader      = flag.String("metrics_uploader", defaultMetricsUploader(), "Path to the metrics uploader binary.")
 )
 
 func main() {
 	defer log.Flush()
 	flag.Var((*moreflag.StringListValue)(&proxyLogDir), "proxy_log_dir", "If provided, the directory path to a proxy log file of executed records.")
-	flag.Var((*moreflag.StringMapValue)(&labels), "metrics_labels", "Comma-separated key value pairs in the form key=value. This is used to add arbitrary labels to exported metrics.")
 	rbeflag.Parse()
 	version.PrintAndExitOnVersionFlag(true)
 
@@ -136,45 +131,49 @@ func main() {
 			From: bootstrapStart,
 			To:   time.Now(),
 		})
-		if *metricsProject != "" {
-			start := time.Now()
-			var e *monitoring.Exporter
-			e, err = newExporter(creds)
-			if err != nil {
-				log.Warningf("Failed to initialize cloud monitoring: %v", err)
-			} else {
-				e.ExportBuildMetrics(context.Background(), s, spi.EventTimes[logger.EventBootstrapShutdown])
-				defer e.Close()
-			}
-			spi.EventTimes[logger.EventPostBuildMetricsUpload] = command.TimeIntervalToProto(&command.TimeInterval{From: start, To: time.Now()})
-			spi.Metrics[logger.EventPostBuildMetricsUpload] = &lpb.Metric{Value: &lpb.Metric_BoolValue{err == nil}}
-		}
 		s.ProxyInfo = append(s.ProxyInfo, spi)
+		s.FatalExit = fatalLogsExist(logDir)
 		log.Infof("Writing stats to %v", *outputDir)
 		if err := stats.WriteStats(s, *outputDir); err != nil {
 			log.Errorf("WriteStats(%s) failed: %v", *outputDir, err)
 		} else {
 			log.Infof("Stats dumped successfully.")
 		}
-		if *metricsTable != "" {
-			inserter, cleanup, err := bigquery.NewInserter(context.Background(), *metricsTable, *metricsProject, creds)
-			if err != nil {
-				log.Warningf("Error creating a bigquery client: %v", err)
-				return
-			}
-			defer cleanup()
-			err = inserter.Put(context.Background(), &stats.ProtoSaver{s})
-			if err != nil {
-				log.Warningf("Error uploading stats to bigquery: %v", err)
-				return
+		if *metricsProject == "" {
+			return
+		}
+
+		tempRbeMetricsFilePath, err := createTempRbeMetricsFile(s)
+		if err != nil {
+			log.Errorf("Unable to make temp rbe_metrics.pb for upload: %v", err)
+			return
+		}
+
+		uploaderArgs := []string{"--rbe_metrics_path=" + tempRbeMetricsFilePath}
+		if cfg := flag.Lookup("cfg"); cfg != nil {
+			if cfg.Value.String() != "" {
+				uploaderArgs = append(uploaderArgs, "--cfg="+cfg.Value.String())
 			}
 		}
-		log.Infof("Stats uploaded successfully.")
+		if ts := creds.TokenSource(); ts != nil {
+			if t, err := ts.Token(); err == nil {
+				uploaderArgs = append(uploaderArgs, "--oauth_token="+t.AccessToken)
+			}
+		}
 
+		log.V(2).Infof("Running %v %v", *metricsUploader, uploaderArgs)
+
+		uploaderCmd := exec.Command(*metricsUploader, uploaderArgs...)
+		err = uploaderCmd.Start()
+		if err != nil {
+			log.Warningf("Failed to start metrics uploader with command line %v %v: %v", *metricsUploader, uploaderArgs, err)
+		}
+		log.Infof("Stats uploader started successfully")
+		log.V(2).Infof("Stats uploader pid: %d", uploaderCmd.Process.Pid)
 		return
 	}
 
-	monitoring.CleanLogDir(logDir)
+	cleanFatalLogs(logDir)
 
 	args := []string{}
 	if cfg := flag.Lookup("cfg"); cfg != nil {
@@ -199,6 +198,58 @@ func main() {
 	}
 	log.Flush()
 	os.Exit(exitCode)
+}
+
+var failureFiles = []string{"reproxy.FATAL", "bootstrap.FATAL", "rewrapper.FATAL", "reproxy.exe.FATAL", "bootstrap.exe.FATAL", "rewrapper.exe.FATAL"}
+
+// cleanLogDir removes stray log files which may cause confusion when bootstrap starts
+func cleanFatalLogs(logDir string) {
+	for _, f := range failureFiles {
+		fp := filepath.Join(logDir, f)
+		if err := os.Remove(fp); err != nil && !os.IsNotExist(err) {
+			log.Errorf("Failed to remove %v: %v", fp, err)
+		}
+	}
+}
+
+// fatalLogsExist returns true if any *.FATAL log file exists in
+func fatalLogsExist(logDir string) bool {
+	for _, f := range failureFiles {
+		s, err := os.Stat(filepath.Join(logDir, f))
+		if err != nil {
+			continue
+		}
+		if s.Size() > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func createTempRbeMetricsFile(s *spb.Stats) (string, error) {
+	temp, err := os.CreateTemp("", "rbe_metrics_*.pb")
+	if err != nil {
+		return "", err
+	}
+	defer temp.Close()
+	blob, err := proto.Marshal(s)
+	if err != nil {
+		return "", err
+	}
+	_, err = temp.Write(blob)
+	if err != nil {
+		return "", err
+	}
+	return temp.Name(), nil
+}
+
+func defaultMetricsUploader() string {
+	metricsUploader, err := pathtranslator.BinaryRelToAbs("metricsuploader")
+	if err != nil {
+		log.Warningf("Did not find `metricsuploader` binary in the same directory as `bootstrap`: %v", err)
+		return ""
+	}
+	return metricsUploader
 }
 
 func shutdownReproxy() (*spb.Stats, error) {
@@ -236,13 +287,6 @@ func bootstrapReproxy(args []string, startTime time.Time) (string, int) {
 		return defaultErr, status.ExitStatus()
 	}
 	return "Proxy started successfully.", 0
-}
-
-func newExporter(creds *auth.Credentials) (*monitoring.Exporter, error) {
-	if err := monitoring.SetupViews(labels); err != nil {
-		return nil, err
-	}
-	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, *remoteDisabled, logDir, creds)
 }
 
 func credsFilePath() (string, error) {

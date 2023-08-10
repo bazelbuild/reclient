@@ -26,10 +26,8 @@ import (
 	"sync"
 	"time"
 
-	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	lpb "team/foundry-x/re-client/api/log"
 	spb "team/foundry-x/re-client/api/stats"
-	"team/foundry-x/re-client/internal/pkg/auth"
 	"team/foundry-x/re-client/internal/pkg/labels"
 	"team/foundry-x/re-client/internal/pkg/logger"
 	"team/foundry-x/re-client/pkg/version"
@@ -45,6 +43,7 @@ import (
 
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/status"
 )
 
@@ -96,26 +95,20 @@ type Exporter struct {
 	prefix string
 	// MetricNamespace is the namespace of the exported metrics.
 	namespace string
-	// remoteDisabled indicates if this build ran without rbe.
-	remoteDisabled bool
-	// logDir is the directory where reclient log files are stored.
-	logDir string
 	// recorder is responsible for recording metrics.
 	recorder recorder
-	// authCredentials is a token to use for authenticating to the monitoring service.
-	authCredentials *auth.Credentials
+	// ts is a token source to use for authenticating to the monitoring service.
+	ts *oauth.TokenSource
 }
 
 // NewExporter returns a new Cloud monitoring metrics exporter.
-func NewExporter(ctx context.Context, project, prefix, namespace string, remoteDisabled bool, logDir string, creds *auth.Credentials) (*Exporter, error) {
+func NewExporter(ctx context.Context, project, prefix, namespace string, ts *oauth.TokenSource) (*Exporter, error) {
 	e := &Exporter{
-		project:         project,
-		prefix:          prefix,
-		namespace:       namespace,
-		logDir:          logDir,
-		recorder:        &stackDriverRecorder{},
-		authCredentials: creds,
-		remoteDisabled:  remoteDisabled,
+		project:   project,
+		prefix:    prefix,
+		namespace: namespace,
+		recorder:  &stackDriverRecorder{},
+		ts:        ts,
 	}
 	if err := e.initCloudMonitoring(ctx); err != nil {
 		return nil, err
@@ -211,8 +204,8 @@ func (e *Exporter) initCloudMonitoring(ctx context.Context) error {
 		MonitoredResource:       e,
 		DefaultMonitoringLabels: &stackdriver.Labels{},
 	}
-	if ts := e.authCredentials.TokenSource(); ts != nil {
-		clientOpt := option.WithTokenSource(ts)
+	if e.ts != nil {
+		clientOpt := option.WithTokenSource(e.ts)
 		opts.MonitoringClientOptions = []option.ClientOption{clientOpt}
 		opts.TraceClientOptions = []option.ClientOption{clientOpt}
 	}
@@ -221,7 +214,7 @@ func (e *Exporter) initCloudMonitoring(ctx context.Context) error {
 }
 
 // ExportActionMetrics exports metrics for one log record to opencensus.
-func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord) {
+func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord, remoteDisabled bool) {
 	aCtx := e.recorder.tagsContext(ctx, staticKeys)
 	aCtx = e.recorder.tagsContext(aCtx, map[tag.Key]string{
 		osFamilyKey: runtime.GOOS,
@@ -235,15 +228,15 @@ func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord) {
 			latency = float64(ti.To.Sub(ti.From).Milliseconds())
 		}
 	}
-	e.recorder.recordWithTags(aCtx, e.makeActionTags(r), ActionCount.M(1))
-	e.recorder.recordWithTags(aCtx, e.makeActionTags(r), ActionLatency.M(latency))
+	e.recorder.recordWithTags(aCtx, e.makeActionTags(r, remoteDisabled), ActionCount.M(1))
+	e.recorder.recordWithTags(aCtx, e.makeActionTags(r, remoteDisabled), ActionLatency.M(latency))
 }
 
-func (e *Exporter) makeActionTags(r *lpb.LogRecord) map[tag.Key]string {
+func (e *Exporter) makeActionTags(r *lpb.LogRecord, remoteDisabled bool) map[tag.Key]string {
 	return map[tag.Key]string{
 		labelsKey:         labels.ToKey(r.GetLocalMetadata().GetLabels()),
 		statusKey:         r.GetResult().GetStatus().String(),
-		remoteDisabledKey: strconv.FormatBool(e.remoteDisabled),
+		remoteDisabledKey: strconv.FormatBool(remoteDisabled),
 		remoteStatusKey:   r.GetRemoteMetadata().GetResult().GetStatus().String(),
 		exitCodeKey:       strconv.FormatInt(int64(r.GetResult().GetExitCode()), 10),
 		remoteExitCodeKey: strconv.FormatInt(int64(r.GetRemoteMetadata().GetResult().GetExitCode()), 10),
@@ -251,13 +244,14 @@ func (e *Exporter) makeActionTags(r *lpb.LogRecord) map[tag.Key]string {
 }
 
 // ExportBuildMetrics exports overall build metrics to opencensus.
-func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats, shutdownTimeInterval *cpb.TimeInterval) {
+func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats) {
 	numRecs := sp.NumRecords
 	aCtx := e.recorder.tagsContext(ctx, staticKeys)
+
 	aCtx = e.recorder.tagsContext(aCtx, map[tag.Key]string{
 		osFamilyKey:       runtime.GOOS,
 		versionKey:        version.CurrentVersion(),
-		remoteDisabledKey: strconv.FormatBool(e.remoteDisabled),
+		remoteDisabledKey: remoteDisabledFlagValue(sp),
 	})
 	if numRecs == 0 {
 		return
@@ -265,7 +259,7 @@ func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats, shutdo
 	e.recorder.recordWithTags(aCtx, nil, BuildCacheHitRatio.M(sp.BuildCacheHitRatio))
 	e.recorder.recordWithTags(aCtx, nil, BuildLatency.M(sp.BuildLatency))
 	status := "SUCCESS"
-	if e.checkBuildFailure(aCtx) {
+	if sp.FatalExit {
 		status = "FAILURE"
 	}
 	e.recorder.recordWithTags(aCtx, map[tag.Key]string{statusKey: status}, BuildCount.M(1))
@@ -277,29 +271,33 @@ func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats, shutdo
 			millis := command.TimeFromProto(ti.To).Sub(command.TimeFromProto(ti.From)).Milliseconds()
 			e.recorder.recordWithTags(aCtx, nil, BootstrapStartupLatency.M(millis))
 		}
+		if ti, ok := pi.EventTimes[logger.EventBootstrapShutdown]; ok {
+			millis := command.TimeFromProto(ti.To).Sub(command.TimeFromProto(ti.From)).Milliseconds()
+			e.recorder.recordWithTags(aCtx, nil, BootstrapShutdownLatency.M(millis))
+		}
 	}
-	millis := command.TimeFromProto(shutdownTimeInterval.To).Sub(command.TimeFromProto(shutdownTimeInterval.From)).Milliseconds()
-	e.recorder.recordWithTags(aCtx, nil, BootstrapShutdownLatency.M(millis))
+}
+
+func remoteDisabledFlagValue(sp *spb.Stats) string {
+	for _, pi := range sp.GetProxyInfo() {
+		sv, ok := pi.Flags["remote_disabled"]
+		if !ok {
+			continue
+		}
+		v, err := strconv.ParseBool(sv)
+		if err != nil {
+			continue
+		}
+		if v {
+			return strconv.FormatBool(true)
+		}
+	}
+	return strconv.FormatBool(false)
 }
 
 // Close stops the metrics exporter and waits for the exported data to be uploaded.
 func (e *Exporter) Close() {
 	e.recorder.close()
-}
-
-func (e *Exporter) checkBuildFailure(ctx context.Context) bool {
-	for _, f := range failureFiles {
-		fp := filepath.Join(e.logDir, f)
-		s, err := os.Stat(fp)
-		if err != nil {
-			continue
-		}
-		if s.Size() == 0 {
-			continue
-		}
-		return true
-	}
-	return false
 }
 
 // stackDriverRecorder is a recorder for stack driver metrics.

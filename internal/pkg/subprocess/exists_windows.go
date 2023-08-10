@@ -14,15 +14,14 @@
 
 //go:build windows
 
-package reproxypid
+package subprocess
 
 import "os"
 
-// exists returns true if a pid is assigned to a process that is actively running.
-//
+// Exists returns true if a pid is assigned to a process that is actively running.
 // In the windows case, a call to FindProcess should be sufficient, as it will return an
 // error if there is no process assigned to that pid.
-func exists(pid int) (bool, error) {
+func Exists(pid int) (bool, error) {
 	p, err := os.FindProcess(pid)
 	if err != nil || p == nil {
 		return false, nil

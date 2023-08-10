@@ -28,3 +28,4 @@ data:
   - file: rewrapper.exe
   - file: reproxystatus.exe
   - file: reclientreport.exe
+  - file: metricsuploader.exe

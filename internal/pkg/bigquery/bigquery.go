@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"team/foundry-x/re-client/internal/pkg/auth"
-
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/credentials/oauth"
 )
 
 // parseResourceSpec parses spec as per the bq command-line tool format described
@@ -50,14 +49,14 @@ func parseResourceSpec(spec, defaultProject string) (project, dataset, table str
 
 // NewInserter creates a an inserter for the table specified by the given resourceSpec in
 // the form <project>:<dataset>.<table> or <dataset>.<table>
-func NewInserter(ctx context.Context, resourceSpec, defaultProject string, creds *auth.Credentials) (inserter *bigquery.Inserter, cleanup func() error, err error) {
+func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *oauth.TokenSource) (inserter *bigquery.Inserter, cleanup func() error, err error) {
 	project, dataset, table, err := parseResourceSpec(resourceSpec, defaultProject)
 	cleanup = func() error { return nil }
 	if err != nil {
 		return nil, cleanup, err
 	}
 	var opts []option.ClientOption
-	if ts := creds.TokenSource(); ts != nil {
+	if ts != nil {
 		opts = append(opts, option.WithTokenSource(ts))
 	}
 	client, err := bigquery.NewClient(ctx, project, opts...)

@@ -18,8 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -28,7 +26,6 @@ import (
 	"time"
 
 	lpb "team/foundry-x/re-client/api/log"
-	"team/foundry-x/re-client/internal/pkg/auth"
 	"team/foundry-x/re-client/internal/pkg/logger"
 	st "team/foundry-x/re-client/internal/pkg/stats"
 	"team/foundry-x/re-client/pkg/version"
@@ -44,18 +41,21 @@ import (
 )
 
 func TestExportMetrics(t *testing.T) {
-	tests := []struct {
-		name           string
-		remoteDisabled bool
-	}{
-		{
-			name:           "RemoteEnabled",
-			remoteDisabled: false,
-		},
-		{
-			name:           "RemoteDisabled",
-			remoteDisabled: true,
-		},
+	var tests []struct {
+		name                      string
+		remoteDisabled, fatalExit bool
+	}
+	for _, remoteDisabled := range []bool{true, false} {
+		for _, fatalExit := range []bool{true, false} {
+			tests = append(tests, struct {
+				name                      string
+				remoteDisabled, fatalExit bool
+			}{
+				name:           fmt.Sprintf("RemoteDisabled=%v,FatalExit=%v", remoteDisabled, fatalExit),
+				remoteDisabled: remoteDisabled,
+				fatalExit:      fatalExit,
+			})
+		}
 	}
 	for _, tc := range tests {
 		tc := tc
@@ -123,30 +123,41 @@ func TestExportMetrics(t *testing.T) {
 							To:   command.TimeToProto(start),
 						},
 					},
+					Flags: map[string]string{
+						"remote_disabled": strconv.FormatBool(tc.remoteDisabled),
+					},
+				},
+				{
+					EventTimes: map[string]*cpb.TimeInterval{
+						logger.EventBootstrapShutdown: {
+							From: command.TimeToProto(start.Add(-500 * time.Millisecond)),
+							To:   command.TimeToProto(start),
+						},
+					},
 				},
 			})
 			sp := s.ToProto()
+			sp.FatalExit = tc.fatalExit
 			r := &stubRecorder{reports: make([]*metricReport, 0)}
 			e := &Exporter{
-				project:         "fake-project",
-				recorder:        r,
-				authCredentials: &auth.Credentials{},
-				remoteDisabled:  tc.remoteDisabled,
+				project:  "fake-project",
+				recorder: r,
+				ts:       nil,
 			}
 
 			err := e.initCloudMonitoring(context.Background())
 			if err != nil {
 				t.Errorf("Failed to initialize cloud monitoring: %v", err)
 			}
-			now := time.Now()
-			e.ExportBuildMetrics(context.Background(), sp, &cpb.TimeInterval{
-				From: command.TimeToProto(now.Add(-500 * time.Millisecond)),
-				To:   command.TimeToProto(now),
-			})
+			e.ExportBuildMetrics(context.Background(), sp)
 			for _, r := range recs {
-				e.ExportActionMetrics(context.Background(), r)
+				e.ExportActionMetrics(context.Background(), r, tc.remoteDisabled)
 			}
 			e.Close()
+			wantBuildStatus := "SUCCESS"
+			if tc.fatalExit {
+				wantBuildStatus = "FAILURE"
+			}
 			wantReports := []*metricReport{
 				{
 					Name: ActionCount.Name(),
@@ -238,7 +249,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						osFamilyKey.Name():       runtime.GOOS,
 						versionKey.Name():        version.CurrentVersion(),
-						statusKey.Name():         "SUCCESS",
+						statusKey.Name():         wantBuildStatus,
 						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
 					},
 				},
@@ -288,176 +299,14 @@ func TestExportMetrics(t *testing.T) {
 		})
 	}
 }
-
-func TestExportBuildFailureMetrics(t *testing.T) {
-	tests := []struct {
-		name           string
-		remoteDisabled bool
-	}{
-		{
-			name:           "RemoteEnabled",
-			remoteDisabled: false,
-		},
-		{
-			name:           "RemoteDisabled",
-			remoteDisabled: true,
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t1 := time.Now()
-			t2 := t1.Add(time.Second)
-			recs := []*lpb.LogRecord{
-				{
-					Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
-					RemoteMetadata: &lpb.RemoteMetadata{
-						Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_CACHE_HIT},
-					},
-					LocalMetadata: &lpb.LocalMetadata{
-						EventTimes: map[string]*cpb.TimeInterval{
-							"ProxyExecution": {
-								From: command.TimeToProto(t1),
-								To:   command.TimeToProto(t2),
-							},
-						},
-						Labels: map[string]string{"type": "tool"},
-					},
-				},
-			}
-			start := time.Now()
-			s := st.NewFromRecords(recs, []*lpb.ProxyInfo{
-				{
-					EventTimes: map[string]*cpb.TimeInterval{
-						logger.EventBootstrapStartup: {
-							From: command.TimeToProto(start.Add(-200 * time.Millisecond)),
-							To:   command.TimeToProto(start),
-						},
-					},
-				},
-			})
-			sp := s.ToProto()
-			logDir := t.TempDir()
-			r := &stubRecorder{reports: make([]*metricReport, 0)}
-			e := &Exporter{
-				project:         "fake-project",
-				recorder:        r,
-				logDir:          logDir,
-				authCredentials: &auth.Credentials{},
-				remoteDisabled:  tc.remoteDisabled,
-			}
-			err := e.initCloudMonitoring(context.Background())
-			if err != nil {
-				t.Errorf("Failed to initialize cloud monitoring: %v", err)
-			}
-			logFile := "reproxy.FATAL"
-			if runtime.GOOS == "windows" {
-				logFile = "reproxy.exe.FATAL"
-			}
-			os.WriteFile(filepath.Join(logDir, logFile), []byte("FATAL"), 0666)
-			now := time.Now()
-			e.ExportBuildMetrics(context.Background(), sp, &cpb.TimeInterval{
-				From: command.TimeToProto(now.Add(-500 * time.Millisecond)),
-				To:   command.TimeToProto(now),
-			})
-			for _, r := range recs {
-				e.ExportActionMetrics(context.Background(), r)
-			}
-			e.Close()
-			wantReports := []*metricReport{
-				{
-					Name: ActionCount.Name(),
-					Val:  1,
-					Tags: map[string]string{
-						labelsKey.Name():         "[type=tool]",
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						remoteStatusKey.Name():   "CACHE_HIT",
-						statusKey.Name():         "CACHE_HIT",
-						remoteExitCodeKey.Name(): "0",
-						exitCodeKey.Name():       "0",
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-				{
-					Name: ActionLatency.Name(),
-					Val:  1000,
-					Tags: map[string]string{
-						labelsKey.Name():         "[type=tool]",
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						remoteStatusKey.Name():   "CACHE_HIT",
-						statusKey.Name():         "CACHE_HIT",
-						remoteExitCodeKey.Name(): "0",
-						exitCodeKey.Name():       "0",
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-				{
-					Name: BuildCount.Name(),
-					Val:  1,
-					Tags: map[string]string{
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						statusKey.Name():         "FAILURE",
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-				{
-					Name: BuildLatency.Name(),
-					Val:  1,
-					Tags: map[string]string{
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-				{
-					Name: BuildCacheHitRatio.Name(),
-					Val:  1.0,
-					Tags: map[string]string{
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-				{
-					Name: BootstrapShutdownLatency.Name(),
-					Val:  500,
-					Tags: map[string]string{
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-				{
-					Name: BootstrapStartupLatency.Name(),
-					Val:  200,
-					Tags: map[string]string{
-						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
-						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
-					},
-				},
-			}
-			repCmp := cmpopts.SortSlices(func(a, b *metricReport) bool {
-				return a.hash() < b.hash()
-			})
-			if diff := cmp.Diff(wantReports, r.reports, repCmp); diff != "" {
-				t.Errorf("Recorded metrics have diff: (-want +got)\n%s", diff)
-			}
-		})
-	}
-}
 func TestInitCloudMonitoringError(t *testing.T) {
 	r := &stubRecorder{
 		reports: make([]*metricReport, 0),
 		err:     errors.New("fake error"),
 	}
 	e := &Exporter{
-		project:         "fake-project",
-		recorder:        r,
-		authCredentials: &auth.Credentials{},
+		project:  "fake-project",
+		recorder: r,
 	}
 	if err := e.initCloudMonitoring(context.Background()); err == nil {
 		t.Errorf("initCloudMonitoring succeeded; expected failure")

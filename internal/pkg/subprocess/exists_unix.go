@@ -14,16 +14,16 @@
 
 //go:build !windows
 
-package reproxypid
+package subprocess
 
 import (
 	"os"
 	"syscall"
 )
 
-// exists returns true if a pid is assigned to a process that is actively running.
+// Exists returns true if a pid is assigned to a process that is actively running.
 // Based on comment from: https://github.com/golang/go/issues/34396
-func exists(pid int) (bool, error) {
+func Exists(pid int) (bool, error) {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		return false, err

@@ -570,34 +570,36 @@ func TestStatManagement(t *testing.T) {
 	}
 }
 
-// TestExportMetric stests if Logger is calling the correct metrics handling
+// TestExportMetric tests if Logger is calling the correct metrics handling
 // functions when appropriate. This uses a stub struct for Exporter.
 func TestExportMetrics(t *testing.T) {
-	recs := []*lpb.LogRecord{
-		&lpb.LogRecord{
-			Command: &cpb.Command{
-				Identifiers: &cpb.Identifiers{
-					CommandId:    "a",
-					InvocationId: "b",
-					ToolName:     "c",
-				},
-				Args:     []string{"a", "b", "c"},
-				ExecRoot: "/exec/root",
-				Input: &cpb.InputSpec{
-					Inputs: []string{"foo.h", "bar.h"},
-					EnvironmentVariables: map[string]string{
-						"k":  "v",
-						"k1": "v1",
+	recs := []ExportActionMetricsCall{
+		{
+			Rec: &lpb.LogRecord{
+				Command: &cpb.Command{
+					Identifiers: &cpb.Identifiers{
+						CommandId:    "a",
+						InvocationId: "b",
+						ToolName:     "c",
+					},
+					Args:     []string{"a", "b", "c"},
+					ExecRoot: "/exec/root",
+					Input: &cpb.InputSpec{
+						Inputs: []string{"foo.h", "bar.h"},
+						EnvironmentVariables: map[string]string{
+							"k":  "v",
+							"k1": "v1",
+						},
+					},
+					Output: &cpb.OutputSpec{
+						OutputFiles: []string{"a/b/out"},
 					},
 				},
-				Output: &cpb.OutputSpec{
-					OutputFiles: []string{"a/b/out"},
+				Result: &cpb.CommandResult{
+					Status:   cpb.CommandResultStatus_CACHE_HIT,
+					ExitCode: 42,
+					Msg:      "message",
 				},
-			},
-			Result: &cpb.CommandResult{
-				Status:   cpb.CommandResultStatus_CACHE_HIT,
-				ExitCode: 42,
-				Msg:      "message",
 			},
 		},
 	}
@@ -610,7 +612,7 @@ func TestExportMetrics(t *testing.T) {
 	}
 	for _, lr := range recs {
 		r := logger.LogActionStart()
-		r.LogRecord = lr
+		r.LogRecord = lr.Rec
 		logger.Log(r)
 	}
 	logger.CloseAndAggregate()
@@ -618,16 +620,38 @@ func TestExportMetrics(t *testing.T) {
 	// Test valid exportActionMetrics function.
 	e := &stubExporter{}
 	logger, err = New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, e.ExportActionMetrics)
+	logger.remoteDisabled = false
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
 	}
 	for _, lr := range recs {
 		r := logger.LogActionStart()
-		r.LogRecord = lr
+		r.LogRecord = lr.Rec
 		logger.Log(r)
 	}
 	logger.CloseAndAggregate()
 	if diff := cmp.Diff(recs, e.exportedRecs, protocmp.Transform()); diff != "" {
+		t.Errorf("Log records sent to exporter returned diff in result: (-want +got)\n%s", diff)
+	}
+
+	// Test valid exportActionMetrics function with remoteDisabled=true.
+	e = &stubExporter{}
+	logger, err = New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, e.ExportActionMetrics)
+	logger.remoteDisabled = true
+	if err != nil {
+		t.Errorf("Failed to create new Logger: %v", err)
+	}
+	var recsRemoteDisabled []ExportActionMetricsCall
+	for _, rec := range recs {
+		recsRemoteDisabled = append(recsRemoteDisabled, ExportActionMetricsCall{Rec: rec.Rec, RemoteDisabled: true})
+	}
+	for _, lr := range recsRemoteDisabled {
+		r := logger.LogActionStart()
+		r.LogRecord = lr.Rec
+		logger.Log(r)
+	}
+	logger.CloseAndAggregate()
+	if diff := cmp.Diff(recsRemoteDisabled, e.exportedRecs, protocmp.Transform()); diff != "" {
 		t.Errorf("Log records sent to exporter returned diff in result: (-want +got)\n%s", diff)
 	}
 }
@@ -650,10 +674,15 @@ func (s *stubStats) ToProto() *spb.Stats {
 	return s.proto
 }
 
-type stubExporter struct {
-	exportedRecs []*lpb.LogRecord
+type ExportActionMetricsCall struct {
+	Rec            *lpb.LogRecord
+	RemoteDisabled bool
 }
 
-func (e *stubExporter) ExportActionMetrics(ctx context.Context, rec *lpb.LogRecord) {
-	e.exportedRecs = append(e.exportedRecs, rec)
+type stubExporter struct {
+	exportedRecs []ExportActionMetricsCall
+}
+
+func (e *stubExporter) ExportActionMetrics(ctx context.Context, rec *lpb.LogRecord, remoteDisabled bool) {
+	e.exportedRecs = append(e.exportedRecs, ExportActionMetricsCall{Rec: rec, RemoteDisabled: remoteDisabled})
 }
