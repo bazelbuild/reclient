@@ -35,3 +35,6 @@ reproxy_log_bigquery_schema
 
 # Ignore codelab outputs
 codelabs/**/out.txt
+
+# Ignore Android Prebuilts
+configs/linux_android1404/cc/android_prebuilts

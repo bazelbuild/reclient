@@ -112,8 +112,8 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
   }
 
   ClangScanDepsResult clangscandeps_result;
-  char* depsStr;
-  char* errStr;
+  char* depsStr = nullptr;
+  char* errStr = nullptr;
   std::unique_lock<std::mutex> result_lock(clangscandeps_result.result_mutex);
   ScanDependenciesResult(clangscandeps_result, deps_scanner_cache_, request->command_size(), argv.data(), request->filename().c_str(), request->directory().c_str(), &depsStr, &errStr);
   clangscandeps_result.result_condition.wait(result_lock, [&clangscandeps_result]() { return clangscandeps_result.result_complete; });

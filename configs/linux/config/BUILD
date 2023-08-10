@@ -32,6 +32,21 @@ toolchain(
     toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
 )
 
+toolchain(
+    name = "cc-toolchain-1404",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "@bazel_tools//tools/cpp:clang",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    toolchain = "//configs/linux_android1404/cc:cc-compiler-k8-1404",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
 platform(
     name = "platform",
     constraint_values = [
