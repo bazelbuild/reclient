@@ -15,6 +15,7 @@ go_library(
         "//internal/pkg/localresources",
         "//internal/pkg/logger",
         "//internal/pkg/monitoring",
+        "//internal/pkg/pathtranslator",
         "//internal/pkg/rbeflag",
         "//internal/pkg/reproxy",
         "//internal/pkg/reproxypid",

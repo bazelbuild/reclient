@@ -19,7 +19,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/pathtranslator"
+
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/cache"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"

@@ -9,7 +9,7 @@ go_library(
     importpath = "team/foundry-x/re-client/internal/pkg/inputprocessor/toolchain",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//internal/pkg/inputprocessor/pathtranslator",
+        "//internal/pkg/pathtranslator",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",

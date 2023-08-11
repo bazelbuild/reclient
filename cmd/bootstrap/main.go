@@ -32,6 +32,7 @@ import (
 	"team/foundry-x/re-client/internal/pkg/bootstrap"
 	"team/foundry-x/re-client/internal/pkg/logger"
 	"team/foundry-x/re-client/internal/pkg/monitoring"
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 	"team/foundry-x/re-client/internal/pkg/rbeflag"
 	"team/foundry-x/re-client/internal/pkg/stats"
 	"team/foundry-x/re-client/pkg/version"
@@ -58,7 +59,7 @@ var (
 var (
 	proxyLogDir          []string
 	serverAddr           = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
-	reProxy              = flag.String("re_proxy", filepath.Join(homeDir, "rbe", bootstrap.Proxyname), "Location of the reproxy binary")
+	reProxy              = flag.String("re_proxy", reproxyDefaultPath(), "Location of the reproxy binary")
 	waitSeconds          = flag.Int("reproxy_wait_seconds", 20, "Number of seconds to wait for reproxy to start")
 	shutdown             = flag.Bool("shutdown", false, "Whether to shut down the proxy and dump the stats.")
 	shutdownSeconds      = flag.Int("shutdown_seconds", 60, "Number of seconds to wait for reproxy to shutdown")
@@ -289,4 +290,13 @@ func parseLogs() ([]*lpb.LogRecord, []*lpb.ProxyInfo) {
 		}
 	}
 	return recs, pInfos
+}
+
+func reproxyDefaultPath() string {
+	reproxyPath, err := pathtranslator.BinaryRelToAbs("reproxy")
+	if err != nil {
+		log.Warningf("Did not find `reproxy` binary in the same directory as `bootstrap`: %v", err)
+		return ""
+	}
+	return reproxyPath
 }

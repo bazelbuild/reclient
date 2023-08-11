@@ -28,8 +28,8 @@ import (
 	"team/foundry-x/re-client/internal/pkg/inputprocessor"
 	"team/foundry-x/re-client/internal/pkg/inputprocessor/depscache"
 	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/pathtranslator"
 	"team/foundry-x/re-client/internal/pkg/logger"
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"golang.org/x/sync/semaphore"

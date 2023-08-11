@@ -26,9 +26,9 @@ import (
 
 	"team/foundry-x/re-client/internal/pkg/inputprocessor/flags"
 	"team/foundry-x/re-client/internal/pkg/inputprocessor/flagsparser"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/pathtranslator"
 	"team/foundry-x/re-client/internal/pkg/inputprocessor/toolchain"
 	"team/foundry-x/re-client/internal/pkg/localresources"
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/cache"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"

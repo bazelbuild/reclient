@@ -28,9 +28,9 @@ go_library(
     deps = [
         "//internal/pkg/inputprocessor/flags",
         "//internal/pkg/inputprocessor/flagsparser",
-        "//internal/pkg/inputprocessor/pathtranslator",
         "//internal/pkg/inputprocessor/toolchain",
         "//internal/pkg/localresources",
+        "//internal/pkg/pathtranslator",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",

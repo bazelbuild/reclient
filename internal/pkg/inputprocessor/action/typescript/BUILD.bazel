@@ -12,7 +12,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/inputprocessor",
-        "//internal/pkg/inputprocessor/pathtranslator",
+        "//internal/pkg/pathtranslator",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_karrick_godirwalk//:godirwalk",
     ],

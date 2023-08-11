@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"team/foundry-x/re-client/internal/pkg/deps"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/pathtranslator"
 	"team/foundry-x/re-client/internal/pkg/logger"
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 	"team/foundry-x/re-client/pkg/inputprocessor"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"

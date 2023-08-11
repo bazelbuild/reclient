@@ -39,6 +39,7 @@ import (
 	"team/foundry-x/re-client/internal/pkg/localresources"
 	"team/foundry-x/re-client/internal/pkg/logger"
 	"team/foundry-x/re-client/internal/pkg/monitoring"
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 	"team/foundry-x/re-client/internal/pkg/rbeflag"
 	"team/foundry-x/re-client/internal/pkg/reproxy"
 	"team/foundry-x/re-client/internal/pkg/reproxypid"
@@ -118,7 +119,7 @@ var (
 
 	cppLinkDeepScan = flag.Bool("clang_depscan_archive", false, "Deep scan .a files for dependencies during clang linking")
 
-	depsScannerAddress = flag.String("depsscanner_address", "", "If set, connects to the given address for C++ dependency scanning instead of the internal dependency scanner; a path with the prefix 'exec://' will start the target executable and connect to it")
+	depsScannerAddress = flag.String("depsscanner_address", "", "If set, connects to the given address for C++ dependency scanning instead of the internal dependency scanner; a path with the prefix 'exec://' will start the target executable and connect to it. If set to execrel:// the `scandeps_server` binary in the same folder as reproxy will be used.")
 
 	credsFile          = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
 	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
@@ -164,6 +165,13 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		pf.Delete()
 	}()
 	if *depsScannerAddress != "" {
+		if *depsScannerAddress == "execrel://" {
+			scandepsServerPath, err := pathtranslator.BinaryRelToAbs("scandeps_server")
+			if err != nil {
+				log.Fatalf("Specified --depsscanner_address=execrel:// but `scandeps_server` was not found in the same directory as `reproxy`: %v", err)
+			}
+			*depsScannerAddress = "exec://" + scandepsServerPath
+		}
 		cppdependencyscanner.UseGomaDepsScannerService = true
 		// If the depsscanner crashes or times out, all actions in flight will be counted as
 		// timeouts.  Therefore we bump the number allowed to account for multiple fallbacks from

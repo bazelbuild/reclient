@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 
 	"team/foundry-x/re-client/internal/pkg/inputprocessor"
-	"team/foundry-x/re-client/internal/pkg/inputprocessor/pathtranslator"
+	"team/foundry-x/re-client/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 )

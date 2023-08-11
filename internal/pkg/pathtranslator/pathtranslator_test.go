@@ -15,7 +15,10 @@
 package pathtranslator
 
 import (
+	"io"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -144,5 +147,57 @@ func TestListRelToExecRoot(t *testing.T) {
 				t.Errorf("ListRelToExecRoot(%q,%q,%v) returned diff (-want +got): %v", er, test.workingDir, test.paths, diff)
 			}
 		})
+	}
+}
+
+func TestAbsPathRelativeToExecutable(t *testing.T) {
+	execPath, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Error calling os.Executable(): %v", err)
+	}
+	execPathNoSym, err := filepath.EvalSymlinks(execPath)
+	if err != nil {
+		t.Fatalf("Error calling filepath.EvalSymlinks(%v): %v", execPath, err)
+	}
+	execPathAbs, err := filepath.Abs(execPathNoSym)
+	if err != nil {
+		t.Fatalf("Error calling filepath.Abs(%v): %v", execPathNoSym, err)
+	}
+	absPath, err := BinaryRelToAbs("somepath/to/a/file")
+	if err != nil {
+		t.Errorf("Error calling BinaryRelToAbs(\"somepath/to/a/file\"): %v", err)
+	}
+	if !strings.HasPrefix(absPath, filepath.Dir(execPathAbs)) {
+		t.Errorf("BinaryRelToAbs(\"somepath/to/a/file\") returned a path %v that is not relative to executable %v", absPath, execPathAbs)
+	}
+}
+
+func copyBinary(t *testing.T, from, to string) {
+	t.Helper()
+	fromFile, err := os.Open(from)
+	if err != nil {
+		t.Fatalf("Unable to open source: %v", err)
+	}
+	defer fromFile.Close()
+	toFile, err := os.Create(to)
+	if err != nil {
+		t.Fatalf("Unable to open destination: %v", err)
+	}
+	defer toFile.Close()
+	_, err = io.Copy(toFile, fromFile)
+	if err != nil {
+		t.Fatalf("Unable to copy file: %v", err)
+	}
+	err = toFile.Sync()
+	if err != nil {
+		t.Fatalf("Unable to copy file: %v", err)
+	}
+	_, err = os.Stat(from)
+	if err != nil {
+		t.Fatalf("Unable to get file permission from source: %v", err)
+	}
+	err = os.Chmod(to, 0777)
+	if err != nil {
+		t.Fatalf("Unable to apply file permissions to destination: %v", err)
 	}
 }

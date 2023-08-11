@@ -16,6 +16,7 @@
 package pathtranslator
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -79,4 +80,20 @@ func mapPaths(execRoot, workingDir string, paths []string, mapper mapperType) []
 		}
 	}
 	return res
+}
+
+// BinaryRelToAbs converts a path that is relative to the current executable
+// to an absolute path. If the executable is a symlink then the symlink is
+// resolved before generating the path.
+func BinaryRelToAbs(relPath string) (string, error) {
+	executable, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	executable, err = filepath.EvalSymlinks(executable)
+	if err != nil {
+		return "", err
+	}
+	uploader := filepath.Join(filepath.Dir(executable), relPath)
+	return uploader, nil
 }
