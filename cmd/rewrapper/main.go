@@ -165,14 +165,14 @@ func main() {
 	}
 
 	resp, err := rewrapper.RunCommand(ctx, proxy, cmd, cOpts)
+	if err != nil {
+		// Don't use log.Fatalf to avoid printing a stack trace.
+		log.Exitf("Command failed: %v", err)
+	}
 	if cOpts.ActionLog != "" && resp.ActionLog != nil {
 		if err := os.WriteFile(cOpts.ActionLog, []byte(protoencoding.TextWithIndent.Format(resp.ActionLog)), 0644); err != nil {
 			log.Errorf("Failed to write reproxy action log %v", cOpts.ActionLog)
 		}
-	}
-	if err != nil {
-		// Don't use log.Fatalf to avoid printing a stack trace.
-		log.Exitf("Command failed: %v", err)
 	}
 	os.Stdout.Write(resp.GetStdout())
 	os.Stderr.Write(resp.GetStderr())
