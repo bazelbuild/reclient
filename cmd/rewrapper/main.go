@@ -160,9 +160,7 @@ func main() {
 		log.Fatalf("Current working directory (%q) is not under the exec root (%q), relative working dir = %q", wd, cOpts.ExecRoot, cOpts.WorkDir)
 	}
 
-	if cOpts.PreserveUnchangedOutputMtime && !cOpts.DownloadOutputs {
-		log.Fatalf("--preserve_unchanged_output_mtime=true is not compatible with --download_outputs=false.")
-	}
+	// TODO (b/296409009): Add support for preserve true and download outputs false for downloading stubs.
 
 	resp, err := rewrapper.RunCommand(ctx, proxy, cmd, cOpts)
 	if err != nil {
