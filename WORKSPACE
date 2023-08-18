@@ -470,7 +470,7 @@ gazelle_dependencies()
 go_repository(
     name = "com_github_bazelbuild_remote_apis_sdks",
     build_file_generation = "off",
-    commit = "8d778fd5ab1d744825038d720c7c5433f169b484",
+    commit = "6a3a6f6184d3e71e6dfa3f816172a1e963fa5082",
     importpath = "github.com/bazelbuild/remote-apis-sdks",
 )
 # Use the local_reprository configuration below to replace the github version of the SDK with a local version.
