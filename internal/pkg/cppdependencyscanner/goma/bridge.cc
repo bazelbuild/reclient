@@ -370,6 +370,9 @@ void Request::FillCompilerInfo() {
   GetAdditionalEnv(env_, "HOMEDRIVE", &run_envs);
   GetAdditionalEnv(env_, "HOMEPATH", &run_envs);
   GetAdditionalEnv(env_, "USERPROFILE", &run_envs);
+  // used by (clang-)cl.exe
+  GetAdditionalEnv(env_, "INCLUDE", &run_envs);
+  GetAdditionalEnv(env_, "LIB", &run_envs);
   #endif
 
   auto param = std::make_unique<GetCompilerInfoParam>();
