@@ -126,20 +126,24 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 	}
 	var res *command.Result
 	var meta *command.Metadata
+	defer func() {
+		a.digest = meta.ActionDigest.String()
+		a.rec.RemoteMetadata = logger.CommandRemoteMetadataToProto(meta)
+		a.rec.RemoteMetadata.Result = command.ResultToProto(res)
+		a.res = res
+	}()
 	ec, err := client.NewContext(ctx, cmd, opts, a.oe)
 	if err != nil {
 		res, meta = command.NewLocalErrorResult(err), &command.Metadata{}
-	} else if ec.GetCachedResult(); ec.Result != nil {
-		res, meta = ec.Result, ec.Metadata
-	} else {
-		ec.ExecuteRemotely()
-		res, meta = ec.Result, ec.Metadata
+		return
 	}
-	a.digest = meta.ActionDigest.String()
-	a.rec.RemoteMetadata = logger.CommandRemoteMetadataToProto(meta)
-	a.rec.RemoteMetadata.Result = command.ResultToProto(res)
-	a.res = res
-	if res.Err == nil && excludeUnchanged {
+	if ec.GetCachedResult(); ec.Result == nil {
+		ec.ExecuteRemotely()
+	}
+	defer func() {
+		res, meta = ec.Result, ec.Metadata
+	}()
+	if ec.Result.Err == nil && excludeUnchanged {
 		outs, err := ec.GetFlattenedOutputs()
 		if err != nil {
 			log.Errorf("%v: Unable to get flattened outputs from Action Result: %v",

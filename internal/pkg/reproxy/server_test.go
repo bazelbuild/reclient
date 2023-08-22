@@ -674,36 +674,41 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 		name        string
 		testFile    string
 		wantChanged bool
-		wantNew     bool
+		origOutput  string
 		wantOutput  string
+		wantNumDirs int32
 	}{
 		{
 			name:        "Test File Unchanged",
 			testFile:    "unchanged.txt",
+			wantNumDirs: 1,
 			wantChanged: false,
-			wantNew:     false,
-			wantOutput:  "",
+			origOutput:  "output",
+			wantOutput:  "output",
 		},
 		{
 			name:        "Test Dir Unchanged",
 			testFile:    abOutPath,
+			wantNumDirs: 3, // abOutPath has 2 nested directories + tree root
 			wantChanged: false,
-			wantNew:     false,
-			wantOutput:  "",
+			origOutput:  "output",
+			wantOutput:  "output",
 		},
 		{
 			name:        "Test New File",
 			testFile:    "new.txt",
+			wantNumDirs: 1,
 			wantChanged: true,
-			wantNew:     true,
-			wantOutput:  "",
+			origOutput:  "",
+			wantOutput:  "output",
 		},
 		{
 			name:        "Test Changed File",
 			testFile:    "changed.txt",
+			wantNumDirs: 1,
 			wantChanged: true,
-			wantNew:     false,
-			wantOutput:  "output",
+			origOutput:  "output",
+			wantOutput:  "output2",
 		},
 	}
 	for _, tc := range tests {
@@ -713,13 +718,13 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			env.Client.FileMetadataCache = fmc
 			t.Cleanup(cleanup)
 			ctx := context.Background()
-			files := []string{executablePath}
 			ds := &stubCPPDependencyScanner{}
-			if !tc.wantNew {
+			path := filepath.Join(env.ExecRoot, tc.testFile)
+			files := []string{}
+			if tc.origOutput != "" {
+				execroot.AddFileWithContent(t, path, []byte(tc.origOutput))
 				files = append(files, tc.testFile)
-				ds.processInputsReturnValue = []string{tc.testFile}
 			}
-			execroot.AddFiles(t, env.ExecRoot, files)
 			resMgr := localresources.NewDefaultManager()
 			server := &Server{
 				MaxHoldoff: time.Minute,
@@ -734,13 +739,16 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			server.Logger = lg
 			req := &ppb.RunRequest{
 				Command: &cpb.Command{
-					Args:     []string{executablePath, "-c", "c"},
+					Args:     []string{"fake-exec"},
 					ExecRoot: env.ExecRoot,
 					Output: &cpb.OutputSpec{
 						OutputFiles: []string{tc.testFile},
 					},
+					Input: &cpb.InputSpec{
+						Inputs: files,
+					},
 				},
-				Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
+				Labels: map[string]string{"type": "tool"},
 				ExecutionOptions: &ppb.ProxyExecutionOptions{
 					ExecutionStrategy: ppb.ExecutionStrategy_REMOTE,
 					RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
@@ -753,7 +761,7 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			wantCmd := &command.Command{
 				Identifiers: &command.Identifiers{},
-				Args:        []string{executablePath, "-c", "c"},
+				Args:        []string{"fake-exec"},
 				ExecRoot:    env.ExecRoot,
 				InputSpec: &command.InputSpec{
 					Inputs: files,
@@ -762,11 +770,10 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			setPlatformOSFamily(wantCmd)
 			res := &command.Result{Status: command.SuccessResultStatus}
-			path := filepath.Join(env.ExecRoot, tc.testFile)
 			env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{tc.testFile, tc.wantOutput})
 			var oldDigest digest.Digest
 			var oldMtime time.Time
-			if !tc.wantNew {
+			if tc.origOutput != "" {
 				time.Sleep(time.Second) // Wait for mtime to catch up
 				oldDigest, oldMtime = getFileInfo(t, path)
 			}
@@ -797,6 +804,49 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			// TODO (b/260219409): Logical and real bytes downloaded should actually be 0 but
 			// they aren't for some reason. To be investigated, fixed and then added a check for here.
+			recs, _, err := logger.ParseFromLogDirs(logger.TextFormat, []string{env.ExecRoot})
+			if err != nil {
+				t.Errorf("logger.ParseFromLogDirs failed: %v", err)
+			}
+			wantBytes := 0
+			if tc.wantChanged {
+				wantBytes = len(tc.wantOutput)
+			}
+			wantRecs := []*lpb.LogRecord{
+				{
+					Command:          command.ToProto(wantCmd),
+					Result:           &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+					CompletionStatus: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION,
+					LocalMetadata: &lpb.LocalMetadata{
+						UpdatedCache: false,
+						Labels:       map[string]string{"type": "tool"},
+					},
+					RemoteMetadata: &lpb.RemoteMetadata{
+						Result:              &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+						NumInputDirectories: tc.wantNumDirs,
+						NumInputFiles:       int32(len(files)),
+						NumOutputFiles:      1,
+						TotalOutputBytes:    int64(len(tc.wantOutput)),
+						OutputFileDigests: map[string]string{
+							tc.testFile: digest.NewFromBlob([]byte(tc.wantOutput)).String(),
+						},
+						LogicalBytesDownloaded: int64(wantBytes),
+					},
+				},
+			}
+			opts := []cmp.Option{
+				protocmp.IgnoreFields(&cpb.Command{}, "identifiers"),
+				protocmp.IgnoreFields(&cpb.CommandResult{}, "msg"),
+				protocmp.IgnoreFields(&lpb.RemoteMetadata{}, "action_digest", "command_digest", "total_input_bytes", "real_bytes_uploaded", "real_bytes_downloaded", "event_times", "stderr_digest", "stdout_digest"),
+				protocmp.IgnoreFields(&lpb.LocalMetadata{}, "event_times"),
+				protocmp.IgnoreFields(&lpb.RerunMetadata{}, "event_times"),
+				protocmp.IgnoreFields(&lpb.Verification_Mismatch{}, "action_digest"),
+				protocmp.SortRepeated(func(a, b string) bool { return a < b }),
+				protocmp.Transform(),
+			}
+			if diff := cmp.Diff(wantRecs, recs, opts...); diff != "" {
+				t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
+			}
 		})
 	}
 }
