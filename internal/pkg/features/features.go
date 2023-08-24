@@ -39,6 +39,12 @@ type Config struct {
 	// ExperimentalSysrootDoNotUpload disables upload of the files/directories
 	// under the directory specified by the --sysroot flag.
 	ExperimentalSysrootDoNotUpload bool
+
+	// ExperimentalExitOnStuckActions shutdowns reproxy with exit code 1 if rewrapper's command
+	// didn't finish within 2*reclient_timeout. This is meant to generate the call stack when
+	// closing reproxy to pin down where the execution gets stuck
+	//TODO(b/284246561) Remove once we have a confirmation where action execution gets stuck
+	ExperimentalExitOnStuckActions bool
 }
 
 var config = &Config{}
@@ -54,4 +60,5 @@ func init() {
 	flag.IntVar(&GetConfig().ExperimentalCacheMissRate, "experimental_cache_miss_rate", 0, "Indicates percent of actions to simulate cache misses. Integer [0,100).")
 	flag.BoolVar(&GetConfig().ExperimentalSysrootDoNotUpload, "experimental_sysroot_do_not_upload", false, "Do not upload the the files/directories under the directory specified by the --sysroot flag.")
 	flag.BoolVar(&GetConfig().ExperimentalGomaDepsCache, "experimental_goma_deps_cache", false, "Use go deps cache with goma instead of goma's deps cache")
+	flag.BoolVar(&GetConfig().ExperimentalExitOnStuckActions, "experimental_exit_on_stuck_actions", false, "Stops reproxy with exit_code=1 if the command didn't finish within 2*reclient_timeout")
 }

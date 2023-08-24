@@ -827,9 +827,21 @@ func (s *Server) runRemote(ctx context.Context, a *action) {
 			a.rec.RemoteMetadata.Result = command.ResultToProto(a.res)
 		}
 	}()
+	reclientTimeout := time.Duration(a.reclientTimeout) * time.Second
+	shutdownTimeout := 2 * reclientTimeout
+	if features.GetConfig().ExperimentalExitOnStuckActions {
+		go func() {
+			select {
+			case <-time.After(shutdownTimeout):
+				log.Fatalf("%v: Remote execution of didn't finish after %v. Shutting down reproxy.", a.cmd.Identifiers.ExecutionID, shutdownTimeout)
+			case <-done:
+			}
+		}()
+	}
 	go func() {
 		select {
-		case <-time.After(time.Duration(a.reclientTimeout) * time.Second):
+		case <-time.After(reclientTimeout):
+			log.V(1).Infof("%v: Exceeded reclient_timeout of %v. Cancelling execution context.", a.cmd.Identifiers.ExecutionID, reclientTimeout)
 			cancel(errReclientTimeout)
 		case <-done:
 		}
