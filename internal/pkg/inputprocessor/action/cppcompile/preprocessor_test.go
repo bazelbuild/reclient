@@ -373,8 +373,8 @@ func TestBuildCommandLine(t *testing.T) {
 		ignoredPlugins map[string]bool
 	}{
 		{
-			name:           "verify removed, and sysroot converted to absolute",
-			flags:          []*flags.Flag{{Key: "-c"}, {Key: "-Xclang", Value: "-verify"}, {Key: "--sysroot=", Value: "a/b", Joined: true}},
+			name:           "verify, fallow-half-arguments-and-returns removed, and sysroot converted to absolute",
+			flags:          []*flags.Flag{{Key: "-c"}, {Key: "-Xclang", Value: "-verify"}, {Key: "-Xclang", Value: "-fallow-half-arguments-and-returns"}, {Key: "--sysroot=", Value: "a/b", Joined: true}},
 			want:           []string{filepath.Clean("/exec/root/foo/clang++"), "-c", "--sysroot=" + filepath.Clean("/exec/root/foo/a/b"), "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")},
 			ignoredPlugins: map[string]bool{},
 		},

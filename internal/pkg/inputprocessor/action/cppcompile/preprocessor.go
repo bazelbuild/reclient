@@ -62,6 +62,21 @@ var (
 		"-fno-experimental-new-pass-manager": struct{}{},
 		"-fexperimental-new-pass-manager":    struct{}{},
 	}
+	// These Xclang flags are unsupported, need to be removed before calling clang-scan-deps.
+	toRemoveXclangFlags = map[string]struct{}{
+		// Clang-scan-deps removes comments in the source code for optimized
+		// preprocessing, which results in removal of "expected-*" directives
+		// in comments. Consequently when the "-verify" flag is used and no
+		// "expected-*" directives are found, the preprocessor fails with error.
+		// Thus, remove the verify flag before calling clang-scan-deps.
+		// TODO(b/148145163): Fix it in clang-scan-deps lexer in the long term.
+		"-verify": struct{}{},
+		// Clang-scan-deps is not able to process the `-fallow-half-arguments-and-returns`
+		// flag, actions with this flag will not be able to reach to the RBE and
+		// cause remote_failures. Thus, this flag is removed.
+		// For details about "-fallow-half-arguments-and-returns", see b/296438658.
+		"-fallow-half-arguments-and-returns": struct{}{},
+	}
 	virtualInputFlags = map[string]bool{"-I": true, "-isystem": true, "-isysroot": true, "--sysroot=": true, "--sysroot": true}
 )
 
@@ -236,15 +251,7 @@ func (p *Preprocessor) BuildCommandLine(outputFlag string, outputFlagJoined bool
 		key, value := flag.Key, flag.Value
 		if key == clangCompilerArgFlag {
 			argsLen := len(args)
-			// Clang-scan-deps removes comments in the source
-			// code for optimized preprocessing, which
-			// results in removal of "expected-*" directives
-			// in comments. Consequently when the "-verify" flag
-			// is used and no "expected-*" directives are found,
-			// the preprocessor fails with error. Thus, remove
-			// the verify flag before calling clang-scan-deps.
-			// TODO(b/148145163): Fix it in clang-scan-deps lexer in the long term.
-			if value == "-verify" {
+			if _, present := toRemoveXclangFlags[value]; present {
 				continue
 			}
 			// If current flag is -Xclang [ignored-plugin] that's preceded by -Xclang -add-plugin
