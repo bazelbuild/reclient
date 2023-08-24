@@ -1,0 +1,23 @@
+load("//:settings.bzl", "GO_GRPC_VERSION", "GO_PROTO_VERSION", "PROTOC_GEN_BQ_SCHEMA_VERSION", "SDK_COMMIT")
+
+sh_binary(
+    name = "go_mod_tidy",
+    srcs = ["go_mod_tidy.sh"],
+    args = [
+        "$(location @go_sdk//:bin/go)",
+        "$(location @bazel_gazelle_go_repository_cache//:go.env)",
+        package_name(),
+        "google.golang.org/protobuf@" + GO_PROTO_VERSION,
+        "google.golang.org/grpc@" + GO_GRPC_VERSION,
+        "github.com/GoogleCloudPlatform/protoc-gen-bq-schema@" + PROTOC_GEN_BQ_SCHEMA_VERSION,
+        "github.com/bazelbuild/remote-apis-sdks@" + SDK_COMMIT,
+    ],
+    data = [
+        "@bazel_gazelle_go_repository_cache//:go.env",
+        "@go_sdk//:bin/go",
+    ],
+    tags = [
+        "local",
+        "manual",
+    ],
+)

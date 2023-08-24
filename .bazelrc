@@ -39,7 +39,9 @@ build:linux --cxxopt=-Wuninitialized --host_cxxopt=-Wuninitialized
 
 # to propagete tags to execution_requirements
 # https://github.com/bazelbuild/bazel/issues/8830
-build --experimental_allow_tags_propagation
+# Needs to be applied as common to prevent wiping of analysis cache between
+# bazel query and bazel build
+common --experimental_allow_tags_propagation
 
 
 ## use BAZEL_LLVM on windows

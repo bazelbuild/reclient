@@ -179,7 +179,7 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
 
-load("//:settings.bzl", "LLVM_COMMIT", "LLVM_SHA256")
+load("//:settings.bzl", "GO_GRPC_VERSION", "GO_PROTO_VERSION", "LLVM_COMMIT", "LLVM_SHA256", "SDK_COMMIT")
 
 http_archive(
     name = "llvm",
@@ -283,7 +283,7 @@ go_repository(
     name = "org_golang_google_protobuf",
     importpath = "google.golang.org/protobuf",
     sum = "h1:Ejskq+SyPohKW+1uil0JJMtmHCgJPJ/qWTxr8qp+R4c=",
-    version = "v1.25.0",
+    version = GO_PROTO_VERSION,
 )
 
 # Needed for io_opencensus_go_contrib_exporter_stackdriver.
@@ -369,7 +369,7 @@ go_repository(
     name = "org_golang_google_grpc",
     importpath = "google.golang.org/grpc",
     sum = "h1:fVRFRnXvU+x6C4IlHZewvJOVHoOv1TUuQyoRsYnB4bI=",
-    version = "v1.56.2",
+    version = GO_GRPC_VERSION,
 )
 
 go_repository(
@@ -487,7 +487,7 @@ gazelle_dependencies()
 go_repository(
     name = "com_github_bazelbuild_remote_apis_sdks",
     build_file_generation = "off",
-    commit = "cd916d432ba30e87c1d6a400f3eabf890df4f364",
+    commit = SDK_COMMIT,
     importpath = "github.com/bazelbuild/remote-apis-sdks",
 )
 # Use the local_reprository configuration below to replace the github version of the SDK with a local version.

@@ -1,0 +1,4 @@
+exports_files([
+    "diff_gen_vs_workspace.sh",
+    "copy_to_workspace.sh",
+])

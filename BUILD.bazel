@@ -4,6 +4,7 @@ load("//:settings.bzl", "include_scanner_rule")
 
 # gazelle:prefix github.com/bazelbuild/reclient
 # gazelle:exclude docker
+# gazelle:exclude **/*.pb.go
 gazelle(
     name = "gazelle",
 )
