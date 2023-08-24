@@ -24,6 +24,8 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	ppb "team/foundry-x/re-client/api/proxy"
@@ -115,12 +117,19 @@ func TestRunCommand(t *testing.T) {
 		},
 	}
 	p := &proxyStub{}
-	if _, err := RunCommand(context.Background(), p, cmd, opts); err != nil {
+	if _, err := RunCommand(context.Background(), time.Hour, p, cmd, opts); err != nil {
 		t.Errorf("RunCommand(%v,%v) returned error: %v", cmd, opts, err)
 	}
 	strSliceCmp := protocmp.SortRepeated(func(a, b string) bool { return a < b })
 	if diff := cmp.Diff(want, p.req, strSliceCmp, protocmp.IgnoreFields(&ppb.Metadata{}, "environment"), protocmp.Transform()); diff != "" {
 		t.Errorf("RunCommand(cmd, opts) created bad RunRequest. (-want +got): %s", diff)
+	}
+}
+
+func TestRunCommandTimeout(t *testing.T) {
+	p := &proxyStub{err: status.Error(codes.Unavailable, "error")}
+	if _, err := RunCommand(context.Background(), time.Second, p, []string{}, &CommandOptions{}); err == nil {
+		t.Fatalf("RunCommand returned no error, expecting dial timeout error")
 	}
 }
 

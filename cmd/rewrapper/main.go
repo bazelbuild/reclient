@@ -120,8 +120,7 @@ func main() {
 		log.Fatalf("No exec_strategy provided, must be one of %v", execStrategies)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), *dialTimeout)
-	defer cancel()
+	ctx := context.Background()
 	conn, err := ipc.DialContext(ctx, serverAddr)
 	if err != nil {
 		log.Fatalf("Fail to dial %s: %v", serverAddr, err)
@@ -129,7 +128,6 @@ func main() {
 	defer conn.Close()
 
 	proxy := pb.NewCommandsClient(conn)
-	ctx = context.Background()
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Failed to get current working directory: %v", err)
@@ -162,7 +160,7 @@ func main() {
 
 	// TODO (b/296409009): Add support for preserve true and download outputs false for downloading stubs.
 
-	resp, err := rewrapper.RunCommand(ctx, proxy, cmd, cOpts)
+	resp, err := rewrapper.RunCommand(ctx, *dialTimeout, proxy, cmd, cOpts)
 	if err != nil {
 		// Don't use log.Fatalf to avoid printing a stack trace.
 		log.Exitf("Command failed: %v", err)

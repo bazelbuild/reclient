@@ -18,6 +18,7 @@ package rewrapper
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -42,11 +43,9 @@ const (
 )
 
 var (
-	backoff     = retry.ExponentialBackoff(1*time.Second, 15*time.Second, retry.Attempts(10))
+	// backoff has unlimited attempts because retry overall time is controlled by dialTimeout.
+	backoff     = retry.ExponentialBackoff(1*time.Second, 15*time.Second, retry.UnlimitedAttempts)
 	shouldRetry = func(err error) bool {
-		if err == context.DeadlineExceeded {
-			return true
-		}
 		s, ok := status.FromError(err)
 		if !ok {
 			return false
@@ -103,13 +102,17 @@ type CommandOptions struct {
 }
 
 // RunCommand runs a command through the RE proxy.
-func RunCommand(ctx context.Context, proxy Proxy, cmd []string, opts *CommandOptions) (*ppb.RunResponse, error) {
+func RunCommand(ctx context.Context, dialTimeout time.Duration, proxy Proxy, cmd []string, opts *CommandOptions) (*ppb.RunResponse, error) {
 	req, err := createRequest(cmd, opts)
 	if err != nil {
 		return nil, err
 	}
 	var resp *ppb.RunResponse
+	st := time.Now()
 	err = retry.WithPolicy(ctx, shouldRetry, backoff, func() error {
+		if time.Since(st) > dialTimeout {
+			return fmt.Errorf("dial_timeout of %v expired before being able to connect to reproxy", dialTimeout)
+		}
 		resp, err = proxy.RunCommand(ctx, req)
 		return err
 	})
