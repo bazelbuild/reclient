@@ -6,7 +6,7 @@ Patch files are used to apply the changes to repositories imported with Bazel's 
 
 The patch files are generated with `git diff` commmand which displays the diff between the workspace and the last committed version.
 
-Typical worklfow for generating the patch files is described on example of `llvm` repository below. The repository is imported into reclient WORKSPACE from https://github.com/llvm/llvm-project/. `WORKSPACE` file defines the commit that should be downloaded [here](https://source.corp.google.com/foundry-x-re-client/WORKSPACE;l=47).
+Typical worklfow for generating the patch files is described on example of `llvm` repository below. The repository is imported into reclient WORKSPACE from https://github.com/llvm/llvm-project/. `WORKSPACE` file defines the commit that should be downloaded [here](https://github.com/bazelbuild/reclient/tree/main/WORKSPACE;l=47).
 
 To generate the patch file, the user should:
 1. Clone the remote repository by running `git clone https://github.com/llvm/llvm-project/`
