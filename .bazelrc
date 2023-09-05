@@ -31,6 +31,8 @@ build:windows --@io_bazel_rules_go//go/config:static
 build --experimental_guard_against_concurrent_changes
 build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
 build --compilation_mode=opt
+# Enable retries for repositories downloads
+build --experimental_repository_downloader_retries=8
 # Remove clang's warnings from our output.
 build:linux --cxxopt=-Wcomment --host_cxxopt=-Wcomment
 build:linux --cxxopt=-Wuninitialized --host_cxxopt=-Wuninitialized
