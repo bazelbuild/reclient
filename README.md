@@ -197,7 +197,7 @@ cipd ensure --root $CHECKOUT_DIR --ensure-file /tmp/reclient.ensure
 
 You can configure
 [gclient](https://chromium.googlesource.com/chromium/tools/depot_tools/+/HEAD/README.gclient.md)
-to download Reclient binaries during `gclient sync` phase. Gclient expects a
+to download Reclient binaries during the`gclient sync` phase. Gclient expects a
 DEPS file in the repository’s root directory. The file contains components that
 will be checked out during the sync phase. To check out Reclient, the file
 should have a similar entry to:
@@ -232,7 +232,7 @@ custom variables.
 
 # Using Reclient
 
-## Starting and stoping reproxy
+## Starting and stopping reproxy
 
 Reclient requires reproxy to be started at the beginning of the build, and
 stopped at the end. This is done through `bootstrap` binary by executing
@@ -284,9 +284,9 @@ used to set the `service` flag).
 
 ### Rewrapper
 
-Full list of rewrapper config flags can be found
-[here](https://github.com/bazelbuild/reclient/blob/02c93aa083c5b8e21d68d4155ca26c4d3e3a6149/cmd/rewrapper/main.go#L61-L92).
-A few of the most commonly used flags are:
+Full list of rewrapper config flags can be found in
+[docs/cmd-line-flags.md](docs/cmd-line-flags.md). A few of the most commonly
+used flags are:
 
 *   **platform** - Comma-separated key value pairs in the form key=value. This
     is used to identify remote platform settings like the docker image to use to
@@ -316,6 +316,9 @@ A few of the most commonly used flags are:
     `racing`. With `remote_local_fallback` it will try to execute the action
     remotely and fallback to local if the remote execution failed. With `racing`
     it tries to execute both and picks the one that finished sooner.
+*   `env_var_allowlist` - List of environment variables allowed to pass to the
+    proxy. If the build action depends on local environment variables, they
+    should be set here, so they're reproduced on the remote worker.
 
 If you are experiencing sporadic timeouts when dialing reproxy, you might
 consider adding:
@@ -327,8 +330,8 @@ consider adding:
 ### Reproxy
 
 Full list of reproxy flags can be found
-[here](https://github.com/bazelbuild/reclient/blob/02c93aa083c5b8e21d68d4155ca26c4d3e3a6149/cmd/reproxy/main.go#L74-L126).
-A few of the most commonly used flags are:
+[docs/cmd-line-flags.md](docs/cmd-line-flags.md). A few of the most commonly
+used flags are:
 
 *   **service** - The remote execution service to dial when calling via gRPC,
     including port, such as `localhost:8790`
@@ -339,8 +342,8 @@ A few of the most commonly used flags are:
 *   **server_address** - An address reproxy should start its gRPC server on and
     listen for incoming communication from rewrapper (should be set to the same
     value as rewrapper's `server_address` parameter)
-*   **depsscanner_address** - The address of dependency scanner service. To use
-    the `scandeps_server` distributed with Reclient set the value to
+*   **depsscanner_address** - The address of the dependency scanner service. To
+    use the `scandeps_server` distributed with Reclient set the value to
     `exec://$absolute_path_to_reclient_dir/scandeps_server` For instance, if
     Reclient is checked out to `/home/$user/chromium/src/buildtools/reclient/`,
     the value of the attribute should be
@@ -375,3 +378,75 @@ If your RE Server uses RPC authentication then use one of the following flags:
     either a configuration file that’s passed to the bootstrap with the `-cfg`
     flag or by setting environment variables before starting the bootstrap
     ([example](https://source.chromium.org/chromium/chromium/tools/build/+/main:recipes/recipe_modules/reclient/api.py;l=378-396;drc=f3b7708f2a5728408a74ccbb6cba6eb9cb161aae)).
+
+## Integration with the build system
+
+To execute your build actions remotely through Reclient, the build command
+should be prepended with:
+
+```
+ $rewrapper [-cfg=$config-file] -exec_root=$checkout-dir --
+```
+
+, where:
+
+*   **\$rewrapper** - path of the rewrapper binary
+*   **\$config-file** - path of the rewrapper config file (assuming that
+    rewrapper was configured with config file)
+*   **\$checkout-dir** - root directory of the source repository
+
+When rewrapper is executed, it passes the build command to a running instance of
+reproxy that:
+
+*   Determines dependencies either from command line flags (e.g. clang/gcc’s -I
+    flag) or from the content of input files (during input processing phase)
+*   Uploads toolchain, the inputs, and their dependencies to RBE
+*   Executes the command remotely
+*   Downloads artifacts locally
+
+Before the build is executed, reproxy needs to be started by bootstrap and shut
+down at the end of the build.
+
+During the run, reproxy writes its application-level logs to a directory
+specified by a `log_dir` flag and logs records about the executed build actions
+to an RPL file in a directory specified by the `proxy_log_dir` flag. During
+reproxy shutdown, bootstrap dumps Reclient related build metrics to
+`rbe_metrics.txt` file saved at a location specified by the bootstrap's
+`output_path` flag.
+
+### GN integration
+
+[GN](https://gn.googlesource.com/gn/) is a meta-build system that generates
+build files for Ninja. Its configuration files are written in a simple,
+dynamically typed language. Reclient can be integrated with the build by
+modifying the GN config files. Because of GN's language flexibility the method
+of how Reclient should be integrated will depend on the project, but usually it
+should involve adding a rewrapper prefix
+([example](https://source.chromium.org/chromium/chromium/src/+/main:build/toolchain/gcc_toolchain.gni;l=214;drc=df7d81e33033a594ff56d5ab8387aa1f13cd1c39))
+that's controlled by a gn argument
+([example](https://source.chromium.org/chromium/chromium/src/+/main:build/toolchain/rbe.gni;l=14;drc=dc850b9b1565dc29b7d8997994ed82d867852250)),
+and starting and stopping reproxy before and after the build. The latter might
+be done by a helper script with reproxy start and stop steps around the ninja
+call
+[example](https://source.chromium.org/chromium/chromium/tools/depot_tools/+/main:reclient_helper.py).
+
+### CMake integration
+
+You can integrate CMake with Reclient by using
+[`<LANG>_COMPILER_LAUNCHER`](https://cmake.org/cmake/help/v3.14/prop_tgt/LANG_COMPILER_LAUNCHER.html)
+property. This property is initialized by the value of the
+`CMAKE_<LANG>_COMPILER_LAUNCHER` variable if it is set when a target is created.
+For instance, to use Reclient for c/c++ compile actions, you’d need to set both
+`CMAKE_C_COMPILER_LAUNCHER` and `CMAKE_CXX_COMPILER_LAUNCHER` to
+`$rewrapper;-cfg=$config-file;-exec_root=$checkout-dir` (the property accepts
+semicolon separated list as a launcher command).
+
+Please note that CMake operates on absolute paths and you need to ensure that RE
+server executes the action on a remote worker in the same directory as it is in
+a local build machine (the method depends on your RE Server implementation).
+Moreover, please be aware that rewrapper's `canonicalize_working_dir` flag
+tampers the build actions' inputs paths, and thus should be disabled for the
+build actions generated by CMake.
+
+Example of CMake build integration with Reclient can be found
+[here](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/src/host_toolchains.py).

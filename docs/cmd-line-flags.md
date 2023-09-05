@@ -172,7 +172,7 @@ Default is 0.75.
 
 Directory where reproxy should store temporary outputs during racing mode. This
 should be on the same device as the exec root for the build. Default is
-`os.TempDir()`.
+[`os.TempDir()`](https://pkg.go.dev/os#TempDir).
 
 **`-pprof_port (int)`**
 
@@ -279,7 +279,7 @@ The amount of time to allow this command to execute. The default is 1 hour.
 A set of key=value comma-separated pairs, used to define the remote platform
 settings (such as the docker container) used to execute the command.
 
-**`-env_var_whitelist (comma-separated strings)`**
+**`-env_var_allowlist (comma-separated strings)`**
 
 A list of comma-separated strings that list the environment variables that
 should be passed from rewrapper to reproxy.
@@ -398,7 +398,8 @@ be used in place of this one.
 
 **`-output_dir (path)`**
 
-Directory where metrics should be written. Defaults to /tmp.
+Directory where metrics should be written. Defaults to
+[`os.TempDir()`](https://pkg.go.dev/os#TempDir).
 
 **`-v (int)`**
 
