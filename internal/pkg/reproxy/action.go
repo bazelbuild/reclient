@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/deps"
@@ -246,7 +245,7 @@ type raceResult struct {
 	t   resultType
 }
 
-func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool, numFallbacks *int64, maxHoldoff time.Duration) {
+func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool, numFallbacks *windowedCount, maxHoldoff time.Duration) {
 	cCtx, cancel := context.WithCancel(ctx)
 	// Get digests and mtimes of existing outs on disk if needed for comparison later
 	var preExecOuts map[string]filemetadata.Metadata
@@ -309,7 +308,7 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 		select {
 		case rr := <-ch:
 			if winner.t == canceled && rr.t == local {
-				atomic.AddInt64(numFallbacks, 1)
+				numFallbacks.Add(1)
 			}
 			if rr.t == local {
 				// Local was not canceled. Will make local the winner.

@@ -103,13 +103,14 @@ type Server struct {
 	StartTime                 time.Time
 	FailEarlyMinActionCount   int64
 	FailEarlyMinFallbackRatio float64
+	FailEarlyWindow           time.Duration
 	RacingBias                float64
 	DownloadTmp               string
 	MaxHoldoff                time.Duration // Maximum amount of time to wait for downloads before starting racing.
 	StartupCancelFn           func()
-	numActions                int64
-	numFallbacks              int64
-	numIPTimeouts             int64
+	numActions                *windowedCount
+	numFallbacks              *windowedCount
+	numIPTimeouts             *atomic.Int64
 	failBuild                 bool
 	failBuildMu               sync.RWMutex
 	failBuildErr              error
@@ -161,6 +162,9 @@ func (s *Server) Init() {
 	s.drain = make(chan bool)
 	s.started = make(chan bool)
 	s.cleanupDone = make(chan bool)
+	s.numActions = &windowedCount{window: s.FailEarlyWindow}
+	s.numFallbacks = &windowedCount{window: s.FailEarlyWindow}
+	s.numIPTimeouts = &atomic.Int64{}
 }
 
 // SetInputProcessor sets the InputProcessor property of Server and then unblocks startup.
@@ -241,10 +245,28 @@ func (s *Server) monitorFailBuildConditions(ctx context.Context, pollTime time.D
 	}
 }
 
+type windowedCount struct {
+	cnt    atomic.Int64
+	window time.Duration
+}
+
+func (wc *windowedCount) Add(inc int64) {
+	wc.cnt.Add(inc)
+	if wc.window != 0 {
+		time.AfterFunc(wc.window, func() {
+			wc.cnt.Add(-inc)
+		})
+	}
+}
+
+func (wc *windowedCount) Load() int64 {
+	return wc.cnt.Load()
+}
+
 func (s *Server) checkFailBuild() {
-	nf := atomic.LoadInt64(&s.numFallbacks)
-	na := atomic.LoadInt64(&s.numActions)
-	nt := atomic.LoadInt64(&s.numIPTimeouts)
+	nf := s.numFallbacks.Load()
+	na := s.numActions.Load()
+	nt := s.numIPTimeouts.Load()
 	if nt <= AllowedIPTimeouts && na < s.FailEarlyMinActionCount {
 		return
 	}
@@ -596,7 +618,7 @@ func (s *Server) logRecord(a *action, start time.Time) {
 
 func (s *Server) populateCommandIO(ctx context.Context, a *action) (err error) {
 	if err = a.populateCommandIO(ctx, s.InputProcessor); errors.Is(err, inputprocessor.ErrIPTimeout) {
-		atomic.AddInt64(&s.numIPTimeouts, 1)
+		s.numIPTimeouts.Add(1)
 	}
 	return err
 }
@@ -609,7 +631,7 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 		}
 		return
 	}
-	defer atomic.AddInt64(&s.numActions, 1)
+	defer s.numActions.Add(1)
 	if s.RemoteDisabled {
 		a.runLocal(ctx, s.LocalPool)
 		return
@@ -629,7 +651,7 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 		if !a.res.IsOk() && a.res.Status != command.NonZeroExitResultStatus {
 			log.Warningf("%v: LERC failed with %+v, falling back to local.", a.cmd.Identifiers.ExecutionID, a.res)
 			a.runLocal(ctx, s.LocalPool)
-			atomic.AddInt64(&s.numFallbacks, 1)
+			s.numFallbacks.Add(1)
 		}
 		return
 	case ppb.ExecutionStrategy_REMOTE:
@@ -644,7 +666,7 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 				a.cmd.Identifiers.ExecutionID, a.res, roe.Stdout(), roe.Stderr())
 			a.oe = outerr.NewRecordingOutErr()
 			a.runLocal(ctx, s.LocalPool)
-			atomic.AddInt64(&s.numFallbacks, 1)
+			s.numFallbacks.Add(1)
 		}
 		return
 	case ppb.ExecutionStrategy_RACING:
@@ -802,7 +824,7 @@ func (s *Server) runRacing(ctx context.Context, a *action) {
 	}
 	log.V(1).Infof("%v: Inputs: %v, Outputs: %+v", a.cmd.Identifiers.ExecutionID, a.cmd.InputSpec.Inputs, a.cmd.OutputFiles)
 
-	a.race(ctx, s.REClient, s.LocalPool, &s.numFallbacks, s.MaxHoldoff)
+	a.race(ctx, s.REClient, s.LocalPool, s.numFallbacks, s.MaxHoldoff)
 	if a.res == nil {
 		a.res = command.NewLocalErrorResult(fmt.Errorf("racing did not produce a result"))
 	}

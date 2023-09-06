@@ -107,6 +107,7 @@ var (
 	metricsNamespace = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project)")
 	failEarlyMinActionCount   = flag.Int64("fail_early_min_action_count", 0, "Minimum number of actions received by reproxy before the fail early mechanism can take effect. 0 indicates fail early is disabled.")
 	failEarlyMinFallbackRatio = flag.Float64("fail_early_min_fallback_ratio", 0, "Minimum ratio of fallbacks to total actions above which the build terminates early. Ratio is a number in the range [0,1]. 0 indicates fail early is disabled.")
+	failEarlyWindow           = flag.Duration("fail_early_window", 0, "Window of time to consider for fail_early_min_action_count and fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.")
 	racingBias                = flag.Float64("racing_bias", 0.75, "Value between [0,1] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (1). The default is to prefer speed over bandwidth.")
 	racingTmp                 = flag.String("racing_tmp_dir", "", "DEPRECATED. Use download_tmp_dir instead.")
 	downloadTmp               = flag.String("download_tmp_dir", "", "Directory where reproxy should store temporary outputs. This should be on the same device as the exec root for the build. The default is empty, meaning temporary outputs will be written to a subdirectory of the action's working directory.")
@@ -136,6 +137,9 @@ func verifyFlags() {
 	}
 	if *failEarlyMinFallbackRatio < 0 {
 		log.Exitf("Invalid fail_early_min_fallback_ratio: %v, want [0,1]", *failEarlyMinFallbackRatio)
+	}
+	if *failEarlyWindow < 0 {
+		log.Exitf("Invalid fail_early_window: %v, want >0", *failEarlyWindow)
 	}
 	if *racingBias < 0 || *racingBias > 1 {
 		log.Exitf("Invalid racing_bias: %v, want [0,1]", *racingBias)
@@ -299,6 +303,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		StartTime:                 start,
 		FailEarlyMinActionCount:   *failEarlyMinActionCount,
 		FailEarlyMinFallbackRatio: *failEarlyMinFallbackRatio,
+		FailEarlyWindow:           *failEarlyWindow,
 		RacingBias:                *racingBias,
 		DownloadTmp:               dTmp,
 		MaxHoldoff:                time.Minute,

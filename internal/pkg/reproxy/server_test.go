@@ -4383,8 +4383,8 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	if !bytes.Equal(contents, wantOutput) {
 		t.Errorf("RunCommand output %s: %q; want %q", path, contents, wantOutput)
 	}
-	if server.numFallbacks != 1 {
-		t.Errorf("numFallbacks expected to be 1, got %v", server.numFallbacks)
+	if nf := server.numFallbacks.Load(); nf != 1 {
+		t.Errorf("numFallbacks expected to be 1, got %v", nf)
 	}
 
 	server.DrainAndReleaseResources()
@@ -6294,6 +6294,42 @@ func TestDeleteOldLogFiles(t *testing.T) {
 		if !gotDeleted {
 			os.Remove(filename)
 		}
+	}
+}
+
+func TestWindowedCountNoWindow(t *testing.T) {
+	t.Parallel()
+	wc := &windowedCount{}
+	wc.Add(1)
+	time.Sleep(100 * time.Millisecond)
+	wc.Add(3)
+	time.Sleep(100 * time.Millisecond)
+	wc.Add(5)
+	time.Sleep(100 * time.Millisecond)
+	if got := wc.Load(); got != 9 {
+		t.Errorf("windowedCount.Load() returned %v wanted 9", got)
+	}
+}
+
+func TestWindowedCountWithWindow(t *testing.T) {
+	t.Parallel()
+	wc := &windowedCount{window: 350 * time.Millisecond}
+	wc.Add(1)
+	time.Sleep(100 * time.Millisecond)
+	wc.Add(3)
+	time.Sleep(100 * time.Millisecond)
+	wc.Add(5)
+	time.Sleep(100 * time.Millisecond)
+	if got := wc.Load(); got != 9 {
+		t.Errorf("windowedCount.Load() returned %v wanted 9", got)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if got := wc.Load(); got != 8 {
+		t.Errorf("windowedCount.Load() returned %v wanted 8", got)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if got := wc.Load(); got != 5 {
+		t.Errorf("windowedCount.Load() returned %v wanted 5", got)
 	}
 }
 

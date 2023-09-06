@@ -162,6 +162,12 @@ Minimum ratio of fallbacks to total actions above which the build terminates
 early. Ratio is a number in the range between 0 and 1. 0 indicates fail early is
 disabled. Default is 0.
 
+**`-fail_early_window (duration)`**
+
+Window of time to consider for fail_early_min_action_count and
+fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.
+Default is 0.
+
 **`-racing_bias (float)`**
 
 Value between 0 and 1 to indicate how racing manages the tradeoff of saving
