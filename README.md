@@ -178,26 +178,42 @@ configuration.
 
 ### Downloading binaries with CIPD CLI client
 
-Run:
+To download Reclient with GomaIP dependency scanner (used for building
+Chromium):
 
 ```
 echo 'infra/rbe/client/${platform}' $RECLIENT_VERSION > /tmp/reclient.ensure
 cipd ensure --root $CHECKOUT_DIR --ensure-file /tmp/reclient.ensure
 ```
 
-, where:
+To use Reclient with Clangscandeps (used for Android builds) instead, add `-csd`
+suffix to CIPD package:
 
-*   **`$RECLIENT_VERSION`** - the production version of Reclient. It can be set
-    either to a fixed version of Reclient (e.g.
-    `re_client_version:0.114.2.81e819b-gomaip`) or to the latest released
-    version (in that case `$RECLIENT_VERSION` should be set to `latest`)
+```
+echo 'infra/rbe/client/${platform}-csd' $RECLIENT_VERSION > /tmp/reclient.ensure
+
+```
+
+*   **`$RECLIENT_VERSION`** - the version of Reclient. It can be set to one of
+    the following:
+
+    *   A fixed version of Reclient. For example
+        `re_client_version:0.114.2.81e819b-gomaip` (for Reclient with GomaIP
+        dependency scanner) or `re_client_version:0.114.2.81e819b` (for Reclient
+        with Clangscandeps).
+    *   `latest` - the latest released Reclient version.
+    *   `stable` - the latest stable Reclient version. Stable version is usually
+        1-2wks behind the `latest` as Reclient needs to run a few days on test
+        and staging environments without issues and degradations before it's
+        considered as `stable`.
+
 *   **`$CHECKOUT_DIR`** - the location where Reclient should be downloaded.
 
 ### Downloading binaries with gclient
 
 You can configure
 [gclient](https://chromium.googlesource.com/chromium/tools/depot_tools/+/HEAD/README.gclient.md)
-to download Reclient binaries during the`gclient sync` phase. Gclient expects a
+to download Reclient binaries during the `gclient sync` phase. Gclient expects a
 DEPS file in the repository’s root directory. The file contains components that
 will be checked out during the sync phase. To check out Reclient, the file
 should have a similar entry to:
@@ -229,6 +245,10 @@ This will instruct **gclient** to check out `<version>` of Reclient from
 Extracting a version to a variable (as in an example above) is optional, but
 provides a benefit of being able to override the default value through gclient’s
 custom variables.
+
+**Note:** The snippet above will instruct `gclient` to download Reclient with
+GomaIP dependency processor. If you prefer Reclient with Clangscandeps, you'd
+need to set package to `infra/rbe/client/${{platform}}-csd`.
 
 # Using Reclient
 
