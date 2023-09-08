@@ -19,6 +19,27 @@ package log;
 import "bq_table.proto";
 import "go/api/command/command.proto";
 
+// The full record of a single command execution.
+// This needs to be at the top of the file because protoc-gen-bq-schema only cares about the first message.
+message LogRecord {
+  option (gen_bq_schema.bigquery_opts).table_name = "reproxy_log";
+
+  // The executed command.
+  cmd.Command command = 1;
+
+  // Final command result.
+  cmd.CommandResult result = 2;
+
+  // Properties of an remotely executed/cached action.
+  RemoteMetadata remote_metadata = 3;
+
+  // Properties relevant to local execution.
+  LocalMetadata local_metadata = 4;
+
+  // Overall completion status of the command execution.
+  CompletionStatus completion_status = 5;
+}
+
 message LogDump {
   // The log records in the dump.
   repeated LogRecord records = 1;
@@ -61,26 +82,6 @@ enum DeterminismStatus {
   UNKNOWN = 2;
   // Action is non-deterministic only on RBE.
   REMOTE_NON_DETERMINISTIC = 3;
-}
-
-// The full record of a single command execution.
-message LogRecord {
-  option (gen_bq_schema.bigquery_opts).table_name = "reproxy_log";
-
-  // The executed command.
-  cmd.Command command = 1;
-
-  // Final command result.
-  cmd.CommandResult result = 2;
-
-  // Properties of an remotely executed/cached action.
-  RemoteMetadata remote_metadata = 3;
-
-  // Properties relevant to local execution.
-  LocalMetadata local_metadata = 4;
-
-  // Overall completion status of the command execution.
-  CompletionStatus completion_status = 5;
 }
 
 message RerunMetadata {

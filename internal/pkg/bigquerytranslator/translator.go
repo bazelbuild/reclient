@@ -49,7 +49,7 @@ func platform(p map[string]string) []map[string]bigquery.Value {
 }
 
 func collectInputs(input *cpb.InputSpec) map[string]bigquery.Value {
-	var inputFiles []string
+	inputFiles := make([]string, 0)
 	if input.GetInputs() != nil {
 		inputFiles = input.GetInputs()
 	}
@@ -148,7 +148,7 @@ func collectRemoteMetadata(rm *lpb.RemoteMetadata) (map[string]bigquery.Value, e
 	}
 	res["event_times"] = eventTimes
 
-	outputDigests := []map[string]bigquery.Value{}
+	outputFileDigests := []map[string]bigquery.Value{}
 	keys = nil
 	for _, k := range rm.GetOutputFileDigests() {
 		keys = append(keys, k)
@@ -156,12 +156,27 @@ func collectRemoteMetadata(rm *lpb.RemoteMetadata) (map[string]bigquery.Value, e
 	sort.Strings(keys)
 	for _, k := range keys {
 		v := rm.GetOutputFileDigests()[k]
-		outputDigests = append(outputDigests, map[string]bigquery.Value{
+		outputFileDigests = append(outputFileDigests, map[string]bigquery.Value{
 			"key":   k,
 			"value": v,
 		})
 	}
-	res["output_digests"] = outputDigests
+	res["output_file_digests"] = outputFileDigests
+
+	outputDirectoryDigests := []map[string]bigquery.Value{}
+	keys = nil
+	for _, k := range rm.GetOutputDirectoryDigests() {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := rm.GetOutputDirectoryDigests()[k]
+		outputDirectoryDigests = append(outputDirectoryDigests, map[string]bigquery.Value{
+			"key":   k,
+			"value": v,
+		})
+	}
+	res["output_directory_digests"] = outputDirectoryDigests
 	return res, nil
 }
 
@@ -256,6 +271,10 @@ func (i *Item) Save() (map[string]bigquery.Value, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	args := i.GetCommand().GetArgs()
+	if args == nil {
+		args = make([]string, 0)
+	}
 	return map[string]bigquery.Value{
 		"command": map[string]bigquery.Value{
 			"identifiers": map[string]bigquery.Value{
@@ -268,7 +287,7 @@ func (i *Item) Save() (map[string]bigquery.Value, string, error) {
 			"exec_root":         i.GetCommand().GetExecRoot(),
 			"input":             inputs,
 			"output":            outputs,
-			"args":              i.GetCommand().GetArgs(),
+			"args":              args,
 			"execution_timeout": i.GetCommand().GetExecutionTimeout(),
 			"working_directory": i.GetCommand().GetWorkingDirectory(),
 			"platform":          platform(i.GetCommand().GetPlatform()),
