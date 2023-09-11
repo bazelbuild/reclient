@@ -214,7 +214,10 @@ http_archive(
     ],
     sha256 = LLVM_SHA256,
     strip_prefix = "llvm-project-%s" % LLVM_COMMIT,
-    urls = ["https://github.com/llvm/llvm-project/archive/%s.zip" % LLVM_COMMIT],
+    urls = [
+        "https://mirror.bazel.build/github.com/llvm/llvm-project/archive/%s.zip" % LLVM_COMMIT,
+        "https://github.com/llvm/llvm-project/archive/%s.zip" % LLVM_COMMIT,
+    ],
 )
 
 load("@llvm//utils/bazel:configure.bzl", "llvm_configure", "llvm_disable_optional_support_deps")
