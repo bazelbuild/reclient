@@ -413,6 +413,9 @@ func New(format Format, dir, includeScanner string, s statCollector, mi *ignorem
 
 // AddEventTimeToProxyInfo will add an reproxy level event to the ProxyInfo object.
 func (l *Logger) AddEventTimeToProxyInfo(key string, from, to time.Time) {
+	if l == nil {
+		return
+	}
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -424,6 +427,9 @@ func (l *Logger) AddEventTimeToProxyInfo(key string, from, to time.Time) {
 
 // AddEventTimesToProxyInfo will add a map of reproxy level events to the ProxyInfo object.
 func (l *Logger) AddEventTimesToProxyInfo(m map[string]*cpb.TimeInterval) {
+	if l == nil {
+		return
+	}
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -434,6 +440,9 @@ func (l *Logger) AddEventTimesToProxyInfo(m map[string]*cpb.TimeInterval) {
 
 // AddMetricIntToProxyInfo will add an reproxy level event to the ProxyInfo object.
 func (l *Logger) AddMetricIntToProxyInfo(key string, value int64) {
+	if l == nil {
+		return
+	}
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -442,6 +451,9 @@ func (l *Logger) AddMetricIntToProxyInfo(key string, value int64) {
 
 // IncrementMetricIntToProxyInfo will increment a reproxy level event to the ProxyInfo object.
 func (l *Logger) IncrementMetricIntToProxyInfo(key string, delta int64) {
+	if l == nil {
+		return
+	}
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -459,6 +471,9 @@ func (l *Logger) IncrementMetricIntToProxyInfo(key string, delta int64) {
 
 // AddMetricDoubleToProxyInfo will add an reproxy level event to the ProxyInfo object.
 func (l *Logger) AddMetricDoubleToProxyInfo(key string, value float64) {
+	if l == nil {
+		return
+	}
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -467,6 +482,9 @@ func (l *Logger) AddMetricDoubleToProxyInfo(key string, value float64) {
 
 // AddMetricBoolToProxyInfo will add an reproxy level event to the ProxyInfo object.
 func (l *Logger) AddMetricBoolToProxyInfo(key string, value bool) {
+	if l == nil {
+		return
+	}
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -475,6 +493,9 @@ func (l *Logger) AddMetricBoolToProxyInfo(key string, value bool) {
 
 // AddFlagStringToProxyInfo will add an reproxy flag to the ProxyInfo object.
 func (l *Logger) AddFlagStringToProxyInfo(key string, value string) {
+	if l == nil {
+		return
+	}
 	// A call to this function could be very frequent, so it's required to lock the
 	// entire section of adding flags.
 	l.mu.Lock()
@@ -490,6 +511,9 @@ func (l *Logger) AddFlagStringToProxyInfo(key string, value string) {
 
 // AddFlags will add all reproxy flags to the ProxyInfo object.
 func (l *Logger) AddFlags(flagSet *flag.FlagSet) {
+	if l == nil {
+		return
+	}
 	if flagSet == nil {
 		log.Warningf("nil FlagSet pointer")
 		return
