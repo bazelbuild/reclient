@@ -701,11 +701,32 @@ func TestBuildAddress(t *testing.T) {
 		wantAddr     string
 	}{
 		{
-			name:         "UnixSocketOnUnix",
+			name:         "UnixSocketAbsOnUnix",
 			platforms:    []string{"linux", "darwin"},
-			serverAddr:   "unix://some/dir/somesocket.sock",
+			serverAddr:   "unix:///some/dir/somesocket.sock",
 			openPortFunc: func() (int, error) { return 111, nil },
-			wantAddr:     "unix://some/dir/somesocket.sock.despscan.sock",
+			wantAddr:     "unix:///some/dir/ds_somesocket.sock",
+		},
+		{
+			name:         "UnixSocketAbsNoDirsOnUnix",
+			platforms:    []string{"linux", "darwin"},
+			serverAddr:   "unix:///somesocket.sock",
+			openPortFunc: func() (int, error) { return 111, nil },
+			wantAddr:     "unix:///ds_somesocket.sock",
+		},
+		{
+			name:         "UnixSocketRelNoDirsOnUnix",
+			platforms:    []string{"linux", "darwin"},
+			serverAddr:   "unix://somesocket.sock",
+			openPortFunc: func() (int, error) { return 111, nil },
+			wantAddr:     "unix://ds_somesocket.sock",
+		},
+		{
+			name:         "UnixSocketRelOnUnix",
+			platforms:    []string{"linux", "darwin"},
+			serverAddr:   "unix://a/b/somesocket.sock",
+			openPortFunc: func() (int, error) { return 111, nil },
+			wantAddr:     "unix://a/b/ds_somesocket.sock",
 		},
 		{
 			name:         "UnixSocketOnWindows",
