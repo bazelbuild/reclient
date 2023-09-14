@@ -18,7 +18,7 @@ load(":cc_toolchain_config.bzl", "cc_toolchain_config")
 load(":armeabi_cc_toolchain_config.bzl", "armeabi_cc_toolchain_config")
 load("@rules_cc//cc:defs.bzl", "cc_toolchain", "cc_toolchain_suite")
 
-clang_version = "r498229"
+clang_version = "r498229b"
 
 clang_short_version = "17"
 
