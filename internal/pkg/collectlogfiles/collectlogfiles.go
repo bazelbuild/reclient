@@ -29,21 +29,6 @@ import (
 
 var (
 	logFileNames = []string{
-		"reproxy.INFO",
-		"reproxy.WARNING",
-		"reproxy.ERROR",
-		"reproxy.FATAL",
-
-		"rewrapper.INFO",
-		"rewrapper.WARNING",
-		"rewrapper.ERROR",
-		"rewrapper.FATAL",
-
-		"bootstrap.INFO",
-		"bootstrap.WARNING",
-		"bootstrap.ERROR",
-		"bootstrap.FATAL",
-
 		"rbe_metrics.txt",
 		"rbe_metrics.pb",
 
@@ -109,6 +94,9 @@ func CreateLogsArchive(fname string, logDirs []string, logPath string) (err erro
 
 func collectLogFilesFromDir(logDir string) []string {
 	var logFiles []string
+	if glogFiles, err := filepath.Glob(filepath.Join(logDir, "*.{INFO,ERROR,WARNING}")); err == nil {
+		logFiles = append(logFiles, glogFiles...)
+	}
 	for _, logFile := range logFileNames {
 		fp := filepath.Join(logDir, logFile)
 		if _, err := os.Stat(fp); err == nil {
