@@ -1,0 +1,23 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "stat_proto",
+    srcs = ["stat.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "stat_go_proto",
+    importpath = "team/foundry-x/re-client/api/stat",
+    proto = ":stat_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "stat",
+    embed = [":stat_go_proto"],
+    importpath = "team/foundry-x/re-client/api/stat",
+    visibility = ["//visibility:public"],
+)

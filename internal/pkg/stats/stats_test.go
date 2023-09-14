@@ -31,6 +31,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	lpb "team/foundry-x/re-client/api/log"
+	stpb "team/foundry-x/re-client/api/stat"
 	spb "team/foundry-x/re-client/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
@@ -38,7 +39,7 @@ import (
 
 var (
 	minfo                      = machineInfo()
-	cmpStatsOpts               = []cmp.Option{protocmp.Transform(), protocmp.SortRepeatedFields(&spb.Stat{}, "counts_by_value"), protocmp.SortRepeatedFields(&spb.Stats{}, "stats")}
+	cmpStatsOpts               = []cmp.Option{protocmp.Transform(), protocmp.SortRepeatedFields(&stpb.Stat{}, "counts_by_value"), protocmp.SortRepeatedFields(&spb.Stats{}, "stats")}
 	cmpStatsIgnoreBuildLatency = protocmp.IgnoreFields(&spb.Stats{}, "build_latency") // This is invalid if no proxy execution times provided.
 )
 
@@ -63,8 +64,8 @@ func TestStatsToProto(t *testing.T) {
 				Percentile85: 12,
 				Percentile95: 13,
 				Average:      9.8,
-				Outlier1:     &spb.Outlier{CommandId: "foo", Value: 15},
-				Outlier2:     &spb.Outlier{CommandId: "foo", Value: 14},
+				Outlier1:     &stpb.Outlier{CommandId: "foo", Value: 15},
+				Outlier2:     &stpb.Outlier{CommandId: "foo", Value: 14},
 			},
 		},
 		ProxyInfos: []*lpb.ProxyInfo{&lpb.ProxyInfo{
@@ -78,8 +79,8 @@ func TestStatsToProto(t *testing.T) {
 	}
 	expected := &spb.Stats{
 		NumRecords: 5,
-		Stats: []*spb.Stat{
-			&spb.Stat{
+		Stats: []*stpb.Stat{
+			&stpb.Stat{
 				Name:         "a",
 				Count:        6,
 				Median:       10,
@@ -87,17 +88,17 @@ func TestStatsToProto(t *testing.T) {
 				Percentile85: 12,
 				Percentile95: 13,
 				Average:      9.8,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "foo", Value: 15},
-					&spb.Outlier{CommandId: "foo", Value: 14},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "foo", Value: 15},
+					&stpb.Outlier{CommandId: "foo", Value: 14},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:  "b",
 				Count: 3,
-				CountsByValue: []*spb.Stat_Value{
-					&spb.Stat_Value{Name: "v1", Count: 4},
-					&spb.Stat_Value{Name: "v2", Count: 5},
+				CountsByValue: []*stpb.Stat_Value{
+					&stpb.Stat_Value{Name: "v1", Count: 4},
+					&stpb.Stat_Value{Name: "v2", Count: 5},
 				},
 			},
 		},
@@ -134,8 +135,8 @@ func TestWriteStats(t *testing.T) {
 				Percentile85: 12,
 				Percentile95: 13,
 				Average:      9.8,
-				Outlier1:     &spb.Outlier{CommandId: "foo", Value: 15},
-				Outlier2:     &spb.Outlier{CommandId: "foo", Value: 14},
+				Outlier1:     &stpb.Outlier{CommandId: "foo", Value: 15},
+				Outlier2:     &stpb.Outlier{CommandId: "foo", Value: 14},
 			},
 		},
 		ProxyInfos: []*lpb.ProxyInfo{&lpb.ProxyInfo{
@@ -219,29 +220,29 @@ func TestBoolStats(t *testing.T) {
 	s := NewFromRecords(recs, nil)
 	wantStats := &spb.Stats{
 		NumRecords: 5,
-		Stats: []*spb.Stat{
-			&spb.Stat{
+		Stats: []*stpb.Stat{
+			&stpb.Stat{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 5,
 					},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:  "LocalMetadata.ExecutedLocally",
 				Count: 3,
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:  "LocalMetadata.UpdatedCache",
 				Count: 1,
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:  "LocalMetadata.ValidCacheHit",
 				Count: 2,
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:  "RemoteMetadata.CacheHit",
 				Count: 3,
 			},
@@ -300,28 +301,28 @@ func TestEnumStats(t *testing.T) {
 	s := NewFromRecords(recs, nil)
 	wantStats := &spb.Stats{
 		NumRecords: 10,
-		Stats: []*spb.Stat{
-			&spb.Stat{
+		Stats: []*stpb.Stat{
+			&stpb.Stat{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_CACHE_HIT.String(), Count: 2},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_NON_ZERO_EXIT.String(), Count: 1},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_FAILURE.String(), Count: 2},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION.String(), Count: 1},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_LOCAL_EXECUTION.String(), Count: 1},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_RACING_LOCAL.String(), Count: 1},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_RACING_REMOTE.String(), Count: 1},
-					&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_TIMEOUT.String(), Count: 1},
+				CountsByValue: []*stpb.Stat_Value{
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_CACHE_HIT.String(), Count: 2},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_NON_ZERO_EXIT.String(), Count: 1},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_FAILURE.String(), Count: 2},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION.String(), Count: 1},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_LOCAL_EXECUTION.String(), Count: 1},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_RACING_LOCAL.String(), Count: 1},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_RACING_REMOTE.String(), Count: 1},
+					&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_TIMEOUT.String(), Count: 1},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name: "Result.Status",
-				CountsByValue: []*spb.Stat_Value{
-					&spb.Stat_Value{Name: "CACHE_HIT", Count: 2},
-					&spb.Stat_Value{Name: "NON_ZERO_EXIT", Count: 1},
-					&spb.Stat_Value{Name: "REMOTE_ERROR", Count: 2},
-					&spb.Stat_Value{Name: "SUCCESS", Count: 4},
-					&spb.Stat_Value{Name: "TIMEOUT", Count: 1},
+				CountsByValue: []*stpb.Stat_Value{
+					&stpb.Stat_Value{Name: "CACHE_HIT", Count: 2},
+					&stpb.Stat_Value{Name: "NON_ZERO_EXIT", Count: 1},
+					&stpb.Stat_Value{Name: "REMOTE_ERROR", Count: 2},
+					&stpb.Stat_Value{Name: "SUCCESS", Count: 4},
+					&stpb.Stat_Value{Name: "TIMEOUT", Count: 1},
 				},
 			},
 		},
@@ -351,10 +352,10 @@ func TestInvocationIDs(t *testing.T) {
 		InvocationIds: invIDs,
 		MachineInfo:   minfo,
 		ProxyInfo:     []*lpb.ProxyInfo{},
-		Stats: []*spb.Stat{
+		Stats: []*stpb.Stat{
 			{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 5,
@@ -385,17 +386,17 @@ func TestIntStats(t *testing.T) {
 	s := NewFromRecords(recs, nil)
 	wantStats := &spb.Stats{
 		NumRecords: 100,
-		Stats: []*spb.Stat{
+		Stats: []*stpb.Stat{
 			{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 100,
 					},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "RemoteMetadata.NumInputFiles",
 				Average:      50.5,
 				Count:        5050,
@@ -403,9 +404,9 @@ func TestIntStats(t *testing.T) {
 				Percentile75: 76,
 				Percentile85: 86,
 				Percentile95: 96,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "100", Value: 100},
-					&spb.Outlier{CommandId: "99", Value: 99},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "100", Value: 100},
+					&stpb.Outlier{CommandId: "99", Value: 99},
 				},
 			},
 		},
@@ -446,8 +447,8 @@ func TestLabelsAggregation(t *testing.T) {
 	s := NewFromRecords(recs, nil)
 	wantStats := &spb.Stats{
 		NumRecords: 30,
-		Stats: []*spb.Stat{
-			&spb.Stat{
+		Stats: []*stpb.Stat{
+			&stpb.Stat{
 				Name:         "RemoteMetadata.NumInputFiles",
 				Average:      4,
 				Count:        120,
@@ -455,12 +456,12 @@ func TestLabelsAggregation(t *testing.T) {
 				Percentile75: 5,
 				Percentile85: 5,
 				Percentile95: 5,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "l_1", Value: 5},
-					&spb.Outlier{CommandId: "l_2", Value: 5},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "l_1", Value: 5},
+					&stpb.Outlier{CommandId: "l_2", Value: 5},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "[action=compile,lang=c++].RemoteMetadata.NumInputFiles",
 				Average:      2,
 				Count:        20,
@@ -468,12 +469,12 @@ func TestLabelsAggregation(t *testing.T) {
 				Percentile75: 2,
 				Percentile85: 2,
 				Percentile95: 2,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "c_1", Value: 2},
-					&spb.Outlier{CommandId: "c_2", Value: 2},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "c_1", Value: 2},
+					&stpb.Outlier{CommandId: "c_2", Value: 2},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "[action=link,lang=c++].RemoteMetadata.NumInputFiles",
 				Average:      5,
 				Count:        100,
@@ -481,14 +482,14 @@ func TestLabelsAggregation(t *testing.T) {
 				Percentile75: 5,
 				Percentile85: 5,
 				Percentile95: 5,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "l_1", Value: 5},
-					&spb.Outlier{CommandId: "l_2", Value: 5},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "l_1", Value: 5},
+					&stpb.Outlier{CommandId: "l_2", Value: 5},
 				},
 			},
 			{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 30,
@@ -497,7 +498,7 @@ func TestLabelsAggregation(t *testing.T) {
 			},
 			{
 				Name: "[action=compile,lang=c++].CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 10,
@@ -506,7 +507,7 @@ func TestLabelsAggregation(t *testing.T) {
 			},
 			{
 				Name: "[action=link,lang=c++].CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 20,
@@ -583,17 +584,17 @@ func TestVerification(t *testing.T) {
 	s := NewFromRecords(recs, nil)
 	wantStats := &spb.Stats{
 		NumRecords: 3,
-		Stats: []*spb.Stat{
+		Stats: []*stpb.Stat{
 			{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  "STATUS_UNKNOWN",
 						Count: 3,
 					},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "LocalMetadata.Verification.TotalMismatches",
 				Count:        5,
 				Median:       2,
@@ -601,12 +602,12 @@ func TestVerification(t *testing.T) {
 				Percentile85: 2,
 				Percentile95: 2,
 				Average:      5.0 / 3.0,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{Value: 2},
-					&spb.Outlier{Value: 2},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{Value: 2},
+					&stpb.Outlier{Value: 2},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "LocalMetadata.Verification.TotalVerified",
 				Count:        6,
 				Median:       2,
@@ -614,9 +615,9 @@ func TestVerification(t *testing.T) {
 				Percentile85: 2,
 				Percentile95: 2,
 				Average:      6.0 / 3.0,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{Value: 2},
-					&spb.Outlier{Value: 2},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{Value: 2},
+					&stpb.Outlier{Value: 2},
 				},
 			},
 		},
@@ -684,17 +685,17 @@ func TestTimeStats(t *testing.T) {
 	s := NewFromRecords(recs, nil)
 	wantStats := &spb.Stats{
 		NumRecords: 100,
-		Stats: []*spb.Stat{
+		Stats: []*stpb.Stat{
 			{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  lpb.CompletionStatus_STATUS_UNKNOWN.String(),
 						Count: 100,
 					},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "RemoteMetadata.EventTimes.FooMillis",
 				Count:        100,
 				Average:      49.5,
@@ -702,9 +703,9 @@ func TestTimeStats(t *testing.T) {
 				Percentile75: 75,
 				Percentile85: 85,
 				Percentile95: 95,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "99", Value: 99},
-					&spb.Outlier{CommandId: "98", Value: 98},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "99", Value: 99},
+					&stpb.Outlier{CommandId: "98", Value: 98},
 				},
 			},
 		},
@@ -762,17 +763,17 @@ func TestTimeStatsDoNotAggregatePartial(t *testing.T) {
 
 	wantStats := &spb.Stats{
 		NumRecords: 5,
-		Stats: []*spb.Stat{
+		Stats: []*stpb.Stat{
 			{
 				Name: "CompletionStatus",
-				CountsByValue: []*spb.Stat_Value{
+				CountsByValue: []*stpb.Stat_Value{
 					{
 						Name:  "STATUS_UNKNOWN",
 						Count: 5,
 					},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:         "RemoteMetadata.EventTimes.FooMillis",
 				Count:        3,
 				Average:      2.0 / 3.0,
@@ -780,8 +781,8 @@ func TestTimeStatsDoNotAggregatePartial(t *testing.T) {
 				Percentile75: 2,
 				Percentile85: 2,
 				Percentile95: 2,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{Value: 2},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{Value: 2},
 				},
 			},
 		},
@@ -859,8 +860,8 @@ func TestBandwidthStats(t *testing.T) {
 func TestStatsProtoSaver(t *testing.T) {
 	original := &spb.Stats{
 		NumRecords: 5,
-		Stats: []*spb.Stat{
-			&spb.Stat{
+		Stats: []*stpb.Stat{
+			&stpb.Stat{
 				Name:         "a",
 				Count:        6,
 				Median:       10,
@@ -868,17 +869,17 @@ func TestStatsProtoSaver(t *testing.T) {
 				Percentile85: 12,
 				Percentile95: 13,
 				Average:      9.8,
-				Outliers: []*spb.Outlier{
-					&spb.Outlier{CommandId: "foo", Value: 15},
-					&spb.Outlier{CommandId: "foo", Value: 14},
+				Outliers: []*stpb.Outlier{
+					&stpb.Outlier{CommandId: "foo", Value: 15},
+					&stpb.Outlier{CommandId: "foo", Value: 14},
 				},
 			},
-			&spb.Stat{
+			&stpb.Stat{
 				Name:  "b",
 				Count: 3,
-				CountsByValue: []*spb.Stat_Value{
-					&spb.Stat_Value{Name: "v1", Count: 4},
-					&spb.Stat_Value{Name: "v2", Count: 5},
+				CountsByValue: []*stpb.Stat_Value{
+					&stpb.Stat_Value{Name: "v1", Count: 4},
+					&stpb.Stat_Value{Name: "v2", Count: 5},
 				},
 			},
 		},
@@ -949,7 +950,7 @@ func BenchmarkProtoSaver(b *testing.B) {
 	proxyEvents := map[string]*cpb.TimeInterval{}
 	flags := map[string]string{}
 	metrics := map[string]*lpb.Metric{}
-	statArr := []*spb.Stat{}
+	statArr := []*stpb.Stat{}
 	for i := 0; i < 1000; i++ {
 		proxyEvents[fmt.Sprintf("Event%d", i)] = &cpb.TimeInterval{
 			From: timestamppb.New(testNow.Add(time.Duration(i) * time.Minute)),
@@ -959,7 +960,7 @@ func BenchmarkProtoSaver(b *testing.B) {
 		metrics[fmt.Sprintf("flag_%d_bool", i)] = &lpb.Metric{Value: &lpb.Metric_BoolValue{i%2 == 0}}
 		metrics[fmt.Sprintf("flag_%d_double", i)] = &lpb.Metric{Value: &lpb.Metric_DoubleValue{float64(i) + 0.5}}
 		metrics[fmt.Sprintf("flag_%d_int64", i)] = &lpb.Metric{Value: &lpb.Metric_Int64Value{int64(i)}}
-		statArr = append(statArr, &spb.Stat{
+		statArr = append(statArr, &stpb.Stat{
 			Name:         "a",
 			Count:        int64(6 * i),
 			Median:       int64(10 + i),
@@ -967,9 +968,9 @@ func BenchmarkProtoSaver(b *testing.B) {
 			Percentile85: int64(12 + i),
 			Percentile95: int64(13 + i),
 			Average:      9.8 + float64(i),
-			Outliers: []*spb.Outlier{
-				&spb.Outlier{CommandId: "foo", Value: int64(15 + i)},
-				&spb.Outlier{CommandId: "foo", Value: int64(14 + i)},
+			Outliers: []*stpb.Outlier{
+				&stpb.Outlier{CommandId: "foo", Value: int64(15 + i)},
+				&stpb.Outlier{CommandId: "foo", Value: int64(14 + i)},
 			},
 		})
 	}
@@ -997,11 +998,11 @@ func TestCompletionStats(t *testing.T) {
 		{
 			name: "OneStatus",
 			stats: &spb.Stats{
-				Stats: []*spb.Stat{
-					&spb.Stat{
+				Stats: []*stpb.Stat{
+					&stpb.Stat{
 						Name: "CompletionStatus",
-						CountsByValue: []*spb.Stat_Value{
-							&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION.String(), Count: 4},
+						CountsByValue: []*stpb.Stat_Value{
+							&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION.String(), Count: 4},
 						},
 					},
 				},
@@ -1011,13 +1012,13 @@ func TestCompletionStats(t *testing.T) {
 		{
 			name: "MultipleStatuses",
 			stats: &spb.Stats{
-				Stats: []*spb.Stat{
-					&spb.Stat{
+				Stats: []*stpb.Stat{
+					&stpb.Stat{
 						Name: "CompletionStatus",
-						CountsByValue: []*spb.Stat_Value{
-							&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION.String(), Count: 4},
-							&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_LOCAL_EXECUTION.String(), Count: 3},
-							&spb.Stat_Value{Name: lpb.CompletionStatus_STATUS_LOCAL_FALLBACK.String(), Count: 1},
+						CountsByValue: []*stpb.Stat_Value{
+							&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_REMOTE_EXECUTION.String(), Count: 4},
+							&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_LOCAL_EXECUTION.String(), Count: 3},
+							&stpb.Stat_Value{Name: lpb.CompletionStatus_STATUS_LOCAL_FALLBACK.String(), Count: 1},
 						},
 					},
 				},

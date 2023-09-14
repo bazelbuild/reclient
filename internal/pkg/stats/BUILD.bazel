@@ -7,6 +7,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/log",
+        "//api/stat",
         "//api/stats",
         "//internal/pkg/labels",
         "//internal/pkg/localresources",
@@ -31,6 +32,7 @@ go_test(
     embed = [":stats"],
     deps = [
         "//api/log",
+        "//api/stat",
         "//api/stats",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

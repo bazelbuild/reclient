@@ -17,6 +17,7 @@ syntax = "proto3";
 package experiment;
 
 import "api/log/log.proto";
+import "api/stat/stat.proto";
 import "api/stats/stats.proto";
 
 // Experiment encapsulates all configuration required for running an experiment

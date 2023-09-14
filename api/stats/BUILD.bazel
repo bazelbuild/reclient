@@ -6,7 +6,10 @@ proto_library(
     name = "stats_proto",
     srcs = ["stats.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//api/log:log_proto"],
+    deps = [
+        "//api/log:log_proto",
+        "//api/stat:stat_proto",
+    ],
 )
 
 go_proto_library(
@@ -14,7 +17,10 @@ go_proto_library(
     importpath = "team/foundry-x/re-client/api/stats",
     proto = ":stats_proto",
     visibility = ["//visibility:public"],
-    deps = ["//api/log"],
+    deps = [
+        "//api/log",
+        "//api/stat",
+    ],
 )
 
 go_library(

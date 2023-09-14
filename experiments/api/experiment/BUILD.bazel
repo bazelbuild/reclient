@@ -8,6 +8,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/log:log_proto",
+        "//api/stat:stat_proto",
         "//api/stats:stats_proto",
     ],
 )
@@ -19,6 +20,7 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/log",
+        "//api/stat",
         "//api/stats",
     ],
 )

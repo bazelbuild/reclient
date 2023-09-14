@@ -39,6 +39,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	lpb "team/foundry-x/re-client/api/log"
+	stpb "team/foundry-x/re-client/api/stat"
 	spb "team/foundry-x/re-client/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
@@ -69,7 +70,7 @@ type Stat struct {
 	isMillis  bool
 
 	// Commands that have the highest values.
-	Outlier1, Outlier2 *spb.Outlier
+	Outlier1, Outlier2 *stpb.Outlier
 
 	Median, Percentile75, Percentile85, Percentile95 int64
 	Average                                          float64
@@ -292,7 +293,7 @@ func (stt *statTree) addNum(val int64, name, cmdID string, isMillis bool) {
 	if val == 0 {
 		return
 	}
-	cur := &spb.Outlier{CommandId: cmdID, Value: int64(val)}
+	cur := &stpb.Outlier{CommandId: cmdID, Value: int64(val)}
 	if st.Outlier1 == nil || val > st.Outlier1.Value {
 		st.Outlier2 = st.Outlier1
 		st.Outlier1 = cur
@@ -453,8 +454,8 @@ func CompletionStats(s *spb.Stats) string {
 	return ""
 }
 
-func statToProto(name string, s *Stat) *spb.Stat {
-	sPb := &spb.Stat{
+func statToProto(name string, s *Stat) *stpb.Stat {
+	sPb := &stpb.Stat{
 		Name:         name,
 		Count:        s.Count,
 		Median:       s.Median,
@@ -470,7 +471,7 @@ func statToProto(name string, s *Stat) *spb.Stat {
 	sort.Strings(keys)
 	for _, n := range keys {
 		v := s.CountByValue[n]
-		sPb.CountsByValue = append(sPb.CountsByValue, &spb.Stat_Value{Name: n, Count: v})
+		sPb.CountsByValue = append(sPb.CountsByValue, &stpb.Stat_Value{Name: n, Count: v})
 	}
 	if s.Outlier1 != nil {
 		sPb.Outliers = append(sPb.Outliers, s.Outlier1)
