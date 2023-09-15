@@ -104,7 +104,7 @@ type Server struct {
 	FailEarlyMinActionCount   int64
 	FailEarlyMinFallbackRatio float64
 	RacingBias                float64
-	RacingTmp                 string
+	DownloadTmp               string
 	MaxHoldoff                time.Duration // Maximum amount of time to wait for downloads before starting racing.
 	StartupCancelFn           func()
 	numActions                int64
@@ -456,7 +456,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		cmdEnvironment:  cmdEnv,
 		cancelFunc:      cancel,
 		racingBias:      s.RacingBias,
-		racingTmp:       s.RacingTmp,
+		downloadTmp:     s.DownloadTmp,
 	}
 	s.activeActions.Store(executionID, a)
 	defer s.activeActions.Delete(executionID)

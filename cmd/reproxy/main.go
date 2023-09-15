@@ -108,7 +108,8 @@ var (
 	failEarlyMinActionCount   = flag.Int64("fail_early_min_action_count", 0, "Minimum number of actions received by reproxy before the fail early mechanism can take effect. 0 indicates fail early is disabled.")
 	failEarlyMinFallbackRatio = flag.Float64("fail_early_min_fallback_ratio", 0, "Minimum ratio of fallbacks to total actions above which the build terminates early. Ratio is a number in the range [0,1]. 0 indicates fail early is disabled.")
 	racingBias                = flag.Float64("racing_bias", 0.75, "Value between [0,1] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (1). The default is to prefer speed over bandwidth.")
-	racingTmp                 = flag.String("racing_tmp_dir", os.TempDir(), "Directory where reproxy should store temporary outputs during racing mode. This should be on the same device as the exec root for the build.")
+	racingTmp                 = flag.String("racing_tmp_dir", "", "DEPRECATED. Use download_tmp_dir instead.")
+	downloadTmp               = flag.String("download_tmp_dir", "", "Directory where reproxy should store temporary outputs. This should be on the same device as the exec root for the build. The default is empty, meaning temporary outputs will be written to a subdirectory of the action's working directory.")
 
 	debugPort   = flag.Int("pprof_port", 0, "Enable pprof http server if not zero")
 	cpuProfFile = flag.String("pprof_file", "", "Enable cpu pprof if not empty. Will not work on windows as reproxy shutdowns through an uncatchable sigkill.")
@@ -280,6 +281,11 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	exec := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewFractionalDefaultManager(*localResourceFraction)
 
+	dTmp := *racingTmp
+	if *downloadTmp != "" {
+		dTmp = *downloadTmp
+	}
+
 	initCtx, cancelInit := context.WithCancel(ctx)
 	server := &reproxy.Server{
 		FileMetadataStore:         st,
@@ -294,7 +300,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 		FailEarlyMinActionCount:   *failEarlyMinActionCount,
 		FailEarlyMinFallbackRatio: *failEarlyMinFallbackRatio,
 		RacingBias:                *racingBias,
-		RacingTmp:                 *racingTmp,
+		DownloadTmp:               dTmp,
 		MaxHoldoff:                time.Minute,
 		Logger:                    l,
 		StartupCancelFn:           cancelInit,

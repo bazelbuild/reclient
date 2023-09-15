@@ -90,7 +90,9 @@ func TestRemoteStrategyWithLocalError(t *testing.T) {
 		ExecutionOptions: &ppb.ProxyExecutionOptions{ExecutionStrategy: ppb.ExecutionStrategy_REMOTE, ReclientTimeout: 3600},
 	}
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: filemetadata.NewSingleFlightCache(),
 	}
 	server.Init()
 	server.SetInputProcessor(&inputprocessor.InputProcessor{}, func() {})
@@ -130,7 +132,9 @@ func TestRemote(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -194,8 +198,8 @@ func TestRemote(t *testing.T) {
 			t.Errorf("Expected %s to contain \"output\", got %v", path, contents)
 		}
 	}
-	if fmc.GetCacheHits() != 6 || fmc.GetCacheMisses() != 3 {
-		t.Errorf("Cache Hits/Misses = %v, %v. Want 6, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
+	if fmc.GetCacheHits() != 8 || fmc.GetCacheMisses() != 3 {
+		t.Errorf("Cache Hits/Misses = %v, %v. Want 8, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
 	}
 	gotSummary, _ := lg.GetStatusSummary(ctx, &ppb.GetStatusSummaryRequest{})
 	server.DrainAndReleaseResources()
@@ -264,7 +268,9 @@ func TestRemote_CanonicalWorkingDir(t *testing.T) {
 	// Start reproxy server
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -348,8 +354,8 @@ func TestRemote_CanonicalWorkingDir(t *testing.T) {
 			t.Errorf("Expected %s to contain \"output\", got %v", path, contents)
 		}
 	}
-	if fmc.GetCacheHits() != 6 || fmc.GetCacheMisses() != 3 {
-		t.Errorf("Cache Hits/Misses = %v, %v. Want 6, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
+	if fmc.GetCacheHits() != 8 || fmc.GetCacheMisses() != 3 {
+		t.Errorf("Cache Hits/Misses = %v, %v. Want 8, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
 	}
 
 	// Shutdown reproxy and retrieve logs and metrics
@@ -425,7 +431,9 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 	// Start reproxy server
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -515,8 +523,8 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 			t.Errorf("Expected %s to contain \"output\", got %v", path, contents)
 		}
 	}
-	if fmc.GetCacheHits() != 6 || fmc.GetCacheMisses() != 3 {
-		t.Errorf("Cache Hits/Misses = %v, %v. Want 6, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
+	if fmc.GetCacheHits() != 8 || fmc.GetCacheMisses() != 3 {
+		t.Errorf("Cache Hits/Misses = %v, %v. Want 8, 3", fmc.GetCacheHits(), fmc.GetCacheMisses())
 	}
 
 	// Shutdown reproxy and retrieve logs and metrics
@@ -573,6 +581,7 @@ func TestRemoteWithReclientTimeout(t *testing.T) {
 	server := &Server{
 		LocalPool:         NewLocalPool(executor, resMgr),
 		FileMetadataStore: fmc,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -727,7 +736,9 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			resMgr := localresources.NewDefaultManager()
 			server := &Server{
-				MaxHoldoff: time.Minute,
+				MaxHoldoff:        time.Minute,
+				FileMetadataStore: fmc,
+				DownloadTmp:       t.TempDir(),
 			}
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -868,7 +879,9 @@ func TestRemoteWithSingleActionLog(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -969,7 +982,9 @@ func TestNoRemoteOnInputFail(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -1020,6 +1035,7 @@ func TestLERCNoDeps(t *testing.T) {
 		LocalPool:         NewLocalPool(executor, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1163,6 +1179,7 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 		LocalPool:         NewLocalPool(executor, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1319,8 +1336,10 @@ func TestLERCLocalFailure(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:  NewLocalPool(executor, resMgr),
-		MaxHoldoff: time.Minute,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1428,8 +1447,10 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 	executor := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:  NewLocalPool(executor, resMgr),
-		MaxHoldoff: time.Minute,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1610,6 +1631,7 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 	server := &Server{
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1728,6 +1750,7 @@ func TestLERCInputAsOutput_UploadsUpdatedOutputAsCacheResult(t *testing.T) {
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1820,6 +1843,7 @@ func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1915,6 +1939,7 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 	server := &Server{
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2049,6 +2074,7 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2236,6 +2262,7 @@ func TestLERCMismatches(t *testing.T) {
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2408,6 +2435,7 @@ func TestCompareStashRestore(t *testing.T) {
 		FileMetadataStore: fmc,
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(nil, false, nil, resMgr), func() {})
@@ -2497,6 +2525,7 @@ func TestNumRetriesIfMismatched(t *testing.T) {
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2733,6 +2762,7 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2893,6 +2923,7 @@ func TestCompareWithReruns(t *testing.T) {
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3148,6 +3179,7 @@ func TestNoRerunWhenNoCompareMode(t *testing.T) {
 		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3274,8 +3306,10 @@ func TestRemoteLocalFallback(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:  NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
-		MaxHoldoff: time.Minute,
+		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3378,7 +3412,9 @@ func TestForwardErrorLog(t *testing.T) {
 	env.Client.FileMetadataCache = fmc
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3480,6 +3516,8 @@ func TestFailEarlyOnIpTimeouts(t *testing.T) {
 				FailEarlyMinActionCount:   4000,
 				FailEarlyMinFallbackRatio: 0.5,
 				MaxHoldoff:                time.Minute,
+				DownloadTmp:               t.TempDir(),
+				FileMetadataStore:         fmc,
 			}
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(depScanner, false, nil, resMgr), func() {})
@@ -3515,6 +3553,8 @@ func TestFailEarly(t *testing.T) {
 		FailEarlyMinActionCount:   2,
 		FailEarlyMinFallbackRatio: 0.5,
 		MaxHoldoff:                time.Minute,
+		DownloadTmp:               t.TempDir(),
+		FileMetadataStore:         fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3675,8 +3715,10 @@ func TestRunCommand_LabelDigestAddedToCommandID(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:  NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
-		MaxHoldoff: time.Minute,
+		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3754,8 +3796,10 @@ func TestRunCommand_InvalidUTF8InStdout(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:  NewLocalPool(executor, resMgr),
-		MaxHoldoff: time.Minute,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3810,8 +3854,10 @@ func TestLocalFallback(t *testing.T) {
 	t.Cleanup(cleanup)
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:  NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
-		MaxHoldoff: time.Minute,
+		LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -3910,7 +3956,7 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4044,7 +4090,7 @@ func TestRacingRemoteWins(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4158,7 +4204,7 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4262,7 +4308,7 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4416,7 +4462,7 @@ func TestRacing_DownloadOutputs(t *testing.T) {
 				FileMetadataStore: fmc,
 				Forecast:          &Forecast{},
 				MaxHoldoff:        time.Minute,
-				RacingTmp:         t.TempDir(),
+				DownloadTmp:       t.TempDir(),
 			}
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4577,7 +4623,7 @@ func TestRacingRemoteWins_PreserveUnchangedOutputMtime(t *testing.T) {
 				FileMetadataStore: fmc,
 				Forecast:          &Forecast{},
 				MaxHoldoff:        time.Minute,
-				RacingTmp:         t.TempDir(),
+				DownloadTmp:       t.TempDir(),
 			}
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4673,7 +4719,7 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4796,7 +4842,7 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4903,7 +4949,7 @@ func TestRacingLocalWins(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -5012,7 +5058,7 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -5122,7 +5168,7 @@ func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -5253,7 +5299,7 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{minSizeForStats: 1},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -5373,7 +5419,7 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{minSizeForStats: 1},
 		MaxHoldoff:        time.Minute,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -5491,7 +5537,7 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 		FileMetadataStore: fmc,
 		Forecast:          &Forecast{minSizeForStats: 1},
 		MaxHoldoff:        100 * time.Millisecond,
-		RacingTmp:         t.TempDir(),
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -5599,7 +5645,9 @@ func TestDupOutputs(t *testing.T) {
 	ds := &stubCPPDependencyScanner{processInputsReturnValue: files}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		MaxHoldoff: time.Minute,
+		MaxHoldoff:        time.Minute,
+		FileMetadataStore: fmc,
+		DownloadTmp:       t.TempDir(),
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -5656,7 +5704,7 @@ func TestDupOutputs(t *testing.T) {
 func TestRunCommandError(t *testing.T) {
 	ds := &stubCPPDependencyScanner{processInputsError: errors.New("cannot determine inputs")}
 	resMgr := localresources.NewDefaultManager()
-	execRoot := filepath.Join(os.TempDir(), "home", "user", "code")
+	execRoot := filepath.Join(t.TempDir(), "home", "user", "code")
 	tests := []struct {
 		name       string
 		inp        *inputprocessor.InputProcessor
@@ -5722,7 +5770,9 @@ func TestRunCommandError(t *testing.T) {
 			fmc := filemetadata.NewSingleFlightCache()
 			env.Client.FileMetadataCache = fmc
 			server := &Server{
-				MaxHoldoff: time.Minute,
+				MaxHoldoff:        time.Minute,
+				DownloadTmp:       t.TempDir(),
+				FileMetadataStore: fmc,
 			}
 			server.Init()
 			server.SetInputProcessor(test.inp, func() {})
@@ -5756,8 +5806,10 @@ func TestCacheSilo(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		CacheSilo:  "test-test",
-		MaxHoldoff: time.Minute,
+		CacheSilo:         "test-test",
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -5864,9 +5916,11 @@ func TestRemoteDisabled(t *testing.T) {
 	}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:      NewLocalPool(executor, resMgr),
-		RemoteDisabled: true,
-		MaxHoldoff:     time.Minute,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		RemoteDisabled:    true,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -5946,10 +6000,12 @@ func TestProxyInfoUptime(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	st := time.Now()
 	server := &Server{
-		LocalPool:      NewLocalPool(executor, resMgr),
-		RemoteDisabled: true,
-		StartTime:      st,
-		MaxHoldoff:     time.Minute,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		RemoteDisabled:    true,
+		StartTime:         st,
+		MaxHoldoff:        time.Minute,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
@@ -6012,8 +6068,10 @@ func TestDrainAndReleaseResourcesDoesNotBlockOnInputProcessor(t *testing.T) {
 	executor := &execStub{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:      NewLocalPool(executor, resMgr),
-		RemoteDisabled: true,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		RemoteDisabled:    true,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	blockCleanup := make(chan bool)
@@ -6054,8 +6112,10 @@ func TestDrainAndReleaseResourcesDoesNotBlockOnREClient(t *testing.T) {
 	executor := &execStub{}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
-		LocalPool:      NewLocalPool(executor, resMgr),
-		RemoteDisabled: true,
+		LocalPool:         NewLocalPool(executor, resMgr),
+		RemoteDisabled:    true,
+		DownloadTmp:       t.TempDir(),
+		FileMetadataStore: fmc,
 	}
 	server.Init()
 	blockCleanup := make(chan bool)

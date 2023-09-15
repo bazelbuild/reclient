@@ -49,6 +49,8 @@ const (
 	// Percentile download latency at which any action taking longer is considered an outlier that
 	// should be raced with local execution.
 	downloadPercentileCutoff = 90
+
+	tmpBaseDir = ".reproxy_tmp"
 )
 
 type testOnlyCtxKey int
@@ -80,7 +82,7 @@ type action struct {
 	cancelFunc             func(error)
 	racingBias             float64
 	windowsCross           bool
-	racingTmp              string
+	downloadTmp            string
 
 	// Below parameters are computed by struct functions.
 	execContext   *rexec.Context
@@ -110,14 +112,20 @@ func (a *action) runLocal(ctx context.Context, pool *LocalPool) {
 }
 
 func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
+	tmpDir, cleanup, err := a.createTmpDir()
+	if err != nil {
+		log.Warningf("%v: could not create temp directory for remote output: %v", a.cmd.Identifiers.ExecutionID, err)
+		a.res = command.NewLocalErrorResult(err)
+		return
+	}
+	defer func() {
+		go cleanup()
+	}()
 	opts := execOptionsFromProto(a.rOpt)
 	excludeUnchanged := opts.DownloadOutputs && opts.PreserveUnchangedOutputMtime
-	if excludeUnchanged {
-		// When excluding unchanged outputs from mtime modification, we'll download only those files
-		// that have changed. So we're setting DownloadOutputs option to false to prevent all outputs
-		// from being downloaded by default.
-		opts.DownloadOutputs = false
-	}
+	noDl := !opts.DownloadOutputs
+	// TODO b/299953609: Move atomic download logic to the remote_apis_sdks.
+	opts.DownloadOutputs = false
 	cmd := a.cmd
 	if a.rOpt.GetWrapper() != "" {
 		cmd = &command.Command{}
@@ -140,10 +148,14 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 	if ec.GetCachedResult(); ec.Result == nil {
 		ec.ExecuteRemotely()
 	}
-	defer func() {
-		res, meta = ec.Result, ec.Metadata
-	}()
-	if ec.Result.Err == nil && excludeUnchanged {
+	res, meta = ec.Result, ec.Metadata
+	if ec.Result.Err != nil {
+		return
+	}
+	if noDl {
+		return
+	}
+	if excludeUnchanged {
 		outs, err := ec.GetFlattenedOutputs()
 		if err != nil {
 			log.Errorf("%v: Unable to get flattened outputs from Action Result: %v",
@@ -151,39 +163,40 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 			return
 		}
 		outs = a.excludeUnchangedOutputs(outs, a.cmd.ExecRoot)
-		ec.DownloadSpecifiedOutputs(outs, a.cmd.ExecRoot)
+		ec.DownloadSpecifiedOutputs(outs, tmpDir)
+		res, meta = ec.Result, ec.Metadata
+		if ec.Result.Err != nil {
+			return
+		}
+	} else {
+		ec.DownloadOutputs(tmpDir)
+		res, meta = ec.Result, ec.Metadata
+		if ec.Result.Err != nil {
+			return
+		}
 	}
+	if err := a.moveOutputsFromTemp(tmpDir); err != nil {
+		res = command.NewLocalErrorResult(err)
+		meta = ec.Metadata
+		return
+	}
+	res, meta = ec.Result, ec.Metadata
 }
 
 func (a *action) createTmpDir() (string, func(), error) {
-	tmpDir := filepath.Join(a.racingTmp, a.cmd.Identifiers.ExecutionID)
-	if err := os.Mkdir(tmpDir, os.ModePerm); err != nil {
+	base := a.downloadTmp
+	if base == "" {
+		base = filepath.Join(a.cmd.ExecRoot, a.cmd.WorkingDir, tmpBaseDir)
+	}
+	tmpDir := filepath.Join(base, a.cmd.Identifiers.ExecutionID)
+	if err := os.MkdirAll(tmpDir, os.ModePerm); err != nil {
 		return "", nil, err
 	}
 	return tmpDir, func() {
-		if err := removeContents(tmpDir); err != nil {
+		if err := os.RemoveAll(tmpDir); err != nil {
 			log.Warningf("%v: could not remove temp directory for remote output: %v", a.cmd.Identifiers.ExecutionID, err)
 		}
 	}, nil
-}
-
-func removeContents(dir string) error {
-	d, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-	names, err := d.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-	}
-	return os.RemoveAll(dir)
 }
 
 // depth returns the number of segments in a file path
@@ -838,6 +851,9 @@ func (a *action) duplicate(n int) []*action {
 		if a.cmd != nil {
 			tcmd = command.Command(*(a.cmd))
 		}
+		id := command.Identifiers(*(tcmd.Identifiers))
+		tcmd.Identifiers = &id
+		tcmd.Identifiers.ExecutionID = fmt.Sprintf("%v-%v", tcmd.Identifiers.ExecutionID, i)
 
 		var tforecast Forecast
 		if a.forecast != nil {
