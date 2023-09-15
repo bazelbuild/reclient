@@ -13,7 +13,7 @@ go_library(
         "//api/proxy",
         "//api/stats",
         "//internal/pkg/ipc",
-        "//internal/pkg/logger",
+        "//internal/pkg/logger/event",
         "//internal/pkg/reproxypid",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

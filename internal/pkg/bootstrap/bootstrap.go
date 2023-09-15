@@ -26,15 +26,14 @@ import (
 	"strings"
 	"time"
 
-	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
-	"google.golang.org/grpc/connectivity"
-
 	ppb "github.com/bazelbuild/reclient/api/proxy"
 	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
-	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/reproxypid"
+	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
+	"google.golang.org/grpc/connectivity"
 
 	log "github.com/golang/glog"
 )
@@ -227,7 +226,7 @@ func startProxy(ctx context.Context, serverAddr string, cmd *exec.Cmd, waitSecon
 				log.Info("Proxy started successfully.")
 				_, err := ppb.NewStatsClient(conn).AddProxyEvents(ctx, &ppb.AddProxyEventsRequest{
 					EventTimes: map[string]*cpb.TimeInterval{
-						logger.EventBootstrapStartup: command.TimeIntervalToProto(
+						event.BootstrapStartup: command.TimeIntervalToProto(
 							&command.TimeInterval{
 								From: startTime,
 								To:   time.Now(),

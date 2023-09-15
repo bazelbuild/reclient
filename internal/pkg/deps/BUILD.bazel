@@ -7,6 +7,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/pkg/logger",
+        "//internal/pkg/logger/event",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
         "@com_github_golang_glog//:go_default_library",
@@ -22,6 +23,7 @@ go_test(
         "//api/log",
         "//internal/pkg/execroot",
         "//internal/pkg/logger",
+        "//internal/pkg/logger/event",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",

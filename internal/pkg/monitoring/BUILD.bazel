@@ -9,7 +9,7 @@ go_library(
         "//api/log",
         "//api/stats",
         "//internal/pkg/labels",
-        "//internal/pkg/logger",
+        "//internal/pkg/logger/event",
         "//pkg/version",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_golang_glog//:go_default_library",
@@ -31,7 +31,7 @@ go_test(
     embed = [":monitoring"],
     deps = [
         "//api/log",
-        "//internal/pkg/logger",
+        "//internal/pkg/logger/event",
         "//internal/pkg/stats",
         "//pkg/version",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",

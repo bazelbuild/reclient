@@ -32,6 +32,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
@@ -4073,8 +4074,8 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -4187,8 +4188,8 @@ func TestRacingRemoteWins(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -4291,8 +4292,8 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -4408,8 +4409,8 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -4825,8 +4826,8 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -4932,8 +4933,8 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, append(cmpLogRecordsOpts, protocmp.IgnoreFields(&lpb.LogRecord{}, "remote_metadata"))...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -5041,8 +5042,8 @@ func TestRacingLocalWins(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, append(cmpLogRecordsOpts, protocmp.IgnoreFields(&lpb.LogRecord{}, "remote_metadata"))...); diff != "" {
 		t.Fatalf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
-	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[logger.EventRacingFinalizationOverhead]; !ok {
-		t.Errorf("Server logs does not have stat for %v", logger.EventRacingFinalizationOverhead)
+	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
+		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
 }
 
@@ -6047,7 +6048,7 @@ func TestProxyInfoUptime(t *testing.T) {
 	}
 	var gotInterval *command.TimeInterval
 	for e, et := range pInfo.GetEventTimes() {
-		if e == logger.EventProxyUptime {
+		if e == event.ProxyUptime {
 			gotInterval = command.TimeIntervalFromProto(et)
 		}
 	}

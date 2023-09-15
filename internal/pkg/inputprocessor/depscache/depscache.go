@@ -25,7 +25,7 @@ import (
 
 	ppb "github.com/bazelbuild/reclient/api/proxy"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	log "github.com/golang/glog"
 	"google.golang.org/protobuf/proto"
@@ -82,7 +82,7 @@ func (c *Cache) LoadFromDir(dir string) {
 	defer func() {
 		atomic.StoreInt32(&c.ready, 1)
 		if c.Logger != nil {
-			c.Logger.AddMetricIntToProxyInfo(logger.DepsCacheLoadCount, int64(len(c.depsCache)))
+			c.Logger.AddMetricIntToProxyInfo(event.DepsCacheLoadCount, int64(len(c.depsCache)))
 		}
 	}()
 	in, err := os.ReadFile(path)
@@ -122,7 +122,7 @@ func (c *Cache) LoadFromDir(dir string) {
 	}
 	log.Infof("Deps cache loaded %v entries", numEntries)
 	if c.Logger != nil {
-		c.Logger.AddEventTimeToProxyInfo(logger.EventDepsCacheLoad, st, time.Now())
+		c.Logger.AddEventTimeToProxyInfo(event.DepsCacheLoad, st, time.Now())
 	}
 }
 
@@ -298,7 +298,7 @@ func (c *Cache) WriteToDisk(outDir string) {
 		log.Infof("Wrote deps cache to %v", file)
 	}
 	if c.Logger != nil {
-		c.Logger.AddEventTimeToProxyInfo(logger.EventDepsCacheWrite, st, time.Now())
-		c.Logger.AddMetricIntToProxyInfo(logger.DepsCacheWriteCount, int64(count))
+		c.Logger.AddEventTimeToProxyInfo(event.DepsCacheWrite, st, time.Now())
+		c.Logger.AddMetricIntToProxyInfo(event.DepsCacheWriteCount, int64(count))
 	}
 }

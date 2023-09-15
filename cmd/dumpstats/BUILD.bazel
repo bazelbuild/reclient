@@ -6,7 +6,9 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/cmd/dumpstats",
     visibility = ["//visibility:private"],
     deps = [
+        "//api/log",
         "//internal/pkg/bootstrap",
+        "//internal/pkg/logger",
         "//internal/pkg/rbeflag",
         "//internal/pkg/stats",
         "//pkg/version",

@@ -26,7 +26,7 @@ import (
 	"time"
 
 	lpb "github.com/bazelbuild/reclient/api/log"
-	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	st "github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/pkg/version"
 
@@ -118,7 +118,7 @@ func TestExportMetrics(t *testing.T) {
 			s := st.NewFromRecords(recs, []*lpb.ProxyInfo{
 				{
 					EventTimes: map[string]*cpb.TimeInterval{
-						logger.EventBootstrapStartup: {
+						event.BootstrapStartup: {
 							From: command.TimeToProto(start.Add(-200 * time.Millisecond)),
 							To:   command.TimeToProto(start),
 						},
@@ -129,7 +129,7 @@ func TestExportMetrics(t *testing.T) {
 				},
 				{
 					EventTimes: map[string]*cpb.TimeInterval{
-						logger.EventBootstrapShutdown: {
+						event.BootstrapShutdown: {
 							From: command.TimeToProto(start.Add(-500 * time.Millisecond)),
 							To:   command.TimeToProto(start),
 						},

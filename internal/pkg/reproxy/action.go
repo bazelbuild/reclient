@@ -26,6 +26,7 @@ import (
 
 	"github.com/bazelbuild/reclient/internal/pkg/deps"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 
@@ -347,7 +348,7 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 		log.V(2).Infof("%v: Both local and remote were canceled", a.cmd.Identifiers.ExecutionID)
 		a.res = winner.res
 	}
-	a.rec.RecordEventTime(logger.EventRacingFinalizationOverhead, from)
+	a.rec.RecordEventTime(event.RacingFinalizationOverhead, from)
 	a.oe = winner.oe
 }
 
@@ -862,7 +863,7 @@ func (a *action) duplicate(n int) []*action {
 		if a.rec != nil {
 			trec.LocalMetadata = &lpb.LocalMetadata{
 				EventTimes: map[string]*cpb.TimeInterval{
-					logger.EventProxyExecution: command.TimeIntervalToProto(&command.TimeInterval{From: time.Now()}),
+					event.ProxyExecution: command.TimeIntervalToProto(&command.TimeInterval{From: time.Now()}),
 				},
 				Environment: a.rec.LocalMetadata.Environment,
 				Labels:      a.rec.LocalMetadata.GetLabels(),

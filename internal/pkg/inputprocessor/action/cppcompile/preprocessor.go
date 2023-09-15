@@ -29,6 +29,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
@@ -184,7 +185,7 @@ func (p *Preprocessor) FindDependencies(args []string) ([]string, error) {
 	}
 
 	from := time.Now()
-	event := logger.EventInputProcessorWait
+	evt := event.InputProcessorWait
 	if p.Rec == nil {
 		p.Rec = logger.NewLogRecord()
 	}
@@ -193,22 +194,22 @@ func (p *Preprocessor) FindDependencies(args []string) ([]string, error) {
 			return nil, err
 		}
 	}
-	p.Rec.RecordEventTime(event, from)
+	p.Rec.RecordEventTime(evt, from)
 
 	from = time.Now()
-	event = logger.EventCPPInputProcessor
+	evt = event.CPPInputProcessor
 	usedCache := false
 	defer func() {
 		if p.Slots != nil {
 			p.Slots.Release(1)
 		}
 		if usedCache {
-			event = logger.EventInputProcessorCacheLookup
+			evt = event.InputProcessorCacheLookup
 		}
 		if p.Rec == nil {
 			p.Rec = logger.NewLogRecord()
 		}
-		p.Rec.RecordEventTime(event, from)
+		p.Rec.RecordEventTime(evt, from)
 	}()
 
 	if len(p.Flags.TargetFilePaths) != 1 {
@@ -313,14 +314,14 @@ func (p *Preprocessor) saveDeps(key depscache.Key, headerInputFiles []string) {
 
 func (p *Preprocessor) getFromDepsCache(key depscache.Key) ([]string, bool) {
 	from := time.Now()
-	event := logger.EventInputProcessorCacheLookup
+	evt := event.InputProcessorCacheLookup
 	deps, ok := p.DepsCache.GetDeps(key)
 	if ok {
 		log.V(1).Infof("Found Deps Cache Hit for %v", key)
 		if p.Rec == nil {
 			p.Rec = logger.NewLogRecord()
 		}
-		p.Rec.RecordEventTime(event, from)
+		p.Rec.RecordEventTime(evt, from)
 		return deps, true
 	}
 	return nil, false

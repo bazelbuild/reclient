@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/features"
 	iproc "github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
@@ -44,8 +45,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-
-	ppb "github.com/bazelbuild/reclient/api/proxy"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/cache"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -250,7 +250,7 @@ type CommandIO struct {
 // .d file produced by the command if exists.
 func (p *InputProcessor) ProcessInputs(ctx context.Context, opts *ProcessInputsOptions, rec *logger.LogRecord) (*CommandIO, error) {
 	st := time.Now()
-	defer rec.RecordEventTime(logger.EventProcessInputs, st)
+	defer rec.RecordEventTime(event.ProcessInputs, st)
 	lbls := labels.FromMap(opts.Labels)
 
 	// We set shallow fallback based on the labels and execution strategy.

@@ -22,7 +22,7 @@ import (
 
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"github.com/google/go-cmp/cmp"
@@ -132,10 +132,10 @@ func TestVerifyDepsFile(t *testing.T) {
 	if ok || err != nil {
 		t.Errorf("VerifyDepsFile returned <%v, %v>, expected <false, nil>", ok, err)
 	}
-	if _, ok := meta.LocalMetadata.EventTimes[logger.EventLERCWriteDeps]; !ok {
+	if _, ok := meta.LocalMetadata.EventTimes[event.LERCWriteDeps]; !ok {
 		t.Errorf("WriteDepsFile did not record timing metadata")
 	}
-	if _, ok := meta.LocalMetadata.EventTimes[logger.EventLERCVerifyDeps]; !ok {
+	if _, ok := meta.LocalMetadata.EventTimes[event.LERCVerifyDeps]; !ok {
 		t.Errorf("VerifyDepsFile did not record timing metadata")
 	}
 }

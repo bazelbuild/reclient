@@ -29,7 +29,7 @@ import (
 	lpb "github.com/bazelbuild/reclient/api/log"
 	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
-	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -222,7 +222,7 @@ func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord, re
 	})
 	times := r.GetLocalMetadata().GetEventTimes()
 	var latency float64
-	if tPb, ok := times[logger.EventProxyExecution]; ok {
+	if tPb, ok := times[event.ProxyExecution]; ok {
 		ti := command.TimeIntervalFromProto(tPb)
 		if !ti.From.IsZero() && !ti.To.IsZero() {
 			latency = float64(ti.To.Sub(ti.From).Milliseconds())
@@ -267,11 +267,11 @@ func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats) {
 		if pi.EventTimes == nil {
 			continue
 		}
-		if ti, ok := pi.EventTimes[logger.EventBootstrapStartup]; ok {
+		if ti, ok := pi.EventTimes[event.BootstrapStartup]; ok {
 			millis := command.TimeFromProto(ti.To).Sub(command.TimeFromProto(ti.From)).Milliseconds()
 			e.recorder.recordWithTags(aCtx, nil, BootstrapStartupLatency.M(millis))
 		}
-		if ti, ok := pi.EventTimes[logger.EventBootstrapShutdown]; ok {
+		if ti, ok := pi.EventTimes[event.BootstrapShutdown]; ok {
 			millis := command.TimeFromProto(ti.To).Sub(command.TimeFromProto(ti.From)).Milliseconds()
 			e.recorder.recordWithTags(aCtx, nil, BootstrapShutdownLatency.M(millis))
 		}

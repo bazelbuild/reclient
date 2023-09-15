@@ -22,7 +22,9 @@ import (
 	"flag"
 	"os"
 
+	lpb "github.com/bazelbuild/reclient/api/log"
 	"github.com/bazelbuild/reclient/internal/pkg/bootstrap"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/pkg/version"
@@ -59,17 +61,29 @@ func main() {
 		bootstrap.ShutDownProxy(*serverAddr, *shutdownSeconds)
 	}
 
+	var recs []*lpb.LogRecord
+	var pInfos []*lpb.ProxyInfo
 	if len(proxyLogDir) > 0 {
 		log.Infof("Aggregating stats from %v...", proxyLogDir)
-		if err := stats.AggregateLogDirsToFiles(*logFormat, proxyLogDir, *outputDir); err != nil {
-			log.Fatalf("AggregateLogDirsToFiles failed: %v", err)
+		format, err := logger.ParseFormat(*logFormat)
+		if err != nil {
+			log.Errorf("Failed parsing logFormat, %v, to format: %v", *logFormat, err)
+		} else {
+			recs, pInfos, err = logger.ParseFromLogDirs(format, proxyLogDir)
+			if err != nil {
+				log.Errorf("Failed reading proxy log: %v", err)
+			}
 		}
-		log.Infof("Stats dumped successfully.")
-		return
+	} else {
+		log.Infof("Aggregating stats from %v...", *logPath)
+		var err error
+		recs, err = logger.ParseFromFormatFile(*logPath)
+		if err != nil {
+			log.Errorf("Failed reading proxy log: %v", err)
+		}
 	}
-	log.Infof("Aggregating stats from %v...", *logPath)
-	if err := stats.AggregateLogToFiles(*logPath, *outputDir); err != nil {
-		log.Fatalf("AggregateLogToFiles(%s) failed: %v", *logPath, err)
-	}
-	log.Infof("Stats dumped successfully.")
+	// If failed parsing logFormat string, or failed reading the log file,
+	// we still keep recs and pInfos as nil, and produce output files that
+	// includes the environment variables and other things.
+	stats.WriteFromRecords(recs, pInfos, *outputDir)
 }

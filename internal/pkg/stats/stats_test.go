@@ -42,6 +42,50 @@ var (
 	minfo                      = machineInfo()
 	cmpStatsOpts               = []cmp.Option{protocmp.Transform(), protocmp.SortRepeatedFields(&stpb.Stat{}, "counts_by_value"), protocmp.SortRepeatedFields(&spb.Stats{}, "stats")}
 	cmpStatsIgnoreBuildLatency = protocmp.IgnoreFields(&spb.Stats{}, "build_latency") // This is invalid if no proxy execution times provided.
+	recordsToWrite             = []*lpb.LogRecord{
+		&lpb.LogRecord{
+			RemoteMetadata: &lpb.RemoteMetadata{
+				CacheHit: true,
+			},
+		},
+	}
+	proxyInfosToWrite = []*lpb.ProxyInfo{&lpb.ProxyInfo{
+		EventTimes: map[string]*cpb.TimeInterval{
+			"Event": &cpb.TimeInterval{},
+		},
+	}}
+	st = &Stats{
+		NumRecords: 1,
+		Stats:      map[string]*Stat{},
+	}
+	statsToWrite = &Stats{
+		NumRecords: 5,
+		Stats: map[string]*Stat{
+			"empty": &Stat{},
+			"b": &Stat{
+				Count: 3,
+				CountByValue: map[string]int64{
+					"v1": 4,
+					"v2": 5,
+				},
+			},
+			"a": &Stat{
+				Count:        6,
+				Median:       10,
+				Percentile75: 11,
+				Percentile85: 12,
+				Percentile95: 13,
+				Average:      9.8,
+				Outlier1:     &stpb.Outlier{CommandId: "foo", Value: 15},
+				Outlier2:     &stpb.Outlier{CommandId: "foo", Value: 14},
+			},
+		},
+		ProxyInfos: []*lpb.ProxyInfo{&lpb.ProxyInfo{
+			EventTimes: map[string]*cpb.TimeInterval{
+				"Event": &cpb.TimeInterval{},
+			},
+		}},
+	}
 )
 
 // TODO (b/269614799): Test refactor/clean up
@@ -1062,6 +1106,35 @@ func TestFromSeriesToProto(t *testing.T) {
 			got := FromSeriesToProto(tt.name, tt.rawValues)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("%v FromSeriesToProto() = %v, want %v", tt.testName, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWriteFromRecords(t *testing.T) {
+	type args struct {
+		recs      []*lpb.LogRecord
+		pInfo     []*lpb.ProxyInfo
+		wantStats *spb.Stats
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{name: "recs is nil", args: args{nil, nil, &spb.Stats{}}},
+		{name: "recs is not nil", args: args{recordsToWrite, proxyInfosToWrite, NewFromRecords(recordsToWrite, proxyInfosToWrite).ToProto()}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wantDir := t.TempDir()
+			WriteStats(tt.args.wantStats, wantDir)
+			want := fileContent(t, filepath.Join(wantDir, "rbe_metrics.txt"))
+
+			gotDir := t.TempDir()
+			WriteFromRecords(tt.args.recs, tt.args.pInfo, gotDir)
+			got := fileContent(t, filepath.Join(gotDir, "rbe_metrics.txt"))
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("TestAggregateRecordsToFiles generate diff in file content: (-want +got)\n", diff)
 			}
 		})
 	}

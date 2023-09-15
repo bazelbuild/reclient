@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/google/go-cmp/cmp"
@@ -80,12 +81,12 @@ func TestProxyInfo(t *testing.T) {
 	}
 	st := time.Now().Add(-1 * time.Second)
 	et := st.Add(time.Second)
-	logger.AddEventTimeToProxyInfo(EventProxyUptime, st, et)
-	logger.AddMetricIntToProxyInfo(DepsCacheLoadCount, 1000)
-	logger.AddMetricIntToProxyInfo(DepsCacheWriteCount, 2000)
-	logger.IncrementMetricIntToProxyInfo(EventGomaInputProcessorRestart, 1)
-	logger.IncrementMetricIntToProxyInfo(EventGomaInputProcessorRestart, 5)
-	logger.IncrementMetricIntToProxyInfo(EventGomaInputProcessorRestart, 3)
+	logger.AddEventTimeToProxyInfo(event.ProxyUptime, st, et)
+	logger.AddMetricIntToProxyInfo(event.DepsCacheLoadCount, 1000)
+	logger.AddMetricIntToProxyInfo(event.DepsCacheWriteCount, 2000)
+	logger.IncrementMetricIntToProxyInfo(event.GomaInputProcessorRestart, 1)
+	logger.IncrementMetricIntToProxyInfo(event.GomaInputProcessorRestart, 5)
+	logger.IncrementMetricIntToProxyInfo(event.GomaInputProcessorRestart, 3)
 	testFlagSet := flag.NewFlagSet("TestFlagSet", flag.ContinueOnError)
 	testFlagSet.String("key1", "val1", "test")
 	testFlagSet.String("key2", "val2", "test")
@@ -102,19 +103,19 @@ func TestProxyInfo(t *testing.T) {
 	pInfos := []*lpb.ProxyInfo{
 		&lpb.ProxyInfo{
 			EventTimes: map[string]*cpb.TimeInterval{
-				EventProxyUptime: command.TimeIntervalToProto(&command.TimeInterval{
+				event.ProxyUptime: command.TimeIntervalToProto(&command.TimeInterval{
 					From: st,
 					To:   et,
 				}),
 			},
 			Metrics: map[string]*lpb.Metric{
-				DepsCacheLoadCount: &lpb.Metric{
+				event.DepsCacheLoadCount: &lpb.Metric{
 					Value: &lpb.Metric_Int64Value{1000},
 				},
-				DepsCacheWriteCount: &lpb.Metric{
+				event.DepsCacheWriteCount: &lpb.Metric{
 					Value: &lpb.Metric_Int64Value{2000},
 				},
-				EventGomaInputProcessorRestart: &lpb.Metric{
+				event.GomaInputProcessorRestart: &lpb.Metric{
 					Value: &lpb.Metric_Int64Value{9},
 				},
 			},

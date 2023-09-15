@@ -27,10 +27,11 @@ import (
 
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
-	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/internal/pkg/reproxystatus"
 	"github.com/bazelbuild/reclient/pkg/version"
+	log "github.com/golang/glog"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -43,7 +44,6 @@ import (
 	spb "github.com/bazelbuild/reclient/api/stats"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
-	log "github.com/golang/glog"
 )
 
 const (
@@ -483,40 +483,6 @@ func statToProto(name string, s *Stat) *stpb.Stat {
 	return sPb
 }
 
-// AggregateLogToFiles aggregates stats from the given proxy log, adds tool
-// version and environment variables, and dumps the result to files in both
-// ASCII and binary formats.
-func AggregateLogToFiles(formatfile, outputdir string) error {
-	var sPb *spb.Stats
-	s, err := NewFromLogFile(formatfile)
-	if err != nil {
-		log.Errorf("Failed reading proxy log: %v", err)
-		// If failed reading the log file, still produce output that includes
-		// the environment variables and other things.
-		sPb = &spb.Stats{}
-	} else {
-		sPb = s.ToProto()
-	}
-	return WriteStats(sPb, outputdir)
-}
-
-// AggregateLogDirsToFiles aggregates stats from proxy logs in given directories, adds tool
-// version and environment variables, and dumps the result to files in both
-// ASCII and binary formats.
-func AggregateLogDirsToFiles(formatStr string, logDirs []string, outputdir string) error {
-	var sPb *spb.Stats
-	s, err := NewFromLogDirs(formatStr, logDirs)
-	if err != nil {
-		log.Errorf("Failed reading proxy log: %v", err)
-		// If failed reading the log file, still produce output that includes
-		// the environment variables and other things.
-		sPb = &spb.Stats{}
-	} else {
-		sPb = s.ToProto()
-	}
-	return WriteStats(sPb, outputdir)
-}
-
 // WriteStats writes stats to a file.
 func WriteStats(sPb *spb.Stats, outputdir string) error {
 	if err := os.MkdirAll(outputdir, os.FileMode(0777)); err != nil {
@@ -541,28 +507,6 @@ func WriteStats(sPb *spb.Stats, outputdir string) error {
 	defer fb.Close()
 	fb.Write(blob)
 	return nil
-}
-
-// NewFromLogFile creates a new Stats from a proxy Record log file.
-func NewFromLogFile(formatfile string) (*Stats, error) {
-	recs, err := logger.ParseFromFormatFile(formatfile)
-	if err != nil {
-		return nil, err
-	}
-	return NewFromRecords(recs, nil), nil
-}
-
-// NewFromLogDirs creates a new Stats from a proxy Record log files under given directories.
-func NewFromLogDirs(formatStr string, logDirs []string) (*Stats, error) {
-	format, err := logger.ParseFormat(formatStr)
-	if err != nil {
-		return nil, err
-	}
-	recs, pInfo, err := logger.ParseFromLogDirs(format, logDirs)
-	if err != nil {
-		return nil, err
-	}
-	return NewFromRecords(recs, pInfo), nil
 }
 
 // NewFromRecords creates a new Stats from the given Records.
@@ -602,7 +546,7 @@ func (s *Stats) AddRecord(r *lpb.LogRecord) {
 		s.cacheHits++
 	}
 	times := r.GetLocalMetadata().GetEventTimes()
-	if tPb, ok := times[logger.EventProxyExecution]; ok {
+	if tPb, ok := times[event.ProxyExecution]; ok {
 		ti := command.TimeIntervalFromProto(tPb)
 		if !ti.From.IsZero() && !ti.To.IsZero() {
 			s.minProxyExecStart = math.Min(s.minProxyExecStart, float64(ti.From.Unix()))
@@ -650,4 +594,17 @@ func machineInfo() *spb.MachineInfo {
 		OsFamily: runtime.GOOS,
 		Arch:     runtime.GOARCH,
 	}
+}
+
+// WriteFromRecords aggregates records, adds tool version and environment
+// variables, and dumps the result to files in both ASCII and binary formats.
+func WriteFromRecords(recs []*lpb.LogRecord, pInfo []*lpb.ProxyInfo, outputDir string) {
+	sPb := &spb.Stats{}
+	if recs != nil {
+		sPb = NewFromRecords(recs, pInfo).ToProto()
+	}
+	if err := WriteStats(sPb, outputDir); err != nil {
+		log.Fatalf("WriteFromRecords failed: %v", err)
+	}
+	log.Infof("Stats dumped successfully.")
 }

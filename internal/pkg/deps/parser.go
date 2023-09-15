@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 
@@ -59,7 +59,7 @@ type Parser struct {
 func (p *Parser) WriteDepsFile(dFilePath string, rec *logger.LogRecord) error {
 	st := time.Now()
 	defer func() {
-		rec.RecordEventTime(logger.EventLERCWriteDeps, st)
+		rec.RecordEventTime(event.LERCWriteDeps, st)
 	}()
 	deps, err := p.GetDeps(dFilePath)
 	if err != nil {
@@ -74,7 +74,7 @@ func (p *Parser) WriteDepsFile(dFilePath string, rec *logger.LogRecord) error {
 func (p *Parser) VerifyDepsFile(dFilePath string, rec *logger.LogRecord) (bool, error) {
 	st := time.Now()
 	defer func() {
-		rec.RecordEventTime(logger.EventLERCVerifyDeps, st)
+		rec.RecordEventTime(event.LERCVerifyDeps, st)
 	}()
 	buf, err := os.ReadFile(filepath.Join(p.ExecRoot, dFilePath+".deps"))
 	if err != nil {

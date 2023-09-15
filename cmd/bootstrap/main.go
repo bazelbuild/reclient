@@ -30,6 +30,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/auth"
 	"github.com/bazelbuild/reclient/internal/pkg/bootstrap"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
@@ -123,11 +124,11 @@ func main() {
 			recs, pInfos := parseLogs()
 			start := time.Now()
 			s = stats.NewFromRecords(recs, pInfos).ToProto()
-			spi.EventTimes[logger.EventPostBuildAggregateRpl] = command.TimeIntervalToProto(&command.TimeInterval{From: start, To: time.Now()})
+			spi.EventTimes[event.PostBuildAggregateRpl] = command.TimeIntervalToProto(&command.TimeInterval{From: start, To: time.Now()})
 		}
 		down, up := stats.BandwidthStats(s)
 		fmt.Printf("RBE Stats: ↓ %v, ↑ %v, %v\n", down, up, stats.CompletionStats(s))
-		spi.EventTimes[logger.EventBootstrapShutdown] = command.TimeIntervalToProto(&command.TimeInterval{
+		spi.EventTimes[event.BootstrapShutdown] = command.TimeIntervalToProto(&command.TimeInterval{
 			From: bootstrapStart,
 			To:   time.Now(),
 		})

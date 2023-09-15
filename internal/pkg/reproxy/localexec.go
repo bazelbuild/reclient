@@ -22,7 +22,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
 
@@ -80,13 +80,13 @@ func (l *LocalPool) Run(ctx, cCtx context.Context, cmd *command.Command, lbls ma
 
 	qt := time.Now()
 	release, err := l.resMgr.Lock(cCtx, req.cpus, req.ramMBs)
-	et := rec.RecordEventTime(logger.EventLocalCommandQueued, qt)
+	et := rec.RecordEventTime(event.LocalCommandQueued, qt)
 	if err != nil {
 		return 0, err
 	}
 	defer release()
 	defer func() {
-		rec.RecordEventTime(logger.EventLocalCommandExecution, et)
+		rec.RecordEventTime(event.LocalCommandExecution, et)
 	}()
 	if v := ctx.Value(testOnlyBlockLocalExecKey); v != nil {
 		v.(func())()

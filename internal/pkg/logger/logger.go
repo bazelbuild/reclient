@@ -30,7 +30,6 @@ import (
 
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
-
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -42,81 +41,6 @@ import (
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	log "github.com/golang/glog"
-)
-
-// These are duration events that we export time metrics on.
-const (
-	// EventLERCVerifyDeps: VerifyDeps time for LERC.
-	EventLERCVerifyDeps = "LERCVerifyDeps"
-
-	// EventLERCWriteDeps: WriteDeps time for LERC.
-	EventLERCWriteDeps = "LERCWriteDeps"
-
-	// EventLocalCommandExecution: actually running the command locally.
-	EventLocalCommandExecution = "LocalCommandExecution"
-
-	// EventLocalCommandQueued: duration the command has been queued for local execution.
-	EventLocalCommandQueued = "LocalCommandQueued"
-
-	// EventProxyExecution: proxy end-to-end time, regardless of execution strategy.
-	EventProxyExecution = "ProxyExecution"
-
-	// EventProcessInputs: proxy time for IncludeProcessor.ProcessInputs.
-	EventProcessInputs = "ProcessInputs"
-
-	// EventProcessInputsShallow: proxy time for IncludeProcessor.ProcessInputsShallow.
-	EventProcessInputsShallow = "ProcessInputsShallow"
-
-	// EventCPPInputProcessor measures the time taken for C++ input processor.
-	EventCPPInputProcessor = "CPPInputProcessor"
-
-	// EventCPPInputProcessor measures the number of times goma was restarted.
-	EventGomaInputProcessorRestart = "GomaInputProcessorRestart"
-
-	// EventInputProcessorWait measures the time spent waiting for local resources to start
-	// input processing.
-	EventInputProcessorWait = "InputProcessorWait"
-
-	// EventInputProcessorCacheLookup measures the time spent retrieving inputs from deps cache.
-	EventInputProcessorCacheLookup = "InputProcessorCacheLookup"
-
-	// EventRacingFinalizationOverhead: time spent finalizing the result of a raced action by
-	// cancelling either remote or local, and moving outputs to their correct location in case
-	// remote wins.
-	EventRacingFinalizationOverhead = "RacingFinalizationOverhead"
-
-	// EventPostBuildMetricsUpload: time spent post build to upload metrics to Cloud Monitoring.
-	EventPostBuildMetricsUpload = "PostBuildMetricsUpload"
-
-	// EventPostBuildMetricsUpload: time spent post build to aggregate rpl file into a stats proto.
-	EventPostBuildAggregateRpl = "EventPostBuildAggregateRpl"
-
-	// EventPostBuildMetricsUpload: time spent post build to load an rpl file from disk.
-	EventPostBuildLoadRpl = "EventPostBuildLoadRpl"
-
-	// EventPostBuildMismatchesIgnore: time spent marking mismatches as ignored based on the input rule.
-	EventPostBuildMismatchesIgnore = "PostBuildMismatchesIgnore"
-
-	// EventProxyUptime is the uptime of the reproxy.
-	EventProxyUptime = "ProxyUptime"
-
-	// EventBootstrapStartup is the time taken to run bootstrap to start reproxy.
-	EventBootstrapStartup = "BootstrapStartup"
-
-	// EventBootstrapShutdown is the time taken to run bootstrap to shutdown reproxy.
-	EventBootstrapShutdown = "BootstrapShutdown"
-
-	// EventDepsCacheLoad is the load time of the deps cache.
-	EventDepsCacheLoad = "DepsCacheLoad"
-
-	// EventDepsCacheWrite is the write time of the deps cache.
-	EventDepsCacheWrite = "DepsCacheWrite"
-
-	// DepsCacheLoadCount is the number of deps cache entries loaded at reproxy startup.
-	DepsCacheLoadCount = "DepsCacheLoadCount"
-
-	// DepsCacheWriteCount is the number of deps cache entries written at reproxy shutdown.
-	DepsCacheWriteCount = "DepsCacheWriteCount"
 )
 
 // Format specifies how the Logger serializes its records.

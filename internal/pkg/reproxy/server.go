@@ -33,6 +33,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/pkg/version"
@@ -335,7 +336,7 @@ func (s *Server) DrainAndReleaseResources() {
 		close(s.drain)
 		s.wgShutdown.Wait()
 		if s.Logger != nil {
-			s.Logger.AddEventTimeToProxyInfo(logger.EventProxyUptime, s.StartTime, time.Now())
+			s.Logger.AddEventTimeToProxyInfo(event.ProxyUptime, s.StartTime, time.Now())
 		}
 		s.stats = s.Logger.CloseAndAggregate()
 		go func() {
@@ -603,7 +604,7 @@ func (s *Server) logRecord(a *action, start time.Time) {
 	} else if a.rec.RemoteMetadata.GetResult() != nil {
 		a.rec.Result = a.rec.RemoteMetadata.Result
 	}
-	a.rec.RecordEventTime(logger.EventProxyExecution, start)
+	a.rec.RecordEventTime(event.ProxyExecution, start)
 	logger.AddCompletionStatus(a.rec, a.execStrategy)
 	s.Logger.Log(a.rec)
 	if s.KeepLastRecords > 0 {
