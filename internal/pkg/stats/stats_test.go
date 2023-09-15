@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -1039,6 +1040,28 @@ func TestCompletionStats(t *testing.T) {
 
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("CompletionStats(%v) returned diff in result: (-want +got)\n%s", tc.stats, diff)
+			}
+		})
+	}
+}
+
+func TestFromSeriesToProto(t *testing.T) {
+	tests := []struct {
+		testName  string
+		name      string
+		rawValues []int64
+		want      *stpb.Stat
+	}{
+		{testName: "no rawValues", name: "foo", rawValues: []int64{}, want: &stpb.Stat{Name: "foo", Median: 0, Percentile75: 0, Percentile85: 0, Percentile95: 0, Average: 0.0}},
+		{testName: "same rawValues", name: "foo", rawValues: []int64{1, 1, 1, 1, 1}, want: &stpb.Stat{Name: "foo", Median: 1, Percentile75: 1, Percentile85: 1, Percentile95: 1, Average: 1.0}},
+		{testName: "in-order rawValues", name: "foo", rawValues: []int64{1, 2, 3, 4, 5}, want: &stpb.Stat{Name: "foo", Median: 3, Percentile75: 4, Percentile85: 5, Percentile95: 5, Average: 3.0}},
+		{testName: "off-order rawValues", name: "foo", rawValues: []int64{5, 2, 3, 1, 4}, want: &stpb.Stat{Name: "foo", Median: 3, Percentile75: 4, Percentile85: 5, Percentile95: 5, Average: 3.0}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FromSeriesToProto(tt.name, tt.rawValues)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("%v FromSeriesToProto() = %v, want %v", tt.testName, got, tt.want)
 			}
 		})
 	}

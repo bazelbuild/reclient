@@ -454,6 +454,7 @@ func CompletionStats(s *spb.Stats) string {
 	return ""
 }
 
+// statToProto converts a stat struct to the equivalent proto message.
 func statToProto(name string, s *Stat) *stpb.Stat {
 	sPb := &stpb.Stat{
 		Name:         name,
@@ -610,24 +611,36 @@ func (s *Stats) AddRecord(r *lpb.LogRecord) {
 	}
 }
 
+func (st *Stat) summarize() {
+	vals := st.rawValues
+	n := len(vals)
+	if n > 0 {
+		sort.Slice(vals, func(a, b int) bool { return vals[a] < vals[b] })
+		st.Median = vals[n/2]
+		st.Percentile75 = vals[n*3/4]
+		st.Percentile85 = vals[n*17/20]
+		st.Percentile95 = vals[n*19/20]
+		var total float64
+		for _, v := range vals {
+			total += float64(v)
+		}
+		st.Average = total / float64(n)
+	}
+}
+
 func (s *Stats) finalize() {
 	for _, st := range s.Stats {
-		vals := st.rawValues
-		n := len(vals)
-		if n > 0 {
-			sort.Slice(vals, func(a, b int) bool { return vals[a] < vals[b] })
-			st.Median = vals[n/2]
-			st.Percentile75 = vals[n*3/4]
-			st.Percentile85 = vals[n*17/20]
-			st.Percentile95 = vals[n*19/20]
-			var total float64
-			for _, v := range vals {
-				total += float64(v)
-			}
-			st.Average = total / float64(n)
-		}
+		st.summarize()
 	}
 	sort.Slice(s.mismatches, func(a, b int) bool { return s.mismatches[a].Path < s.mismatches[b].Path })
+}
+
+// FromSeriesToProto creates a Stat proto, and set its statistical properties based on input vals.
+func FromSeriesToProto(name string, rawValues []int64) *stpb.Stat {
+	st := Stat{}
+	st.rawValues = rawValues
+	st.summarize()
+	return statToProto(name, &st)
 }
 
 func machineInfo() *spb.MachineInfo {
