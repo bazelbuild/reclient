@@ -100,6 +100,11 @@ func main() {
 	var creds *auth.Credentials
 	if !*remoteDisabled {
 		creds = newCreds(cf)
+		status, err := creds.UpdateStatus()
+		if err != nil {
+			log.Errorf("Error obtaining credentials: %v", err)
+			os.Exit(status)
+		}
 		creds.SaveToDisk()
 	}
 
