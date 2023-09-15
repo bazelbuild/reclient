@@ -28,8 +28,11 @@ import (
 	"sync"
 	"time"
 
+	stpb "github.com/bazelbuild/reclient/api/stat"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
+	"github.com/bazelbuild/reclient/internal/pkg/localresources/usage"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
+	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -88,8 +91,11 @@ type Logger struct {
 	runningActions   int32
 	completedActions map[lpb.CompletionStatus]int32
 
-	mu   sync.RWMutex
-	open bool
+	mu               sync.RWMutex
+	open             bool
+	resourceUsage    map[string][]int64
+	u                *usage.PsutilSampler
+	cancelSamplerCtx context.CancelFunc
 }
 
 type logEvent interface {
@@ -259,7 +265,7 @@ func ParseFilepath(formatfile string) (Format, string, error) {
 
 // NewFromFormatFile instantiates a new Logger.
 // TODO(b/279057640): this is deprecated, remove and use New instead when --log_path flag is gone.
-func NewFromFormatFile(formatfile, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc) (*Logger, error) {
+func NewFromFormatFile(formatfile, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
 	format, filepath, err := ParseFilepath(formatfile)
 	if err != nil {
 		return nil, err
@@ -272,7 +278,7 @@ func NewFromFormatFile(formatfile, includeScanner string, s statCollector, mi *i
 		return nil, err
 	}
 	log.Infof("Created log file %s", filepath)
-	return newLogger(format, f, nil, includeScanner, s, mi, e), nil
+	return newLogger(format, f, nil, includeScanner, s, mi, e, u), nil
 }
 
 func logFileSuffix(format Format) string {
@@ -290,7 +296,7 @@ func logFileSuffix(format Format) string {
 	}
 }
 
-func newLogger(format Format, recs, info *os.File, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc) *Logger {
+func newLogger(format Format, recs, info *os.File, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) *Logger {
 	l := &Logger{
 		Format:   format,
 		ch:       make(chan logEvent),
@@ -308,14 +314,26 @@ func newLogger(format Format, recs, info *os.File, includeScanner string, s stat
 		exportActionMetrics: e,
 		open:                true,
 		completedActions:    make(map[lpb.CompletionStatus]int32),
+		u:                   u,
 	}
-	l.wg.Add(1)
-	go l.processEvents()
+	l.startBackgroundProcess()
 	return l
 }
 
+// startBackgroundProcess starts go routine to run tasks in the background.
+func (l *Logger) startBackgroundProcess() {
+	l.wg.Add(1)
+	go l.processEvents()
+	if l.u != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		l.cancelSamplerCtx = cancel
+		l.wg.Add(1)
+		go l.processUsageData(ctx)
+	}
+}
+
 // New instantiates a new Logger.
-func New(format Format, dir, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc) (*Logger, error) {
+func New(format Format, dir, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", format)
 	}
@@ -332,7 +350,7 @@ func New(format Format, dir, includeScanner string, s statCollector, mi *ignorem
 		return nil, err
 	}
 	log.Infof("Created log file %s", filename)
-	return newLogger(format, recs, info, includeScanner, s, mi, e), nil
+	return newLogger(format, recs, info, includeScanner, s, mi, e, u), nil
 }
 
 // AddEventTimeToProxyInfo will add an reproxy level event to the ProxyInfo object.
@@ -371,6 +389,35 @@ func (l *Logger) AddMetricIntToProxyInfo(key string, value int64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_Int64Value{value}}
+}
+
+// summarize the latest OS resource usage stats as protobuf messages.
+func summarize(usage map[string][]int64) []*stpb.Stat {
+	sPb := make([]*stpb.Stat, 0, 4)
+	for name, value := range usage {
+		sPb = append(sPb, stats.FromSeriesToProto(name, value))
+	}
+	return sPb
+}
+
+// collectResourceUsageSamples collects resource usage samples into logger's resourceUsage field.
+func (l *Logger) collectResourceUsageSamples(samples map[string]int64) {
+	if l == nil {
+		return
+	}
+	if l.resourceUsage == nil {
+		l.resourceUsage = make(map[string][]int64)
+	}
+	// These log messages in reproxy.INFO are used for plotting the time series
+	// of resource usage by a plotter.
+	log.Infof("Resource Usage: %v", samples)
+	for k, v := range samples {
+		if _, ok := l.resourceUsage[k]; ok {
+			l.resourceUsage[k] = append(l.resourceUsage[k], v)
+		} else {
+			l.resourceUsage[k] = []int64{v}
+		}
+	}
 }
 
 // IncrementMetricIntToProxyInfo will increment a reproxy level event to the ProxyInfo object.
@@ -516,7 +563,11 @@ func (l *Logger) CloseAndAggregate() *spb.Stats {
 	if opened {
 		close(l.ch)
 	}
+	if l.cancelSamplerCtx != nil {
+		l.cancelSamplerCtx()
+	}
 	l.wg.Wait()
+	l.info.Stats = append(l.info.Stats, summarize(l.resourceUsage)...)
 	l.writeProxyInfo()
 	l.stats.FinalizeAggregate([]*lpb.ProxyInfo{l.info})
 	return l.stats.ToProto()
@@ -530,6 +581,20 @@ func (l *Logger) processEvents() {
 		log.Errorf("Close error: %v", err)
 	}
 	l.wg.Done()
+}
+
+func (l *Logger) processUsageData(ctx context.Context) {
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			l.wg.Done()
+			return
+		case <-ticker.C:
+			l.collectResourceUsageSamples(usage.Sample(l.u))
+		}
+	}
 }
 
 func (l *Logger) writeProxyInfo() {

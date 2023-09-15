@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "usage",
+    srcs = ["usage.go"],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/localresources/usage",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@com_github_golang_glog//:go_default_library",
+        "@com_github_shirou_gopsutil//process",
+    ],
+)
+
+go_test(
+    name = "usage_test",
+    srcs = ["usage_test.go"],
+    embed = [":usage"],
+    deps = [
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@com_github_shirou_gopsutil//process",
+    ],
+)

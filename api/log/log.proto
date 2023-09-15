@@ -18,6 +18,7 @@ package log;
 
 import "bq_table.proto";
 import "go/api/command/command.proto";
+import "api/stat/stat.proto";
 
 option go_package = "github.com/bazelbuild/reclient/api/log";
 
@@ -282,6 +283,8 @@ message ProxyInfo {
   map<string, Metric> metrics = 2;
   // Flag values from environment variables and command-line args.
   map<string, string> flags = 3;
+  // Resource usage stats during the lifetime of reproxy.
+  repeated stats.Stat stats= 4;
 }
 
 // Generic message to hold data relevant to a specific metric.

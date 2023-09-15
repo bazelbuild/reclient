@@ -8,9 +8,12 @@ go_library(
     deps = [
         "//api/log",
         "//api/proxy",
+        "//api/stat",
         "//api/stats",
         "//internal/pkg/ignoremismatch",
+        "//internal/pkg/localresources/usage",
         "//internal/pkg/protoencoding",
+        "//internal/pkg/stats",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",

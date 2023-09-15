@@ -37,6 +37,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
+	"github.com/bazelbuild/reclient/internal/pkg/localresources/usage"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
@@ -461,12 +462,13 @@ func mustBuildCredentials(m auth.Mechanism) *auth.Credentials {
 }
 
 func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e logger.ExportActionMetricsFunc) (*logger.Logger, error) {
+	u := usage.New()
 	if len(proxyLogDir) > 0 {
 		format, err := logger.ParseFormat(*logFormat)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing logger: %v", err)
 		}
-		l, err := logger.New(format, proxyLogDir[0], cppdependencyscanner.Name(), stats.New(), mi, e)
+		l, err := logger.New(format, proxyLogDir[0], cppdependencyscanner.Name(), stats.New(), mi, e, u)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing logger: %v", err)
 		}
@@ -474,7 +476,7 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e logger.ExportActionM
 	}
 
 	if *logPath != "" {
-		l, err := logger.NewFromFormatFile(*logPath, cppdependencyscanner.Name(), stats.New(), mi, e)
+		l, err := logger.NewFromFormatFile(*logPath, cppdependencyscanner.Name(), stats.New(), mi, e, u)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing log file %v: %v", *logPath, err)
 		}

@@ -12,6 +12,7 @@ proto_library(
     srcs = ["log.proto"],
     visibility = ["//visibility:public"],
     deps = [
+        "//api/stat:stat_proto",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command:command_proto",
         "@protoc_gen_bq_schema//:bq_proto",
     ],
@@ -23,6 +24,7 @@ go_proto_library(
     proto = ":log_proto",
     visibility = ["//visibility:public"],
     deps = [
+        "//api/stat",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
         "@protoc_gen_bq_schema//:bq_go_proto",
     ],

@@ -66,7 +66,7 @@ func TestCommandRemoteMetadataToFromProto(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	execRoot := t.TempDir()
-	logger, err := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, err := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create new logger: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestNew(t *testing.T) {
 
 func TestProxyInfo(t *testing.T) {
 	execRoot := t.TempDir()
-	logger, err := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, err := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to initialize logger: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestReducedLogging(t *testing.T) {
 		},
 	}
 	execRoot := t.TempDir()
-	logger, err := New(ReducedTextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, err := New(ReducedTextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to initialize logger: %v", err)
 	}
@@ -297,11 +297,10 @@ func TestLogging(t *testing.T) {
 	}
 	execRoot := t.TempDir()
 	formatfile := "text://" + filepath.Join(execRoot, "reproxy_log.rpl")
-	logger, err := NewFromFormatFile(formatfile, "testScanner", &stubStats{}, nil, nil)
+	logger, err := NewFromFormatFile(formatfile, "testScanner", &stubStats{}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to initialize logger: %v", err)
 	}
-
 	for _, rr := range recs {
 		r := logger.LogActionStart()
 		r.LogRecord = rr
@@ -375,7 +374,7 @@ func TestParseFileFormat_Error(t *testing.T) {
 
 func TestSingleAction(t *testing.T) {
 	execRoot := t.TempDir()
-	logger, _ := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, _ := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	defer logger.CloseAndAggregate()
 	rec := logger.LogActionStart()
 	summaryDuringExec, _ := logger.GetStatusSummary(context.Background(), &ppb.GetStatusSummaryRequest{})
@@ -403,7 +402,7 @@ func TestSingleAction(t *testing.T) {
 
 func TestEndActionTwice(t *testing.T) {
 	execRoot := t.TempDir()
-	logger, _ := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, _ := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	defer logger.CloseAndAggregate()
 	rec := logger.LogActionStart()
 	rec.CompletionStatus = lpb.CompletionStatus_STATUS_REMOTE_EXECUTION
@@ -432,7 +431,7 @@ func TestEndActionTwice(t *testing.T) {
 
 func TestConcurrentActions(t *testing.T) {
 	execRoot := t.TempDir()
-	logger, _ := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, _ := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	defer logger.CloseAndAggregate()
 	var wg sync.WaitGroup
 	for i := 0; i < 1000; i++ {
@@ -550,7 +549,7 @@ func TestStatManagement(t *testing.T) {
 			ToolVersion: "stub",
 		},
 	}
-	logger, err := New(TextFormat, execRoot, "testScanner", s, nil, nil)
+	logger, err := New(TextFormat, execRoot, "testScanner", s, nil, nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
 	}
@@ -607,7 +606,7 @@ func TestExportMetrics(t *testing.T) {
 	execRoot := t.TempDir()
 
 	// Test nil exportActionMetrics function.
-	logger, err := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil)
+	logger, err := New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
 	}
@@ -620,7 +619,7 @@ func TestExportMetrics(t *testing.T) {
 
 	// Test valid exportActionMetrics function.
 	e := &stubExporter{}
-	logger, err = New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, e.ExportActionMetrics)
+	logger, err = New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, e.ExportActionMetrics, nil)
 	logger.remoteDisabled = false
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
@@ -637,7 +636,7 @@ func TestExportMetrics(t *testing.T) {
 
 	// Test valid exportActionMetrics function with remoteDisabled=true.
 	e = &stubExporter{}
-	logger, err = New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, e.ExportActionMetrics)
+	logger, err = New(TextFormat, execRoot, "testScanner", &stubStats{}, nil, e.ExportActionMetrics, nil)
 	logger.remoteDisabled = true
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)

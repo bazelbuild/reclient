@@ -88,8 +88,8 @@ go_repository(
 go_repository(
     name = "org_golang_x_sys",
     importpath = "golang.org/x/sys",
-    sum = "h1:fLOSk5Q00efkSvAm+4xcoXD+RRmLmmulPn5I3Y9F2EM=",
-    version = "v0.0.0-20211216021012-1d35b9e2eb4e",
+    sum = "h1:Zr2JFtRQNX3BCZ8YtxRE9hNJYC8J6I1MVbMg6owUp18=",
+    version = "v0.4.0",
 )
 
 go_repository(
@@ -157,6 +157,11 @@ go_repository(
     sum = "h1:PGufWXXDq9yaev6xX1YQauaO1MV90e6Mpoq1I7Lz/VM=",
     version = "v0.0.0-20230122075934-ca0b05cb1adb",
 )
+
+load("//:go_deps.bzl", "shirou_gopsutil_deps")
+
+# gazelle:repository_macro go_deps.bzl%shirou_gopsutil_deps
+shirou_gopsutil_deps()
 
 go_rules_dependencies()
 
@@ -310,6 +315,15 @@ go_repository(
     importpath = "github.com/golang/groupcache",
     sum = "h1:1r7pUrabqp18hOBcwBwiTsbnFeTZHV9eER/QT5JVZxY=",
     version = "v0.0.0-20200121045136-8c9f03a8e57e",
+)
+
+# remote and vcs attributes are required for downloading major version suffixed.
+go_repository(
+    name = "com_github_shirou_gopsutil",
+    commit = "faad8060806256ffc4da37f9535160af4e8b0fee",
+    importpath = "github.com/shirou/gopsutil/v3",
+    remote = "https://github.com/shirou/gopsutil",
+    vcs = "git",
 )
 
 go_repository(
