@@ -448,9 +448,15 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		rec.LocalMetadata.EventTimes[k] = t
 	}
 
+	compareMode := req.GetExecutionOptions().GetCompareWithLocal()
+	numLocalRerun := int(req.GetExecutionOptions().GetNumLocalReruns())
 	numRemoteRerun := int(req.GetExecutionOptions().GetNumRemoteReruns())
 	if numRemoteRerun == 0 {
 		numRemoteRerun = int(req.GetExecutionOptions().GetNumRetriesIfMismatched())
+	}
+
+	if compareMode && (numLocalRerun+numRemoteRerun) < 2 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("%v: Invalid number of reruns. Total reruns of >= 2 expected. Got num_local_reruns=%v and num_remote_reruns=%v", executionID, numLocalRerun, numRemoteRerun))
 	}
 
 	reclientTimeout := int(req.GetExecutionOptions().GetReclientTimeout())
@@ -465,8 +471,8 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		rOpt:            req.GetExecutionOptions().GetRemoteExecutionOptions(),
 		lOpt:            req.GetExecutionOptions().GetLocalExecutionOptions(),
 		execStrategy:    req.GetExecutionOptions().GetExecutionStrategy(),
-		compare:         req.GetExecutionOptions().GetCompareWithLocal(),
-		numLocalReruns:  int(req.GetExecutionOptions().GetNumLocalReruns()),
+		compare:         compareMode,
+		numLocalReruns:  numLocalRerun,
 		numRemoteReruns: numRemoteRerun,
 		reclientTimeout: reclientTimeout,
 		oe:              outerr.NewRecordingOutErr(),
@@ -486,15 +492,12 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 	if rand.Intn(100) < features.GetConfig().ExperimentalCacheMissRate {
 		a.rOpt.AcceptCached = false
 	}
-	s.runAction(aCtx, a)
 
+	s.runAction(aCtx, a)
 	if a.compare {
-		if (a.numLocalReruns + a.numRemoteReruns) > 1 {
-			s.rerunAction(aCtx, a)
-		} else {
-			log.Errorf("%v: Invalid number of reruns. Total reruns of >= 2 expected. Got num_local_reruns=%v and num_remote_reruns=%v", executionID, a.numLocalReruns, a.numRemoteReruns)
-		}
+		s.rerunAction(aCtx, a)
 	}
+
 	s.logRecord(a, start)
 	oe := a.oe.(*outerr.RecordingOutErr)
 	var logRecord *lpb.LogRecord

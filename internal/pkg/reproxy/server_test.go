@@ -5762,6 +5762,23 @@ func TestRunCommandError(t *testing.T) {
 			},
 			wantCode: codes.InvalidArgument,
 		},
+		{
+			name: "invalid reruns",
+			inp:  inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr),
+			req: &ppb.RunRequest{
+				Command: &cpb.Command{
+					Args: []string{"a", "b", "c"},
+				},
+				Labels: map[string]string{"type": "compile"},
+				ExecutionOptions: &ppb.ProxyExecutionOptions{
+					ExecutionStrategy: ppb.ExecutionStrategy_REMOTE,
+					CompareWithLocal:  true,
+					NumLocalReruns:    0,
+					NumRemoteReruns:   0,
+				},
+			},
+			wantCode: codes.InvalidArgument,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
