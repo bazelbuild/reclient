@@ -28,15 +28,43 @@ import (
 )
 
 var (
-	logFileNames = []string{
-		"rbe_metrics.txt",
+	logFileGlobs = append([]string{"rbe_metrics.txt",
 		"rbe_metrics.pb",
+		"*.rpl",
+		"*.rrpl",
 
 		"reproxy_outerr.log",
 
 		"build.trace.gz",
-	}
+	}, glogGlobs(
+		"bootstrap",
+		"reproxy",
+		"rewrapper",
+		"scandeps_server",
+		"scandeps_server-subproc",
+		"metricsuploader")...,
+	)
 )
+
+func glogGlobs(binaries ...string) (globs []string) {
+	for _, binary := range binaries {
+		globs = append(globs,
+			// glog main symlinks
+			binary+".INFO",
+			binary+".WARNING",
+			binary+".ERROR",
+			// glog windows symlinks
+			binary+".exe.INFO",
+			binary+".exe.WARNING",
+			binary+".exe.ERROR",
+			// glog rotated log files
+			binary+".*.log.INFO.*",
+			binary+".*.log.WARNING.*",
+			binary+".*.log.ERROR.*",
+		)
+	}
+	return
+}
 
 // CreateLogsArchive creates a .tar.gz file containing all relevant log files
 // relevant to an RBE build.
@@ -94,13 +122,9 @@ func CreateLogsArchive(fname string, logDirs []string, logPath string) (err erro
 
 func collectLogFilesFromDir(logDir string) []string {
 	var logFiles []string
-	if glogFiles, err := filepath.Glob(filepath.Join(logDir, "*.{INFO,ERROR,WARNING}")); err == nil {
-		logFiles = append(logFiles, glogFiles...)
-	}
-	for _, logFile := range logFileNames {
-		fp := filepath.Join(logDir, logFile)
-		if _, err := os.Stat(fp); err == nil {
-			logFiles = append(logFiles, fp)
+	for _, glob := range logFileGlobs {
+		if files, err := filepath.Glob(filepath.Join(logDir, glob)); err == nil {
+			logFiles = append(logFiles, files...)
 		}
 	}
 	return logFiles

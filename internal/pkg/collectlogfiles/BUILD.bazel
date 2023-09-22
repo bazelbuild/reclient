@@ -12,4 +12,5 @@ go_test(
     name = "collectlogfiles_test",
     srcs = ["collectlogfiles_test.go"],
     embed = [":collectlogfiles"],
+    deps = ["@com_github_google_go_cmp//cmp"],
 )
