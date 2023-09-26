@@ -35,8 +35,7 @@ Reclient consists of the following main binaries:
 1.  **bootstrap** - starts and stops reproxy, and aggregates the metrics during
     the shutdown.
 1.  **scandeps_server** - a standalone process for scanning includes of C(++)
-    compile actions. Started and stopped automatically by reproxy (but its
-    location needs to be passed to reproxy through depsscanner_address flag).
+    compile actions. Started and stopped automatically by reproxy.
 
 ## Note
 

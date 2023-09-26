@@ -57,15 +57,18 @@ const (
 	// GomaService indicates goma dependency scanner based input processor
 	// is used for include scanning.
 	GomaService
+	// ClangScanDepsService indicates clangscandeps dependency scanner based input processor
+	// is used for include scanning.
+	ClangScanDepsService
 )
 
 var (
 	// ErrDepsScanTimeout is the error returned by the input processor
 	// when it times out during the dependency scanning phase.
 	ErrDepsScanTimeout = errors.New("cpp dependency scanner timed out")
-	// UseGomaDepsScannerService indicates whether we should use
-	// the goma based dependency scanner service or not.
-	UseGomaDepsScannerService = false
+	// UseDepsScannerService indicates whether we should use
+	// the dependency scanner service or not.
+	UseDepsScannerService = false
 )
 
 // IsStub reflects if the built-in deps scanner is a stub.
@@ -78,10 +81,14 @@ func IsStub() bool {
 
 // Type returns the type of include scaner being used.
 func Type() ScannerType {
-	if UseGomaDepsScannerService {
-		return GomaService
+	useGoma := includescanner.Name == "Goma"
+	if UseDepsScannerService {
+		if useGoma {
+			return GomaService
+		}
+		return ClangScanDepsService
 	}
-	if includescanner.Name == "Goma" {
+	if useGoma {
 		return Goma
 	}
 	return ClangScanDeps
@@ -89,8 +96,11 @@ func Type() ScannerType {
 
 // Name returns the name of include scanner used in the current binary.
 func Name() string {
-	if UseGomaDepsScannerService {
-		return "GomaService"
+	if UseDepsScannerService {
+		if includescanner.Name == "Goma" {
+			return "GomaService"
+		}
+		return "ClangScanDepsService"
 	}
 	return includescanner.Name
 }

@@ -16,6 +16,9 @@ go_library(
         "//:goma_input_processor_service_config": {
             "Name": "Goma",
         },
+        "//:clangscandeps_input_processor_service_config": {
+            "Name": "ClangScanDeps",
+        },
         "//conditions:default": {},
     }),
     deps = [

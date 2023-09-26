@@ -100,7 +100,7 @@ func parseFromFile(cfg string) (map[string]string, error) {
 func ParseFromEnv() {
 	flag.VisitAll(func(f *flag.Flag) {
 		for _, prefix := range []string{"RBE_", "FLAG_"} {
-			if v := os.Getenv(prefix + f.Name); v != "" {
+			if v, ok := os.LookupEnv(prefix + f.Name); ok {
 				flag.Set(f.Name, v)
 				return
 			}

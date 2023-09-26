@@ -122,7 +122,7 @@ var (
 
 	cppLinkDeepScan = flag.Bool("clang_depscan_archive", false, "Deep scan .a files for dependencies during clang linking")
 
-	depsScannerAddress = flag.String("depsscanner_address", "", "If set, connects to the given address for C++ dependency scanning instead of the internal dependency scanner; a path with the prefix 'exec://' will start the target executable and connect to it. If set to execrel:// the `scandeps_server` binary in the same folder as reproxy will be used.")
+	depsScannerAddress = flag.String("depsscanner_address", "execrel://", "If set, connects to the given address for C++ dependency scanning; a path with the prefix 'exec://' will start the target executable and connect to it. Defaults to execrel:// which looks for the `scandeps_server` binary in the same folder as reproxy. When set to \"\", the internal dependency scanner will be used.")
 
 	credsFile          = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
 	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
@@ -178,7 +178,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			}
 			*depsScannerAddress = "exec://" + scandepsServerPath
 		}
-		cppdependencyscanner.UseGomaDepsScannerService = true
+		cppdependencyscanner.UseDepsScannerService = true
 		// If the depsscanner crashes or times out, all actions in flight will be counted as
 		// timeouts.  Therefore we bump the number allowed to account for multiple fallbacks from
 		// one failure.

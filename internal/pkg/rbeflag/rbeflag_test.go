@@ -38,7 +38,7 @@ func TestParseSet(t *testing.T) {
 	cl := flag.CommandLine
 	t.Cleanup(func() {
 		flag.CommandLine = cl
-		os.Setenv("RBE_value", "")
+		os.Unsetenv("RBE_value")
 	})
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	f := flag.String("value", "", "Some value")
@@ -72,8 +72,8 @@ func TestParseSetRBEWins(t *testing.T) {
 	os.Setenv("FLAG_value", "test")
 	os.Setenv("RBE_value", "test2")
 	t.Cleanup(func() {
-		os.Setenv("RBE_value", "")
-		os.Setenv("FLAG_value", "")
+		os.Unsetenv("RBE_value")
+		os.Unsetenv("FLAG_value")
 	})
 	Parse()
 	if *f != "test2" {
@@ -95,7 +95,7 @@ func TestParseCommandLineWins(t *testing.T) {
 	f := flag.String("value", "", "Some value")
 	os.Setenv("RBE_value", "test")
 	t.Cleanup(func() {
-		os.Setenv("RBE_value", "")
+		os.Unsetenv("RBE_value")
 	})
 	Parse()
 	if *f != "cmd" {
