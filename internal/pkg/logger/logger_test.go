@@ -686,3 +686,26 @@ type stubExporter struct {
 func (e *stubExporter) ExportActionMetrics(ctx context.Context, rec *lpb.LogRecord, remoteDisabled bool) {
 	e.exportedRecs = append(e.exportedRecs, ExportActionMetricsCall{Rec: rec, RemoteDisabled: remoteDisabled})
 }
+
+func TestLogger_CollectResourceUsageSamples(t *testing.T) {
+	tests := []struct {
+		name    string
+		log     Logger
+		samples map[string]int64
+		want    map[string][]int64
+	}{
+		{name: "input is nil", log: Logger{resourceUsage: nil}, samples: nil, want: map[string][]int64{peakNumActions: {0}}},
+		{name: "logger with nil resourceUsage field", log: Logger{resourceUsage: nil}, samples: map[string]int64{"cpu": 1, "mem": 2}, want: map[string][]int64{peakNumActions: {0}, "cpu": {1}, "mem": {2}}},
+		{name: "logger with non-nil resourceUsage field", log: Logger{resourceUsage: map[string][]int64{"virt": {3}}}, samples: map[string]int64{"cpu": 1, "mem": 2}, want: map[string][]int64{peakNumActions: {0}, "cpu": {1}, "mem": {2}, "virt": {3}}},
+		{name: "logger with same resourceUsage field", log: Logger{resourceUsage: map[string][]int64{"cpu": {3}, "mem": {4}}}, samples: map[string]int64{"cpu": 1, "mem": 2}, want: map[string][]int64{peakNumActions: {0}, "cpu": {3, 1}, "mem": {4, 2}}},
+		{name: "logger with running actions and resourceUsage field", log: Logger{resourceUsage: map[string][]int64{"cpu": {3}, "mem": {4}}, runningActions: 100}, samples: map[string]int64{"cpu": 1, "mem": 2}, want: map[string][]int64{peakNumActions: {0}, "cpu": {3, 1}, "mem": {4, 2}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.log.collectResourceUsageSamples(tt.samples)
+			if diff := cmp.Diff(tt.want, tt.log.resourceUsage); diff != "" {
+				t.Errorf("collectResourceUsageSamples() generate diff : (-want +got)\n%s", diff)
+			}
+		})
+	}
+}

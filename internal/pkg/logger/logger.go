@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	stpb "github.com/bazelbuild/reclient/api/stat"
@@ -64,7 +65,10 @@ const (
 	ReducedTextFormat
 )
 
-const textDelimiter string = "\n\n\n"
+const (
+	textDelimiter  string = "\n\n\n"
+	peakNumActions string = "PEAK_NUM_ACTIOINS"
+)
 
 type statCollector interface {
 	AddRecord(lr *lpb.LogRecord)
@@ -88,8 +92,9 @@ type Logger struct {
 	mi                  *ignoremismatch.MismatchIgnorer
 	exportActionMetrics ExportActionMetricsFunc
 
-	runningActions   int32
-	completedActions map[lpb.CompletionStatus]int32
+	runningActions     int32
+	peakRunningActions int32
+	completedActions   map[lpb.CompletionStatus]int32
 
 	mu               sync.RWMutex
 	open             bool
@@ -112,6 +117,14 @@ func (s *startActionEvent) apply(l *Logger) {
 	}
 	s.lr.open = true
 	l.runningActions++
+	atomic.StoreInt32(&l.peakRunningActions, max(l.runningActions, l.peakRunningActions))
+}
+
+func max(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 type endActionEvent struct {
@@ -408,6 +421,12 @@ func (l *Logger) collectResourceUsageSamples(samples map[string]int64) {
 	if l.resourceUsage == nil {
 		l.resourceUsage = make(map[string][]int64)
 	}
+	// Add current peak running actions num into samples map, so that it get
+	// recorded into reproxy.INFO together with cpu/mem usage data.
+	if samples == nil {
+		samples = make(map[string]int64)
+	}
+	samples[peakNumActions] = int64(atomic.SwapInt32(&l.peakRunningActions, 0))
 	// These log messages in reproxy.INFO are used for plotting the time series
 	// of resource usage by a plotter.
 	log.Infof("Resource Usage: %v", samples)
