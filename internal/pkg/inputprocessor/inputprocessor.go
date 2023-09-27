@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flags"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/flagsparser"
@@ -40,6 +41,10 @@ const (
 	// shallowLabel is the label key to indicate whether to use the shallow
 	// input processor for the command.
 	shallowLabel = "shallow"
+)
+
+var (
+	normalizedFileErrCache = &sync.Map{}
 )
 
 // Options encapsulates options for initializing a preprocessor.
@@ -280,7 +285,20 @@ func (c *BasePreprocessor) FilterInputsUnderExecRoot() {
 			normalized, err = pn.normalize(c.Options.ExecRoot, f)
 		}
 		if err != nil {
-			log.Warningf("%v: failed to normalize %s @ %s: %v", c.Options.ExecutionID, f, c.Options.ExecRoot, err)
+			//Example error msg we want to get rid of:
+			//c23aff58-b24a-41fb-8676-3f2886f544eb: failed to normalize out/rbe-build/python3 @ /tmpfs/source/chromium/src/: stat /tmpfs/source/chromium/src/out/rbe-build/python3: no such file or directory
+			//with these variables defined:
+			//c.Options.ExecutionID: c23aff58-b24a-41fb-8676-3f2886f544eb
+			//f: out/rbe-build/python3
+			//c.Options.ExecRoot: /tmpfs/source/chromium/src/
+			//err: stat /tmpfs/source/chromium/src/out/rbe-build/python3: no such file or directory
+			//
+			//These error msgs are all generated from this line: cache, e = pn.normalize(c.Options.ExecRoot, f)
+			// TODO(b/302290967) Update normalize() to prevent this error msg from generating.
+			_, loaded := normalizedFileErrCache.LoadOrStore(err.Error(), struct{}{})
+			if !loaded || bool(log.V(3)) {
+				log.Warningf("%v: failed to normalize %s @ %s: %v", c.Options.ExecutionID, f, c.Options.ExecRoot, err)
+			}
 			continue
 		}
 		if normalized != f {
