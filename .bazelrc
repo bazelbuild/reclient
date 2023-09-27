@@ -41,6 +41,9 @@ build:linux --cxxopt=-Wuninitialized --host_cxxopt=-Wuninitialized
 # https://github.com/bazelbuild/bazel/issues/8830
 build --experimental_allow_tags_propagation
 
+build:linux --strategy=CcNinjaMakeRule=docker
+build:linux --experimental_enable_docker_sandbox
+
 ## use BAZEL_LLVM on windows
 ## http://docs.bazel.build/versions/master/windows.html#bulid-c-with-clang
 ## but it doesn't work with go/cgo yet.
