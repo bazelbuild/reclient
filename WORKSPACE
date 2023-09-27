@@ -401,7 +401,7 @@ http_archive(
 
 load("gclient.bzl", "gclient_repository")
 
-GOMA_REV = "f25b26723f9344697b3651ed7d07c5cce018da65"
+GOMA_REV = "603dfba63fe365a01879029588b48b6f122fe0b8"
 
 gclient_repository(
     name = "goma",
@@ -420,7 +420,6 @@ gclient_repository(
         # popen implementation in Mac that makes it not thread safe. This patch adds a mutex
         # that prevents multi-threaded popen and pclose calls.
         "//third_party/patches/goma:goma_subprocess.patch",
-        "//third_party/patches/goma:goma_mac_macro.patch",
     ],
     remote = "https://chromium.googlesource.com/infra/goma/client",
     revision = GOMA_REV,
