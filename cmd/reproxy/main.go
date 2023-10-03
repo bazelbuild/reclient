@@ -404,7 +404,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 			select {
 			case sig := <-sigs:
 				sigCnt--
-				server.DrainAndReleaseResources() // Start draining server immediately while waiting for Shutdown rpc
+				go server.DrainAndReleaseResources() // Start draining server immediately while waiting for Shutdown rpc
 				if sigCnt > 0 {
 					log.Infof("RE proxy server received %v signal, waiting for Shutdown rpc or %d more signals...", sig, sigCnt)
 				} else {
