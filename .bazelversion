@@ -1,4 +1,4 @@
-5.3.0
+6.3.2
 ### PLEASE READ ###
 
 Bazelisk only reads the first line of this file. Don't move this up.
@@ -13,7 +13,7 @@ When upgrading bazel, you must also upgrade toolchains.
 
 ```
 export RECLIENT_BUILDER_V=v13
-export NEW_BAZEL_VERSION=5.3.0
+export NEW_BAZEL_VERSION=$(head -n 1 .bazelversion | tail -n 1)
 export PATH_TO_RECLIENT=$PWD
 export GCR_IMAGE=gcr.io/reclient-releases/reclient-builder:${RECLIENT_BUILDER_V}
 rbe_configs_gen \
@@ -33,7 +33,7 @@ Edit the cc_toolchain_suite in //configs/linux/cc/BUILD.bazel to include
 3. Run it for Windows. You'll need a windows machine/cloudtop/GCE VM.
 
 $ set RECLIENT_BUILDER_V=v3
-$ set NEW_BAZEL_VERSION=5.0.0
+$ set NEW_BAZEL_VERSION=6.3.2
 $ set PATH_TO_RECLIENT=%CD%
 $ rbe_configs_gen.exe^
     --output_src_root=%PATH_TO_RECLIENT%^

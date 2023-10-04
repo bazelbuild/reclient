@@ -123,6 +123,7 @@ cc_toolchain_config(
         "ar": "/usr/bin/ar",
         "ld": "/usr/bin/ld",
         "llvm-cov": "/usr/local/bin/llvm-cov",
+        "llvm-profdata": "/usr/local/bin/llvm-profdata",
         "cpp": "/usr/bin/cpp",
         "gcc": "android_prebuilts/clang-" + clang_version + "/bin/clang",
         "dwp": "/usr/bin/dwp",

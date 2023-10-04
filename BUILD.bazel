@@ -102,6 +102,15 @@ config_setting(
 )
 
 config_setting(
+    name = "goma_input_processor_service_config_windows_dbg",
+    constraint_values = ["@platforms//os:windows"],
+    flag_values = {
+        ":include_scanner": "goma-service",
+    },
+    values = {"features": "dbg"},
+)
+
+config_setting(
     name = "goma_input_processor_service_config_mac",
     constraint_values = ["@platforms//os:macos"],
     flag_values = {

@@ -135,7 +135,7 @@ var (
 		"-o", "test.obj",
 		filename,
 	}
-	processInputsTimeout = 10 * time.Millisecond
+	processInputsTimeout = 100 * time.Millisecond
 )
 
 // TestNew_ConnectSuccess tests that a call to New() can connect to an already running dependency

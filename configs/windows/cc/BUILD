@@ -102,7 +102,6 @@ cc_toolchain_config(
     tool_bin_path = "c:/tools/msys64/usr/bin",
     tool_paths = {
         "ar": "c:/tools/msys64/usr/bin/ar",
-        "compat-ld": "c:/tools/msys64/usr/bin/compat-ld",
         "cpp": "c:/tools/msys64/usr/bin/cpp",
         "dwp": "c:/tools/msys64/usr/bin/dwp",
         "gcc": "c:/tools/msys64/usr/bin/gcc",
@@ -162,7 +161,6 @@ cc_toolchain_config(
     tool_bin_path = "c:/tools/msys64/mingw64/bin",
     tool_paths = {
         "ar": "c:/tools/msys64/mingw64/bin/ar",
-        "compat-ld": "c:/tools/msys64/mingw64/bin/compat-ld",
         "cpp": "c:/tools/msys64/mingw64/bin/cpp",
         "dwp": "c:/tools/msys64/mingw64/bin/dwp",
         "gcc": "c:/tools/msys64/mingw64/bin/gcc",
@@ -611,7 +609,7 @@ toolchain(
     exec_compatible_with = [
     ],
     target_compatible_with = [
-        "@platforms//cpu:arm",
+        "@platforms//cpu:armv7",
         "@platforms//os:android",
     ],
     toolchain = ":cc-compiler-armeabi-v7a",

@@ -82,10 +82,15 @@ def _gn(ctx):
         gn_args = ctx.attr.gn_args_macos_arm64
         __execute(ctx, __prefix(ctx, "gn") + ["gen", "out_arm64", "--args={}".format(gn_args)], wd = ctx.attr.base_dir)
         return
-    gn_args = ctx.attr.gn_args_linux
     if __is_windows(ctx):
-        gn_args = ctx.attr.gn_args_windows
-    __execute(ctx, __prefix(ctx, "gn") + ["gen", "out", "--args={}".format(gn_args)], wd = ctx.attr.base_dir)
+        # We cannot condition this repository rule on whether we want to build debug or not.
+        # Thus we will generate the ninja files for both release and debug in
+        # different output directories, and conditionally run ninja in one of the output
+        # directories depending on configuration.
+        __execute(ctx, __prefix(ctx, "gn") + ["gen", "out", "--args={}".format(ctx.attr.gn_args_windows)], wd = ctx.attr.base_dir)
+        __execute(ctx, __prefix(ctx, "gn") + ["gen", "out_dbg", "--args={}".format(ctx.attr.gn_args_windows_dbg)], wd = ctx.attr.base_dir)
+        return
+    __execute(ctx, __prefix(ctx, "gn") + ["gen", "out", "--args={}".format(ctx.attr.gn_args_linux)], wd = ctx.attr.base_dir)
 
 # When using sandbox, ninja will think it has to rebuild "build.ninja"
 # using gn, but we don't want to build steps to rely on gn at all.
@@ -183,6 +188,9 @@ gclient_repository = repository_rule(
             doc = "Args to pass to gn on macos for x86_64 target.",
         ),
         "gn_args_windows": attr.string(
+            doc = "Args to pass to gn on windows.",
+        ),
+        "gn_args_windows_dbg": attr.string(
             doc = "Args to pass to gn on windows.",
         ),
         "build_file": attr.label(

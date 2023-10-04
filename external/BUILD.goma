@@ -80,15 +80,15 @@ cc_library(
 cc_library(
     name = "glog",
     hdrs = select({
-        "@bazel_tools//platforms:linux": glob(["client/third_party/config/glog/linux/**/*.h"], allow_empty=False),
-        "@bazel_tools//platforms:windows": glob(["client/third_party/config/glog/win/**/*.h"], allow_empty=False),
-        "@bazel_tools//platforms:osx": glob(["client/third_party/config/glog/mac/**/*.h"], allow_empty=False),
+        "@platforms//os:linux": glob(["client/third_party/config/glog/linux/**/*.h"], allow_empty=False),
+        "@platforms//os:windows": glob(["client/third_party/config/glog/win/**/*.h"], allow_empty=False),
+        "@platforms//os:osx": glob(["client/third_party/config/glog/mac/**/*.h"], allow_empty=False),
         "//conditions:default": [],
     }),
     strip_include_prefix = select({
-        "@bazel_tools//platforms:linux": "client/third_party/config/glog/linux",
-        "@bazel_tools//platforms:windows": "client/third_party/config/glog/win",
-        "@bazel_tools//platforms:osx": "client/third_party/config/glog/mac",
+        "@platforms//os:linux": "client/third_party/config/glog/linux",
+        "@platforms//os:windows": "client/third_party/config/glog/win",
+        "@platforms//os:osx": "client/third_party/config/glog/mac",
         "//conditions:default": "",
     }),
     visibility = ["//visibility:public"]

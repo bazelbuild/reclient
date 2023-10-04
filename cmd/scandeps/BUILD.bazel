@@ -8,7 +8,7 @@ cc_library(
         "@com_github_gflags_gflags//:gflags",
         "@com_github_grpc_grpc//:grpc++",
     ] + select({
-        "@io_bazel_rules_go//go/platform:windows": [
+        "@platforms//os:windows": [
             "@com_github_google_glog//:glog",
         ],
         "//conditions:default": [],
@@ -19,7 +19,7 @@ cc_library(
 cc_binary(
     name = "scandeps_server",
     linkopts = select({
-        "@io_bazel_rules_go//go/platform:linux": [
+        "@platforms//os:linux": [
             "-Wl,--wrap=getentropy",
         ],
         "//conditions:default": [],
