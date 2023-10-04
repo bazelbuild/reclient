@@ -67,6 +67,9 @@ const (
 	GCE
 	// CredentialFile is using service account credentials from a proviced file
 	CredentialFile
+	// Invalid implies a valid mechanism exists, but it cannot provide credentials
+	// at the moment (invalid password or other similar problems)
+	Invalid
 	// None implies that the user will not use authentication
 	None
 )
@@ -84,6 +87,8 @@ func (m Mechanism) String() string {
 		return "CredentialFile"
 	case None:
 		return "None"
+	case Invalid:
+		return "Invalid"
 	default:
 		return "Incorrect Value"
 	}
