@@ -49,6 +49,4 @@ message Credentials {
   reserved "created_at";
   // Token expiry.
   google.protobuf.Timestamp expiry = 4;
-  // Reauth expiry.
-  google.protobuf.Timestamp refresh_expiry = 5;
 }
