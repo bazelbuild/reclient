@@ -132,6 +132,7 @@ type Error struct {
 // Credentials provides auth functionalities with a specific auth mechanism.
 type Credentials struct {
 	m           Mechanism
+	refreshExp  time.Time
 	tokenSource *grpcOauth.TokenSource
 	credsFile   string
 }
@@ -204,8 +205,9 @@ func buildCredentials(baseCreds cachedCredentials, credsFile, tokenInfoURL strin
 		return nil, errors.New("cannot initialize credentials with unknown mechanism")
 	}
 	c := &Credentials{
-		m:         baseCreds.m,
-		credsFile: credsFile,
+		m:          baseCreds.m,
+		refreshExp: baseCreds.refreshExp,
+		credsFile:  credsFile,
 	}
 	return c, nil
 }
@@ -215,8 +217,8 @@ func (c *Credentials) SaveToDisk() {
 	if c == nil {
 		return
 	}
-	cc := cachedCredentials{m: c.m}
-	if c.tokenSource != nil {
+	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}
+	if c.tokenSource != nil && c.refreshExp.IsZero() {
 		// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
 		// this will return a cached credential if one exists.
 		t, err := c.tokenSource.Token()
@@ -239,6 +241,14 @@ func (c *Credentials) RemoveFromDisk() {
 	if err := os.Remove(c.credsFile); err != nil {
 		log.Errorf("Failed to remove credentials from disk: %v", err)
 	}
+}
+
+// UpdateStatus updates the refresh expiry time if it is expired
+func (c *Credentials) UpdateStatus() (int, error) {
+	if nowFn().Before(c.refreshExp) {
+		return 0, nil
+	}
+	return 0, nil
 }
 
 // ReproxyAuthenticationFlags retrieves the auth flags to use to start reproxy.

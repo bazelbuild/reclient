@@ -29,8 +29,9 @@ import (
 
 // CachedCredentials are the credentials cached to disk.
 type cachedCredentials struct {
-	m     Mechanism
-	token *oauth2.Token
+	m          Mechanism
+	refreshExp time.Time
+	token      *oauth2.Token
 }
 
 func loadFromDisk(tf string) (cachedCredentials, error) {
@@ -55,8 +56,9 @@ func loadFromDisk(tf string) (cachedCredentials, error) {
 		}
 	}
 	c := cachedCredentials{
-		m:     protoToMechanism(cPb.GetMechanism()),
-		token: token,
+		m:          protoToMechanism(cPb.GetMechanism()),
+		token:      token,
+		refreshExp: TimeFromProto(cPb.GetRefreshExpiry()),
 	}
 	log.Infof("Loaded cached credentials of type %v, expires at %v", c.m, exp)
 	return c, nil
@@ -71,6 +73,9 @@ func saveToDisk(c cachedCredentials, tf string) error {
 	if c.token != nil {
 		cPb.Token = c.token.AccessToken
 		cPb.Expiry = TimeToProto(c.token.Expiry)
+	}
+	if !c.refreshExp.IsZero() {
+		cPb.RefreshExpiry = TimeToProto(c.refreshExp)
 	}
 	f, err := os.Create(tf)
 	if err != nil {
