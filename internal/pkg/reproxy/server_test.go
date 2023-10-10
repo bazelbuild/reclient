@@ -1889,7 +1889,8 @@ func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
 
 	res := &command.Result{Status: command.NonZeroExitResultStatus, ExitCode: 5}
 	setPlatformOSFamily(cmd)
-	env.Set(cmd, command.DefaultExecutionOptions(), res, fakes.StdErr([]byte("something happened")))
+	stdErr := []byte("something happened")
+	env.Set(cmd, command.DefaultExecutionOptions(), res, fakes.StdErr(stdErr))
 	wantDigestBefore := digest.NewFromBlob([]byte(inOutContentOld))
 	if gotDigestBefore := fmc.Get(inOutFilepath).Digest; gotDigestBefore != wantDigestBefore {
 		t.Fatalf("old content digest mismatch for %q: want %q, got %q", inOutFilepath, wantDigestBefore, gotDigestBefore)
@@ -1900,7 +1901,13 @@ func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to run command: %v", err)
 	}
-	wantResp := &ppb.RunResponse{Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS}}
+	wantResp := &ppb.RunResponse{
+		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+		RemoteFallbackInfo: &ppb.RemoteFallbackInfo{
+			ExitCode: 5,
+			Stderr:   stdErr,
+		},
+	}
 	if diff := cmp.Diff(wantResp, gotResp, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
 		t.Errorf("command response mismatch: (-want +got)\n%s", diff)
 	}
@@ -3362,6 +3369,10 @@ func TestRemoteLocalFallback(t *testing.T) {
 		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 		// Stderr of failed remote action isn't sent to client.
 		// Confirmation of remote attempt is checked below in wantRecs.
+		RemoteFallbackInfo: &ppb.RemoteFallbackInfo{
+			ExitCode: 5,
+			Stderr:   stdErr,
+		},
 	}
 	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
 		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
@@ -3620,14 +3631,20 @@ func TestFailEarly(t *testing.T) {
 		OutputFiles: []string{abOutPath},
 	}
 	setPlatformOSFamily(cmdSuccess)
+	wantFallback := &ppb.RunResponse{
+		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+		RemoteFallbackInfo: &ppb.RemoteFallbackInfo{
+			ExitCode: 5,
+		},
+	}
+	wantSuccess := &ppb.RunResponse{
+		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
+	}
 	got, err := server.RunCommand(ctx, reqFallback)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
 	}
-	want := &ppb.RunResponse{
-		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
-	}
-	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(wantFallback, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
 		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
 	}
 	env.Set(cmdSuccess, command.DefaultExecutionOptions(), res)
@@ -3635,7 +3652,7 @@ func TestFailEarly(t *testing.T) {
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
 	}
-	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(wantSuccess, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
 		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
 	}
 	// Third request should be rejected. Wait for 1 second so ticker can check current num of fallbacks.
@@ -3644,7 +3661,7 @@ func TestFailEarly(t *testing.T) {
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
 	}
-	want = &ppb.RunResponse{
+	want := &ppb.RunResponse{
 		Result: &cpb.CommandResult{
 			Status:   cpb.CommandResultStatus_LOCAL_ERROR,
 			ExitCode: command.LocalErrorExitCode,

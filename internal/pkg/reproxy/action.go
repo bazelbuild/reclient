@@ -69,6 +69,8 @@ type action struct {
 	lbls                   map[string]string
 	toolchainInputs        []string
 	oe                     outerr.OutErr
+	fallbackOE             outerr.OutErr
+	fallbackExitCode       int
 	rec                    *logger.LogRecord
 	rOpt                   *ppb.RemoteExecutionOptions
 	lOpt                   *ppb.LocalExecutionOptions

@@ -92,10 +92,10 @@ message RunRequest {
 
 // Contains metadata and result data for a command execution.
 message RunResponse {
-  // Standard out of the command, chunked. May be empty.
+  // Standard out of the command. May be empty.
   bytes stdout = 1;
 
-  // Standard error of the command, chunked. May be empty.
+  // Standard error of the command. May be empty.
   bytes stderr = 2;
 
   // Result of the command execution. Should always be present in the last
@@ -110,6 +110,22 @@ message RunResponse {
   // A full reproxy log for a single remote action.
   // Present if ProxyExecutionOptions:include_action_log is True.
   log.LogRecord action_log = 5;
+
+  // Information on actions that fail remotely and fallback locally.
+  RemoteFallbackInfo remote_fallback_info = 6;
+
+}
+
+// Contains data for commands that fall back locally.
+message RemoteFallbackInfo {
+  // Exit code of the command when run remotely. Should be non-zero.
+  int32 exit_code = 1;
+
+  // Standard out of the remotely executed command that fellback locally. May be empty.
+  bytes stdout = 2;
+
+  // Standard error of the remotely executed command that fellback locally. May be empty.
+  bytes stderr = 3;
 }
 
 // Options for executing a command.

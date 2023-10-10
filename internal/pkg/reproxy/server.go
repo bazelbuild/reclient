@@ -477,6 +477,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		numRemoteReruns: numRemoteRerun,
 		reclientTimeout: reclientTimeout,
 		oe:              outerr.NewRecordingOutErr(),
+		fallbackOE:      outerr.NewRecordingOutErr(),
 		rec:             rec,
 		fmc:             s.FileMetadataStore,
 		forecast:        s.Forecast,
@@ -501,6 +502,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 
 	s.logRecord(a, start)
 	oe := a.oe.(*outerr.RecordingOutErr)
+	fallbackOE := a.fallbackOE.(*outerr.RecordingOutErr)
 	var logRecord *lpb.LogRecord
 	if req.GetExecutionOptions().GetIncludeActionLog() {
 		logRecord = a.rec.LogRecord
@@ -513,15 +515,23 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		if status != command.NonZeroExitResultStatus && oe != nil && len(oe.Stdout()) == 0 && len(oe.Stderr()) == 0 {
 			if a.res.Err != nil {
 				errorMsg := "reclient[" + executionID + "]: " + status.String() + ": " + a.res.Err.Error() + "\n"
-				return toResponse(cmd, a.res, nil, []byte(errorMsg), logRecord), nil
+				return toResponse(cmd, a.res, nil, []byte(errorMsg), nil, nil, a.fallbackExitCode, logRecord), nil
 			}
-			return toResponse(cmd, a.res, nil, nil, logRecord), nil
+			return toResponse(cmd, a.res, nil, nil, nil, nil, a.fallbackExitCode, logRecord), nil
 		}
 	}
-	if oe == nil {
-		return toResponse(cmd, a.res, nil, nil, logRecord), nil
+
+	var oeStdout, oeStderr, fallbackStdout, fallbackStderr []byte
+	if oe != nil {
+		oeStdout = oe.Stdout()
+		oeStderr = oe.Stderr()
 	}
-	return toResponse(cmd, a.res, oe.Stdout(), oe.Stderr(), logRecord), nil
+	if fallbackOE != nil {
+		fallbackStdout = fallbackOE.Stdout()
+		fallbackStderr = fallbackOE.Stderr()
+	}
+
+	return toResponse(cmd, a.res, oeStdout, oeStderr, fallbackStdout, fallbackStderr, a.fallbackExitCode, logRecord), nil
 }
 
 func isWindowsCross(platformProperty map[string]string) bool {
@@ -668,6 +678,8 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 			roe := a.oe.(*outerr.RecordingOutErr)
 			log.Warningf("%v: Remote execution failed with %+v, falling back to local.\n stdout: %s\n stderr: %s",
 				a.cmd.Identifiers.ExecutionID, a.res, roe.Stdout(), roe.Stderr())
+			a.fallbackOE = a.oe
+			a.fallbackExitCode = a.res.ExitCode
 			a.oe = outerr.NewRecordingOutErr()
 			a.runLocal(ctx, s.LocalPool)
 			s.numFallbacks.Add(1)
@@ -923,13 +935,23 @@ func fileList(execRoot string, files []string, dirs []string) []string {
 	return res
 }
 
-func toResponse(cmd *command.Command, res *command.Result, stdout, stderr []byte, logRecord *lpb.LogRecord) *ppb.RunResponse {
+func toResponse(cmd *command.Command, res *command.Result, stdout, stderr, fallbackStdout, fallbackStderr []byte, fallbackExitCode int, logRecord *lpb.LogRecord) *ppb.RunResponse {
+	var fallbackInfo *ppb.RemoteFallbackInfo
+	if fallbackStdout != nil || fallbackStderr != nil || fallbackExitCode != 0 {
+		fallbackInfo = &ppb.RemoteFallbackInfo{
+			ExitCode: int32(fallbackExitCode),
+			Stdout:   fallbackStdout,
+			Stderr:   fallbackStderr,
+		}
+	}
+
 	return &ppb.RunResponse{
-		ExecutionId: cmd.Identifiers.ExecutionID,
-		Result:      command.ResultToProto(res),
-		Stdout:      stdout,
-		Stderr:      stderr,
-		ActionLog:   logRecord,
+		ExecutionId:        cmd.Identifiers.ExecutionID,
+		Result:             command.ResultToProto(res),
+		Stdout:             stdout,
+		Stderr:             stderr,
+		RemoteFallbackInfo: fallbackInfo,
+		ActionLog:          logRecord,
 	}
 }
 
