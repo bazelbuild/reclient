@@ -24,7 +24,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -69,9 +68,6 @@ const (
 	GCE
 	// CredentialFile is using service account credentials from a proviced file
 	CredentialFile
-	// Invalid implies a valid mechanism exists, but it cannot provide credentials
-	// at the moment (invalid password or other similar problems)
-	Invalid
 	// None implies that the user will not use authentication
 	None
 )
@@ -89,8 +85,6 @@ func (m Mechanism) String() string {
 		return "CredentialFile"
 	case None:
 		return "None"
-	case Invalid:
-		return "Invalid"
 	default:
 		return "Incorrect Value"
 	}
@@ -308,17 +302,6 @@ func (c *Credentials) TokenSource() *grpcOauth.TokenSource {
 		return nil
 	}
 	return c.tokenSource
-}
-
-// runAuthCommand runs a command to obtain credentials of the given authentication mechanism.
-func runAuthCommand(m Mechanism) error {
-	var cmd *exec.Cmd
-	switch m {
-	default:
-		return nil
-	}
-	fmt.Printf("Running %v\n", strings.Join(cmd.Args, " "))
-	return cmd.Run()
 }
 
 func checkADCStatus() error {
