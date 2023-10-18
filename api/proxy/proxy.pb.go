@@ -79,7 +79,7 @@ func (x ExecutionStrategy_Value) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExecutionStrategy_Value.Descriptor instead.
 func (ExecutionStrategy_Value) EnumDescriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{11, 0}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{12, 0}
 }
 
 type LocalExecutionOptions_LocalExecutionPlatform int32
@@ -125,7 +125,7 @@ func (x LocalExecutionOptions_LocalExecutionPlatform) Number() protoreflect.Enum
 
 // Deprecated: Use LocalExecutionOptions_LocalExecutionPlatform.Descriptor instead.
 func (LocalExecutionOptions_LocalExecutionPlatform) EnumDescriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{12, 0}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{13, 0}
 }
 
 type ShutdownRequest struct {
@@ -560,11 +560,12 @@ type RunResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Stdout      []byte                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
-	Stderr      []byte                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
-	Result      *command.CommandResult `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`
-	ExecutionId string                 `protobuf:"bytes,4,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	ActionLog   *log.LogRecord         `protobuf:"bytes,5,opt,name=action_log,json=actionLog,proto3" json:"action_log,omitempty"`
+	Stdout             []byte                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr             []byte                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	Result             *command.CommandResult `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`
+	ExecutionId        string                 `protobuf:"bytes,4,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	ActionLog          *log.LogRecord         `protobuf:"bytes,5,opt,name=action_log,json=actionLog,proto3" json:"action_log,omitempty"`
+	RemoteFallbackInfo *RemoteFallbackInfo    `protobuf:"bytes,6,opt,name=remote_fallback_info,json=remoteFallbackInfo,proto3" json:"remote_fallback_info,omitempty"`
 }
 
 func (x *RunResponse) Reset() {
@@ -634,6 +635,76 @@ func (x *RunResponse) GetActionLog() *log.LogRecord {
 	return nil
 }
 
+func (x *RunResponse) GetRemoteFallbackInfo() *RemoteFallbackInfo {
+	if x != nil {
+		return x.RemoteFallbackInfo
+	}
+	return nil
+}
+
+type RemoteFallbackInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ExitCode int32  `protobuf:"varint,1,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Stdout   []byte `protobuf:"bytes,2,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr   []byte `protobuf:"bytes,3,opt,name=stderr,proto3" json:"stderr,omitempty"`
+}
+
+func (x *RemoteFallbackInfo) Reset() {
+	*x = RemoteFallbackInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_proxy_proxy_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RemoteFallbackInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoteFallbackInfo) ProtoMessage() {}
+
+func (x *RemoteFallbackInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proxy_proxy_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoteFallbackInfo.ProtoReflect.Descriptor instead.
+func (*RemoteFallbackInfo) Descriptor() ([]byte, []int) {
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RemoteFallbackInfo) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *RemoteFallbackInfo) GetStdout() []byte {
+	if x != nil {
+		return x.Stdout
+	}
+	return nil
+}
+
+func (x *RemoteFallbackInfo) GetStderr() []byte {
+	if x != nil {
+		return x.Stderr
+	}
+	return nil
+}
+
 type ProxyExecutionOptions struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -654,7 +725,7 @@ type ProxyExecutionOptions struct {
 func (x *ProxyExecutionOptions) Reset() {
 	*x = ProxyExecutionOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proxy_proxy_proto_msgTypes[10]
+		mi := &file_api_proxy_proxy_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -667,7 +738,7 @@ func (x *ProxyExecutionOptions) String() string {
 func (*ProxyExecutionOptions) ProtoMessage() {}
 
 func (x *ProxyExecutionOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proxy_proxy_proto_msgTypes[10]
+	mi := &file_api_proxy_proxy_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -680,7 +751,7 @@ func (x *ProxyExecutionOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyExecutionOptions.ProtoReflect.Descriptor instead.
 func (*ProxyExecutionOptions) Descriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{10}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ProxyExecutionOptions) GetExecutionStrategy() ExecutionStrategy_Value {
@@ -762,7 +833,7 @@ type ExecutionStrategy struct {
 func (x *ExecutionStrategy) Reset() {
 	*x = ExecutionStrategy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proxy_proxy_proto_msgTypes[11]
+		mi := &file_api_proxy_proxy_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -775,7 +846,7 @@ func (x *ExecutionStrategy) String() string {
 func (*ExecutionStrategy) ProtoMessage() {}
 
 func (x *ExecutionStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proxy_proxy_proto_msgTypes[11]
+	mi := &file_api_proxy_proxy_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +859,7 @@ func (x *ExecutionStrategy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecutionStrategy.ProtoReflect.Descriptor instead.
 func (*ExecutionStrategy) Descriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{11}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{12}
 }
 
 type LocalExecutionOptions struct {
@@ -805,7 +876,7 @@ type LocalExecutionOptions struct {
 func (x *LocalExecutionOptions) Reset() {
 	*x = LocalExecutionOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proxy_proxy_proto_msgTypes[12]
+		mi := &file_api_proxy_proxy_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -818,7 +889,7 @@ func (x *LocalExecutionOptions) String() string {
 func (*LocalExecutionOptions) ProtoMessage() {}
 
 func (x *LocalExecutionOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proxy_proxy_proto_msgTypes[12]
+	mi := &file_api_proxy_proxy_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -831,7 +902,7 @@ func (x *LocalExecutionOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalExecutionOptions.ProtoReflect.Descriptor instead.
 func (*LocalExecutionOptions) Descriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{12}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *LocalExecutionOptions) GetPlatform() LocalExecutionOptions_LocalExecutionPlatform {
@@ -878,7 +949,7 @@ type RemoteExecutionOptions struct {
 func (x *RemoteExecutionOptions) Reset() {
 	*x = RemoteExecutionOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proxy_proxy_proto_msgTypes[13]
+		mi := &file_api_proxy_proxy_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -891,7 +962,7 @@ func (x *RemoteExecutionOptions) String() string {
 func (*RemoteExecutionOptions) ProtoMessage() {}
 
 func (x *RemoteExecutionOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proxy_proxy_proto_msgTypes[13]
+	mi := &file_api_proxy_proxy_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +975,7 @@ func (x *RemoteExecutionOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoteExecutionOptions.ProtoReflect.Descriptor instead.
 func (*RemoteExecutionOptions) Descriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{13}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RemoteExecutionOptions) GetAcceptCached() bool {
@@ -961,7 +1032,7 @@ type Metadata struct {
 func (x *Metadata) Reset() {
 	*x = Metadata{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_proxy_proxy_proto_msgTypes[14]
+		mi := &file_api_proxy_proxy_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -974,7 +1045,7 @@ func (x *Metadata) String() string {
 func (*Metadata) ProtoMessage() {}
 
 func (x *Metadata) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proxy_proxy_proto_msgTypes[14]
+	mi := &file_api_proxy_proxy_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -987,7 +1058,7 @@ func (x *Metadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{14}
+	return file_api_proxy_proxy_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Metadata) GetEventTimes() map[string]*command.TimeInterval {
@@ -1075,7 +1146,7 @@ var file_api_proxy_proxy_proto_rawDesc = []byte{
 	0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
 	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02,
-	0x38, 0x01, 0x22, 0xbb, 0x01, 0x0a, 0x0b, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x38, 0x01, 0x22, 0x88, 0x02, 0x0a, 0x0b, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
 	0x73, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x64, 0x6f, 0x75, 0x74, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x0c, 0x52, 0x06, 0x73, 0x74, 0x64, 0x6f, 0x75, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74,
 	0x64, 0x65, 0x72, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x73, 0x74, 0x64, 0x65,
@@ -1087,6 +1158,17 @@ var file_api_proxy_proxy_proto_rawDesc = []byte{
 	0x64, 0x12, 0x2d, 0x0a, 0x0a, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6c, 0x6f, 0x67, 0x18,
 	0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x6c, 0x6f, 0x67, 0x2e, 0x4c, 0x6f, 0x67, 0x52,
 	0x65, 0x63, 0x6f, 0x72, 0x64, 0x52, 0x09, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4c, 0x6f, 0x67,
+	0x12, 0x4b, 0x0a, 0x14, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x5f, 0x66, 0x61, 0x6c, 0x6c, 0x62,
+	0x61, 0x63, 0x6b, 0x5f, 0x69, 0x6e, 0x66, 0x6f, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19,
+	0x2e, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x46, 0x61, 0x6c,
+	0x6c, 0x62, 0x61, 0x63, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x12, 0x72, 0x65, 0x6d, 0x6f, 0x74,
+	0x65, 0x46, 0x61, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x22, 0x61, 0x0a,
+	0x12, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x46, 0x61, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x49,
+	0x6e, 0x66, 0x6f, 0x12, 0x1b, 0x0a, 0x09, 0x65, 0x78, 0x69, 0x74, 0x5f, 0x63, 0x6f, 0x64, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x08, 0x65, 0x78, 0x69, 0x74, 0x43, 0x6f, 0x64, 0x65,
+	0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x64, 0x6f, 0x75, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x06, 0x73, 0x74, 0x64, 0x6f, 0x75, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x64, 0x65,
+	0x72, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x73, 0x74, 0x64, 0x65, 0x72, 0x72,
 	0x22, 0xd6, 0x04, 0x0a, 0x15, 0x50, 0x72, 0x6f, 0x78, 0x79, 0x45, 0x78, 0x65, 0x63, 0x75, 0x74,
 	0x69, 0x6f, 0x6e, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x4d, 0x0a, 0x12, 0x65, 0x78,
 	0x65, 0x63, 0x75, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x73, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79,
@@ -1222,7 +1304,7 @@ func file_api_proxy_proxy_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proxy_proxy_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_proxy_proxy_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_api_proxy_proxy_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_api_proxy_proxy_proto_goTypes = []interface{}{
 	(ExecutionStrategy_Value)(0),                      // 0: proxy.ExecutionStrategy.Value
 	(LocalExecutionOptions_LocalExecutionPlatform)(0), // 1: proxy.LocalExecutionOptions.LocalExecutionPlatform
@@ -1236,54 +1318,56 @@ var file_api_proxy_proxy_proto_goTypes = []interface{}{
 	(*AddProxyEventsResponse)(nil),                    // 9: proxy.AddProxyEventsResponse
 	(*RunRequest)(nil),                                // 10: proxy.RunRequest
 	(*RunResponse)(nil),                               // 11: proxy.RunResponse
-	(*ProxyExecutionOptions)(nil),                     // 12: proxy.ProxyExecutionOptions
-	(*ExecutionStrategy)(nil),                         // 13: proxy.ExecutionStrategy
-	(*LocalExecutionOptions)(nil),                     // 14: proxy.LocalExecutionOptions
-	(*RemoteExecutionOptions)(nil),                    // 15: proxy.RemoteExecutionOptions
-	(*Metadata)(nil),                                  // 16: proxy.Metadata
-	nil,                                               // 17: proxy.GetStatusSummaryResponse.CompletedActionStatsEntry
-	nil,                                               // 18: proxy.AddProxyEventsRequest.EventTimesEntry
-	nil,                                               // 19: proxy.RunRequest.LabelsEntry
-	nil,                                               // 20: proxy.Metadata.EventTimesEntry
-	(*stats.Stats)(nil),                               // 21: stats.Stats
-	(*log.LogRecord)(nil),                             // 22: log.LogRecord
-	(*command.Command)(nil),                           // 23: cmd.Command
-	(*command.CommandResult)(nil),                     // 24: cmd.CommandResult
-	(*command.TimeInterval)(nil),                      // 25: cmd.TimeInterval
+	(*RemoteFallbackInfo)(nil),                        // 12: proxy.RemoteFallbackInfo
+	(*ProxyExecutionOptions)(nil),                     // 13: proxy.ProxyExecutionOptions
+	(*ExecutionStrategy)(nil),                         // 14: proxy.ExecutionStrategy
+	(*LocalExecutionOptions)(nil),                     // 15: proxy.LocalExecutionOptions
+	(*RemoteExecutionOptions)(nil),                    // 16: proxy.RemoteExecutionOptions
+	(*Metadata)(nil),                                  // 17: proxy.Metadata
+	nil,                                               // 18: proxy.GetStatusSummaryResponse.CompletedActionStatsEntry
+	nil,                                               // 19: proxy.AddProxyEventsRequest.EventTimesEntry
+	nil,                                               // 20: proxy.RunRequest.LabelsEntry
+	nil,                                               // 21: proxy.Metadata.EventTimesEntry
+	(*stats.Stats)(nil),                               // 22: stats.Stats
+	(*log.LogRecord)(nil),                             // 23: log.LogRecord
+	(*command.Command)(nil),                           // 24: cmd.Command
+	(*command.CommandResult)(nil),                     // 25: cmd.CommandResult
+	(*command.TimeInterval)(nil),                      // 26: cmd.TimeInterval
 }
 var file_api_proxy_proxy_proto_depIdxs = []int32{
-	21, // 0: proxy.ShutdownResponse.stats:type_name -> stats.Stats
-	17, // 1: proxy.GetStatusSummaryResponse.completed_action_stats:type_name -> proxy.GetStatusSummaryResponse.CompletedActionStatsEntry
-	22, // 2: proxy.GetRecordsResponse.records:type_name -> log.LogRecord
-	18, // 3: proxy.AddProxyEventsRequest.event_times:type_name -> proxy.AddProxyEventsRequest.EventTimesEntry
-	23, // 4: proxy.RunRequest.command:type_name -> cmd.Command
-	19, // 5: proxy.RunRequest.labels:type_name -> proxy.RunRequest.LabelsEntry
-	12, // 6: proxy.RunRequest.execution_options:type_name -> proxy.ProxyExecutionOptions
-	16, // 7: proxy.RunRequest.metadata:type_name -> proxy.Metadata
-	24, // 8: proxy.RunResponse.result:type_name -> cmd.CommandResult
-	22, // 9: proxy.RunResponse.action_log:type_name -> log.LogRecord
-	0,  // 10: proxy.ProxyExecutionOptions.execution_strategy:type_name -> proxy.ExecutionStrategy.Value
-	15, // 11: proxy.ProxyExecutionOptions.remote_execution_options:type_name -> proxy.RemoteExecutionOptions
-	14, // 12: proxy.ProxyExecutionOptions.local_execution_options:type_name -> proxy.LocalExecutionOptions
-	1,  // 13: proxy.LocalExecutionOptions.platform:type_name -> proxy.LocalExecutionOptions.LocalExecutionPlatform
-	20, // 14: proxy.Metadata.event_times:type_name -> proxy.Metadata.EventTimesEntry
-	25, // 15: proxy.AddProxyEventsRequest.EventTimesEntry.value:type_name -> cmd.TimeInterval
-	25, // 16: proxy.Metadata.EventTimesEntry.value:type_name -> cmd.TimeInterval
-	10, // 17: proxy.Commands.RunCommand:input_type -> proxy.RunRequest
-	2,  // 18: proxy.Commands.Shutdown:input_type -> proxy.ShutdownRequest
-	6,  // 19: proxy.Stats.GetRecords:input_type -> proxy.GetRecordsRequest
-	8,  // 20: proxy.Stats.AddProxyEvents:input_type -> proxy.AddProxyEventsRequest
-	4,  // 21: proxy.Status.GetStatusSummary:input_type -> proxy.GetStatusSummaryRequest
-	11, // 22: proxy.Commands.RunCommand:output_type -> proxy.RunResponse
-	3,  // 23: proxy.Commands.Shutdown:output_type -> proxy.ShutdownResponse
-	7,  // 24: proxy.Stats.GetRecords:output_type -> proxy.GetRecordsResponse
-	9,  // 25: proxy.Stats.AddProxyEvents:output_type -> proxy.AddProxyEventsResponse
-	5,  // 26: proxy.Status.GetStatusSummary:output_type -> proxy.GetStatusSummaryResponse
-	22, // [22:27] is the sub-list for method output_type
-	17, // [17:22] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	22, // 0: proxy.ShutdownResponse.stats:type_name -> stats.Stats
+	18, // 1: proxy.GetStatusSummaryResponse.completed_action_stats:type_name -> proxy.GetStatusSummaryResponse.CompletedActionStatsEntry
+	23, // 2: proxy.GetRecordsResponse.records:type_name -> log.LogRecord
+	19, // 3: proxy.AddProxyEventsRequest.event_times:type_name -> proxy.AddProxyEventsRequest.EventTimesEntry
+	24, // 4: proxy.RunRequest.command:type_name -> cmd.Command
+	20, // 5: proxy.RunRequest.labels:type_name -> proxy.RunRequest.LabelsEntry
+	13, // 6: proxy.RunRequest.execution_options:type_name -> proxy.ProxyExecutionOptions
+	17, // 7: proxy.RunRequest.metadata:type_name -> proxy.Metadata
+	25, // 8: proxy.RunResponse.result:type_name -> cmd.CommandResult
+	23, // 9: proxy.RunResponse.action_log:type_name -> log.LogRecord
+	12, // 10: proxy.RunResponse.remote_fallback_info:type_name -> proxy.RemoteFallbackInfo
+	0,  // 11: proxy.ProxyExecutionOptions.execution_strategy:type_name -> proxy.ExecutionStrategy.Value
+	16, // 12: proxy.ProxyExecutionOptions.remote_execution_options:type_name -> proxy.RemoteExecutionOptions
+	15, // 13: proxy.ProxyExecutionOptions.local_execution_options:type_name -> proxy.LocalExecutionOptions
+	1,  // 14: proxy.LocalExecutionOptions.platform:type_name -> proxy.LocalExecutionOptions.LocalExecutionPlatform
+	21, // 15: proxy.Metadata.event_times:type_name -> proxy.Metadata.EventTimesEntry
+	26, // 16: proxy.AddProxyEventsRequest.EventTimesEntry.value:type_name -> cmd.TimeInterval
+	26, // 17: proxy.Metadata.EventTimesEntry.value:type_name -> cmd.TimeInterval
+	10, // 18: proxy.Commands.RunCommand:input_type -> proxy.RunRequest
+	2,  // 19: proxy.Commands.Shutdown:input_type -> proxy.ShutdownRequest
+	6,  // 20: proxy.Stats.GetRecords:input_type -> proxy.GetRecordsRequest
+	8,  // 21: proxy.Stats.AddProxyEvents:input_type -> proxy.AddProxyEventsRequest
+	4,  // 22: proxy.Status.GetStatusSummary:input_type -> proxy.GetStatusSummaryRequest
+	11, // 23: proxy.Commands.RunCommand:output_type -> proxy.RunResponse
+	3,  // 24: proxy.Commands.Shutdown:output_type -> proxy.ShutdownResponse
+	7,  // 25: proxy.Stats.GetRecords:output_type -> proxy.GetRecordsResponse
+	9,  // 26: proxy.Stats.AddProxyEvents:output_type -> proxy.AddProxyEventsResponse
+	5,  // 27: proxy.Status.GetStatusSummary:output_type -> proxy.GetStatusSummaryResponse
+	23, // [23:28] is the sub-list for method output_type
+	18, // [18:23] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_api_proxy_proxy_proto_init() }
@@ -1413,7 +1497,7 @@ func file_api_proxy_proxy_proto_init() {
 			}
 		}
 		file_api_proxy_proxy_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProxyExecutionOptions); i {
+			switch v := v.(*RemoteFallbackInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1425,7 +1509,7 @@ func file_api_proxy_proxy_proto_init() {
 			}
 		}
 		file_api_proxy_proxy_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExecutionStrategy); i {
+			switch v := v.(*ProxyExecutionOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1437,7 +1521,7 @@ func file_api_proxy_proxy_proto_init() {
 			}
 		}
 		file_api_proxy_proxy_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*LocalExecutionOptions); i {
+			switch v := v.(*ExecutionStrategy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1449,7 +1533,7 @@ func file_api_proxy_proxy_proto_init() {
 			}
 		}
 		file_api_proxy_proxy_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoteExecutionOptions); i {
+			switch v := v.(*LocalExecutionOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1461,6 +1545,18 @@ func file_api_proxy_proxy_proto_init() {
 			}
 		}
 		file_api_proxy_proxy_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RemoteExecutionOptions); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_proxy_proxy_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Metadata); i {
 			case 0:
 				return &v.state
@@ -1479,7 +1575,7 @@ func file_api_proxy_proxy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_proxy_proxy_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   3,
 		},
