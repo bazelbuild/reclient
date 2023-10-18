@@ -138,7 +138,7 @@ func main() {
 			spi.EventTimes[event.PostBuildAggregateRpl] = command.TimeIntervalToProto(&command.TimeInterval{From: start, To: time.Now()})
 		}
 		down, up := stats.BandwidthStats(s)
-		fmt.Printf("RBE Stats: ↓ %v, ↑ %v, %v\n", down, up, stats.CompletionStats(s))
+		fmt.Printf("RBE Stats: down %v, up %v, %v\n", down, up, stats.CompletionStats(s))
 		spi.EventTimes[event.BootstrapShutdown] = command.TimeIntervalToProto(&command.TimeInterval{
 			From: bootstrapStart,
 			To:   time.Now(),
