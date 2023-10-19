@@ -16,6 +16,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -31,6 +32,7 @@ import (
 
 	log "github.com/golang/glog"
 	"golang.org/x/oauth2"
+	googleOauth "golang.org/x/oauth2/google"
 	grpcOauth "google.golang.org/grpc/credentials/oauth"
 )
 
@@ -312,11 +314,6 @@ func (c *Credentials) TokenSource() *grpcOauth.TokenSource {
 func runAuthCommand(m Mechanism) error {
 	var cmd *exec.Cmd
 	switch m {
-	case ADC:
-		cmd = exec.Command("gcloud", "auth", "application-default", "login")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
 	default:
 		return nil
 	}
@@ -325,10 +322,43 @@ func runAuthCommand(m Mechanism) error {
 }
 
 func checkADCStatus() error {
-	cmd := exec.Command("gcloud", "auth", "application-default", "print-access-token")
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	ts, err := googleOauth.FindDefaultCredentialsWithParams(context.Background(), googleOauth.CredentialsParams{
+		EarlyTokenRefresh: 5 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("could not find Application Default Credentials: %w", err)
+	}
+	token, err := ts.TokenSource.Token()
+
+	if err != nil {
+		aerr, ok := err.(*googleOauth.AuthenticationError)
+		if !ok {
+			return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+		}
+		if aerr.Temporary() {
+			log.Errorf("Ignoring temporary ADC error: %v", err)
+			return nil
+		}
+		rerr, ok := aerr.Unwrap().(*oauth2.RetrieveError)
+		if !ok {
+			return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+		}
+		var resp struct {
+			Error        string `json:"error"`
+			ErrorSubtype string `json:"error_subtype"`
+		}
+		if err := json.Unmarshal(rerr.Body, &resp); err == nil &&
+			resp.Error == "invalid_grant" &&
+			resp.ErrorSubtype == "invalid_rapt" {
+			return fmt.Errorf("reauth required, run `gcloud auth application-default login` and try again")
+		}
+		return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+	}
+	if !token.Valid() {
+		log.Errorf("Could not get valid Application Default Credentials token: %v", err)
+		return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+	}
+	return nil
 }
 
 type gcpTokenProvider interface {
