@@ -39,6 +39,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources/usage"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/loghttp"
 	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
@@ -127,6 +128,7 @@ var (
 	credsFile          = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
 	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
 	useCasNg           = flag.Bool("use_casng", false, "Use casng pkg.")
+	logHTTPCalls       = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 )
 
 func verifyFlags() {
@@ -162,6 +164,9 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	rbeflag.Parse()
 	rbeflag.LogAllFlags(0)
 	defer log.Flush()
+	if *logHTTPCalls {
+		loghttp.Register()
+	}
 	defer func() {
 		pf, err := reproxypid.ReadFile(*serverAddr)
 		if err != nil {

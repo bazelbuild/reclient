@@ -31,6 +31,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/bootstrap"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
+	"github.com/bazelbuild/reclient/internal/pkg/loghttp"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
@@ -76,6 +77,7 @@ var (
 	remoteDisabled       = flag.Bool("remote_disabled", false, "Whether to disable all remote operations and run all actions locally.")
 	cacheDir             = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
 	metricsUploader      = flag.String("metrics_uploader", defaultMetricsUploader(), "Path to the metrics uploader binary.")
+	logHTTPCalls         = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 )
 
 func main() {
@@ -83,6 +85,10 @@ func main() {
 	flag.Var((*moreflag.StringListValue)(&proxyLogDir), "proxy_log_dir", "If provided, the directory path to a proxy log file of executed records.")
 	rbeflag.Parse()
 	version.PrintAndExitOnVersionFlag(true)
+
+	if *logHTTPCalls {
+		loghttp.Register()
+	}
 
 	if !*fastLogCollection && *asyncReproxyShutdown {
 		*asyncReproxyShutdown = false
