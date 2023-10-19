@@ -68,6 +68,7 @@ const (
 const (
 	textDelimiter  string = "\n\n\n"
 	peakNumActions string = "PEAK_NUM_ACTIOINS"
+	unixTime       string = "UNIX_TIME"
 )
 
 type statCollector interface {
@@ -426,10 +427,12 @@ func (l *Logger) collectResourceUsageSamples(samples map[string]int64) {
 	if samples == nil {
 		samples = make(map[string]int64)
 	}
+	samples[unixTime] = time.Now().Unix()
 	samples[peakNumActions] = int64(atomic.SwapInt32(&l.peakRunningActions, 0))
 	// These log messages in reproxy.INFO are used for plotting the time series
 	// of resource usage by a plotter.
 	log.Infof("Resource Usage: %v", samples)
+	delete(samples, unixTime)
 	for k, v := range samples {
 		if _, ok := l.resourceUsage[k]; ok {
 			l.resourceUsage[k] = append(l.resourceUsage[k], v)
