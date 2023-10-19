@@ -170,6 +170,11 @@ func MechanismFromFlags() (Mechanism, error) {
 	return Unknown, &Error{fmt.Errorf("couldn't determine auth mechanism from flags %v", vals), ExitCodeNoAuth}
 }
 
+// Cacheable returns true if this mechanism should be cached to disk
+func (m Mechanism) Cacheable() bool {
+	return false
+}
+
 func boolFlagVal(flagName string) (bool, error) {
 	if f := flag.Lookup(flagName); f != nil && f.Value.String() != "" {
 		b, err := strconv.ParseBool(f.Value.String())
@@ -215,6 +220,9 @@ func buildCredentials(baseCreds cachedCredentials, credsFile, tokenInfoURL strin
 // SaveToDisk saves credentials to disk.
 func (c *Credentials) SaveToDisk() {
 	if c == nil {
+		return
+	}
+	if !c.m.Cacheable() {
 		return
 	}
 	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}

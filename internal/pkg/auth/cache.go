@@ -60,6 +60,14 @@ func loadFromDisk(tf string) (cachedCredentials, error) {
 		token:      token,
 		refreshExp: TimeFromProto(cPb.GetRefreshExpiry()),
 	}
+	if !c.m.Cacheable() {
+		// Purge non cacheable credentials from disk.
+		if err := os.Remove(tf); err != nil {
+			log.Warningf("Unable to remove cached credentials file %q, err=%v", tf, err)
+		}
+		// TODO(b/2028466): Do not use the non-cacheable mechanism even for the
+		// current run.
+	}
 	log.Infof("Loaded cached credentials of type %v, expires at %v", c.m, exp)
 	return c, nil
 }
