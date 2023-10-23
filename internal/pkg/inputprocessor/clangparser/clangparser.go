@@ -139,6 +139,8 @@ func (s *State) HandleClangFlags(nextRes *args.NextResult, f *flags.CommandFlags
 		if err != nil {
 			return err
 		}
+	case "-fcrash-diagnostics-dir=":
+		f.OutputDirPaths = append(f.OutputDirPaths, values[0])
 	case "":
 		if len(values) > 0 && strings.HasPrefix(values[0], "@") {
 			f.Dependencies = append(f.Dependencies, values[0][1:])
