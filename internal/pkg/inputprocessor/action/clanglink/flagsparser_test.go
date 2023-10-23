@@ -237,6 +237,41 @@ func TestClangLinkParser(t *testing.T) {
 				OutputFilePaths: []string{"test", "bar.dll"},
 			},
 		},
+		{
+			name: "Clang link command with linker flags",
+			command: []string{"clang++", "-fuse-ld=lld", "-o", "test", "-L", "prebuilts/gcc/linux-x86/lib", "prebuilts/gcc/linux-x86/lib2.so",
+				"-Wl,--version-script=version_script",
+				"-Wl,--symbol-ordering-file=symbol_ordering_file",
+				"-Wl,--dynamic-list=dynamic_list",
+				"-Wl,-T=commandfile",
+				"-Wl,--retain-symbols-file=retain_symbols_file",
+			},
+			want: &flags.CommandFlags{
+				ExecutablePath: "clang++",
+				Flags: []*flags.Flag{
+					&flags.Flag{Value: "-fuse-ld=lld"},
+					&flags.Flag{Value: "-L"},
+					&flags.Flag{Value: "prebuilts/gcc/linux-x86/lib"},
+					&flags.Flag{Value: "prebuilts/gcc/linux-x86/lib2.so"},
+					&flags.Flag{Value: "-Wl,--version-script=version_script"},
+					&flags.Flag{Value: "-Wl,--symbol-ordering-file=symbol_ordering_file"},
+					&flags.Flag{Value: "-Wl,--dynamic-list=dynamic_list"},
+					&flags.Flag{Value: "-Wl,-T=commandfile"},
+					&flags.Flag{Value: "-Wl,--retain-symbols-file=retain_symbols_file"},
+				},
+				Dependencies: []string{
+					"prebuilts/gcc/linux-x86/lib",
+					"prebuilts/gcc/linux-x86/lib2.so",
+					"version_script",
+					"symbol_ordering_file",
+					"dynamic_list",
+					"commandfile",
+					"retain_symbols_file",
+				},
+				ExecRoot:        er,
+				OutputFilePaths: []string{"test"},
+			},
+		},
 	}
 	for _, test := range test {
 		t.Run(test.name, func(t *testing.T) {

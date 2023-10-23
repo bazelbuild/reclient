@@ -31,7 +31,16 @@ import (
 	log "github.com/golang/glog"
 )
 
-var arCache = cache.SingleFlight{}
+var (
+	arCache     = cache.SingleFlight{}
+	linkerFlags = []string{
+		"--version-script",
+		"--symbol-ordering-file",
+		"--dynamic-list",
+		"-T",
+		"--retain-symbols-file",
+	}
+)
 
 // parseFlags is used to translate the given action command into clang linker
 // options, so that they can be used during input processing.
@@ -82,12 +91,7 @@ func (s *clangLinkState) handleClangLinkFlags(nextRes *args.NextResult, flgs *fl
 				f.Dependencies = append(f.Dependencies, values[0])
 			}
 		case "-Wl,":
-			for _, prefix := range []string{
-				"--version-script",
-				"--symbol-ordering-file",
-				"--dynamic-list",
-				"-T",
-			} {
+			for _, prefix := range linkerFlags {
 				if strings.HasPrefix(values[0], prefix) {
 					value := strings.TrimPrefix(values[0], prefix)
 					// TODO(b/184928955): There's a few available options here,
