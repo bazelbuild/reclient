@@ -12,9 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Binary rpl2trace converts *.rpl into trace format for chrome://tracing
+// Binary rpl2trace converts *.rpl into trace format. The json file can be used
+// for chrome://tracing and https://ui.perfetto.dev
 //
-//	$ rpl2trace --log_path text:///tmp/reproxy_log.rpl --output trace.json
+//	$ rpl2trace --log_path /tmp/reproxy_log.rpl --output trace.json
+//
+// This binary also works with *.rrpl file.
+//
+//	$ bazelisk run //cmd/rpl2trace --config=remotelinux -- \
+//	 	--log_path /tmp/reproxy_log.rrpl --output /tmp/trace.json
 package main
 
 import (
@@ -224,19 +230,21 @@ func main() {
 	rbeflag.Parse()
 	var logRecords []*lpb.LogRecord
 	var err error
+
+	format, err := logger.ParseFormat(*logFormat)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	switch {
 	case *logPath != "":
-		fmt.Printf("Loading log from %v...\n", *logPath)
-		log.Infof("Loading log from %v...", *logPath)
-		logRecords, err = logger.ParseFromFormatFile(*logPath)
+		fmt.Printf("Loading log from %v %v...\n", format, *logPath)
+		log.Infof("Loading log from %v %v...", format, *logPath)
+		logRecords, err = logger.ParseFromFile(format, *logPath)
 		if err != nil {
 			log.Fatalf("Failed reading proxy log: %v", err)
 		}
 	case len(proxyLogDir) > 0:
-		format, err := logger.ParseFormat(*logFormat)
-		if err != nil {
-			log.Fatal(err)
-		}
 		fmt.Printf("Loading log from %v %q...\n", format, proxyLogDir)
 		log.Infof("Loading log from %v %q...", format, proxyLogDir)
 		logRecords, _, err = logger.ParseFromLogDirs(format, proxyLogDir)
