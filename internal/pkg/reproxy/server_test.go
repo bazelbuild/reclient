@@ -155,8 +155,13 @@ func TestRemote(t *testing.T) {
 				OutputFiles: []string{abOutPath},
 			},
 		},
-		Labels:           map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
-		ExecutionOptions: &ppb.ProxyExecutionOptions{ExecutionStrategy: ppb.ExecutionStrategy_REMOTE, LogEnvironment: true, ReclientTimeout: 3600},
+		Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
+		ExecutionOptions: &ppb.ProxyExecutionOptions{
+			ExecutionStrategy:     ppb.ExecutionStrategy_REMOTE,
+			LogEnvironment:        true,
+			ReclientTimeout:       3600,
+			EnableAtomicDownloads: true,
+		},
 		Metadata: &ppb.Metadata{
 			EventTimes:  map[string]*cpb.TimeInterval{"Event": {From: command.TimeToProto(st)}},
 			Environment: []string{"FOO=1", "BAR=2"},
@@ -296,9 +301,10 @@ func TestRemote_CanonicalWorkingDir(t *testing.T) {
 		},
 		Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
 		ExecutionOptions: &ppb.ProxyExecutionOptions{
-			ExecutionStrategy: ppb.ExecutionStrategy_REMOTE,
-			LogEnvironment:    true,
-			ReclientTimeout:   3600,
+			ExecutionStrategy:     ppb.ExecutionStrategy_REMOTE,
+			LogEnvironment:        true,
+			ReclientTimeout:       3600,
+			EnableAtomicDownloads: true,
 			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
 				AcceptCached:                 true,
 				DoNotCache:                   false,
@@ -462,9 +468,10 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 		},
 		Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
 		ExecutionOptions: &ppb.ProxyExecutionOptions{
-			ExecutionStrategy: ppb.ExecutionStrategy_REMOTE,
-			LogEnvironment:    true,
-			ReclientTimeout:   3600,
+			ExecutionStrategy:     ppb.ExecutionStrategy_REMOTE,
+			LogEnvironment:        true,
+			ReclientTimeout:       3600,
+			EnableAtomicDownloads: true,
 			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
 				AcceptCached:                 true,
 				DoNotCache:                   false,

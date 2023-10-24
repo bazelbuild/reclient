@@ -85,6 +85,7 @@ type action struct {
 	racingBias             float64
 	windowsCross           bool
 	downloadTmp            string
+	atomicDownloads        bool
 
 	// Below parameters are computed by struct functions.
 	execContext   *rexec.Context
@@ -114,15 +115,19 @@ func (a *action) runLocal(ctx context.Context, pool *LocalPool) {
 }
 
 func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
-	tmpDir, cleanup, err := a.createTmpDir()
-	if err != nil {
-		log.Warningf("%v: could not create temp directory for remote output: %v", a.cmd.Identifiers.ExecutionID, err)
-		a.res = command.NewLocalErrorResult(err)
-		return
+	outDir := a.cmd.ExecRoot
+	if a.atomicDownloads {
+		tmpDir, cleanup, err := a.createTmpDir()
+		if err != nil {
+			log.Warningf("%v: could not create temp directory for remote output: %v", a.cmd.Identifiers.ExecutionID, err)
+			a.res = command.NewLocalErrorResult(err)
+			return
+		}
+		outDir = tmpDir
+		defer func() {
+			go cleanup()
+		}()
 	}
-	defer func() {
-		go cleanup()
-	}()
 	opts := execOptionsFromProto(a.rOpt)
 	excludeUnchanged := opts.DownloadOutputs && opts.PreserveUnchangedOutputMtime
 	noDl := !opts.DownloadOutputs
@@ -165,29 +170,33 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 			return
 		}
 		outs = a.excludeUnchangedOutputs(outs, a.cmd.ExecRoot)
-		ec.DownloadSpecifiedOutputs(outs, tmpDir)
+		ec.DownloadSpecifiedOutputs(outs, outDir)
 		res, meta = ec.Result, ec.Metadata
 		if ec.Result.Err != nil {
 			return
 		}
 	} else {
-		ec.DownloadOutputs(tmpDir)
+		ec.DownloadOutputs(outDir)
 		res, meta = ec.Result, ec.Metadata
 		if ec.Result.Err != nil {
 			return
 		}
 	}
-	if err := a.moveOutputsFromTemp(tmpDir); err != nil {
-		res = command.NewLocalErrorResult(err)
-		meta = ec.Metadata
-		return
+	if a.atomicDownloads {
+		from := time.Now()
+		defer a.rec.RecordEventTime(event.AtomicOutputOverhead, from)
+		if err := a.moveOutputsFromTemp(outDir); err != nil {
+			res = command.NewLocalErrorResult(err)
+			meta = ec.Metadata
+			return
+		}
 	}
 	res, meta = ec.Result, ec.Metadata
 }
 
 func (a *action) createTmpDir() (string, func(), error) {
 	base := a.downloadTmp
-	if base == "" {
+	if a.downloadTmp == "" {
 		base = filepath.Join(a.cmd.ExecRoot, a.cmd.WorkingDir, tmpBaseDir)
 	}
 	tmpDir := filepath.Join(base, a.cmd.Identifiers.ExecutionID)

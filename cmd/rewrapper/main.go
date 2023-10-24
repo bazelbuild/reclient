@@ -82,6 +82,7 @@ func initFlags() {
 	flag.BoolVar(&cOpts.RemoteAcceptCache, "remote_accept_cache", true, "Boolean indicating whether to accept remote cache hits. Default is true.")
 	flag.BoolVar(&cOpts.RemoteUpdateCache, "remote_update_cache", true, "Boolean indicating whether to cache the command result remotely. Default is true.")
 	flag.BoolVar(&cOpts.DownloadOutputs, "download_outputs", true, "Boolean indicating whether to download outputs after the command is executed. Default is true.")
+	flag.BoolVar(&cOpts.EnableAtomicDownloads, "enable_atomic_downloads", true, "Boolean indicating whether to download outputs atomically in remote/remote_local_fallback modes. Default is true.")
 	flag.BoolVar(&cOpts.LogEnvironment, "log_env", false, "Boolean indicating whether to pass the entire environment of the rewrapper to the reproxy for logging. Default is false.")
 	flag.BoolVar(&cOpts.PreserveUnchangedOutputMtime, "preserve_unchanged_output_mtime", false, "Boolean indicating whether or not to preserve mtimes of unchanged outputs when they are downloaded. Default is false.")
 	flag.StringVar(&cOpts.LocalWrapper, "local_wrapper", "", "Wrapper path to execute locally only.")

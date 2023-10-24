@@ -487,6 +487,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		cancelFunc:      cancel,
 		racingBias:      s.RacingBias,
 		downloadTmp:     s.DownloadTmp,
+		atomicDownloads: req.GetExecutionOptions().GetEnableAtomicDownloads(),
 	}
 	s.activeActions.Store(executionID, a)
 	defer s.activeActions.Delete(executionID)

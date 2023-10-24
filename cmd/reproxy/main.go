@@ -112,7 +112,7 @@ var (
 	failEarlyWindow           = flag.Duration("fail_early_window", 0, "Window of time to consider for fail_early_min_action_count and fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.")
 	racingBias                = flag.Float64("racing_bias", 0.75, "Value between [0,1] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (1). The default is to prefer speed over bandwidth.")
 	racingTmp                 = flag.String("racing_tmp_dir", "", "DEPRECATED. Use download_tmp_dir instead.")
-	downloadTmp               = flag.String("download_tmp_dir", "", "Directory where reproxy should store temporary outputs. This should be on the same device as the exec root for the build. The default is empty, meaning temporary outputs will be written to a subdirectory of the action's working directory.")
+	downloadTmp               = flag.String("download_tmp_dir", "", "Directory where reproxy should store outputs temporarily before moving them to the desired location. This should be on the same device as the output directory for the build. The default is outputs will be written to a subdirectory inside the action's working directory. Note that the download_tmp_dir will only be used if the action has racing as its exec strategy or it explicitly sets EnableAtomicDownloads=true. See proxy.proto for details.")
 
 	debugPort   = flag.Int("pprof_port", 0, "Enable pprof http server if not zero")
 	cpuProfFile = flag.String("pprof_file", "", "Enable cpu pprof if not empty. Will not work on windows as reproxy shutdowns through an uncatchable sigkill.")

@@ -56,6 +56,9 @@ const (
 	// remote wins.
 	RacingFinalizationOverhead = "RacingFinalizationOverhead"
 
+	// AtomicOutputOverhead: time spent writing outputs atomically.
+	AtomicOutputOverhead = "AtomicOutputOverhead"
+
 	// PostBuildMetricsUpload: time spent post build to upload metrics to Cloud Monitoring.
 	PostBuildMetricsUpload = "PostBuildMetricsUpload"
 

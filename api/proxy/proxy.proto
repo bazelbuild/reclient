@@ -165,6 +165,9 @@ message ProxyExecutionOptions {
 
   // The amount of time reclient should wait for the action to finish remotely.
   int32 reclient_timeout = 10;
+
+  // Download outputs atomically for this action.
+  bool enable_atomic_downloads = 11;
 }
 
 message ExecutionStrategy {

@@ -88,6 +88,7 @@ type CommandOptions struct {
 	RemoteAcceptCache            bool
 	RemoteUpdateCache            bool
 	DownloadOutputs              bool
+	EnableAtomicDownloads        bool
 	LogEnvironment               bool
 	StartTime                    time.Time
 	NumRetriesIfMismatched       int
@@ -177,6 +178,7 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 			NumLocalReruns:         int32(opts.NumLocalReruns),
 			NumRemoteReruns:        int32(opts.NumRemoteReruns),
 			ReclientTimeout:        int32(opts.ReclientTimeout.Seconds()),
+			EnableAtomicDownloads:  opts.EnableAtomicDownloads,
 			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
 				AcceptCached:                 opts.RemoteAcceptCache,
 				DoNotCache:                   !opts.RemoteUpdateCache,
