@@ -67,7 +67,7 @@ const (
 
 const (
 	textDelimiter  string = "\n\n\n"
-	peakNumActions string = "PEAK_NUM_ACTIOINS"
+	peakNumActions string = "PEAK_NUM_ACTIONS"
 	unixTime       string = "UNIX_TIME"
 )
 
