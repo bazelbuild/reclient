@@ -20,8 +20,7 @@
 //	bazelisk run //cmd/bigquery:bigquery -- \
 //	  --log_path text:///tmp/reproxy_log.txt \
 //	  --alsologtostderr=true \
-//	  --table_id <bigquery-table-id> \
-//	  --dataset_id <bigquery-dataset-id> \
+//	  --table <bigquery-dataset-id>.<bigquery-table-id> \
 //	  --project_id <gcp-project-id> # (ex:"foundry-x-experiments")
 //
 // If you don't have a bigquery table yet, you can create it using the following steps:
@@ -81,6 +80,7 @@ func insertRows(logs []*lpb.LogRecord) error {
 		g.Go(func() error {
 			for item := range items {
 				if err := inserter.Put(ctx, item); err != nil {
+					log.Errorf("Failed to insert record: %v", err)
 					return err
 				}
 				processedMu.Lock()
