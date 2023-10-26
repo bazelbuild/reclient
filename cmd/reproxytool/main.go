@@ -22,7 +22,7 @@
 //
 // Convert reproxy.INFO log to usage CSV:
 // bazelisk run //cmd/reproxytool:reproxytool -- \
-// --operation=usage_to_csv --log-path=/tmp/reproxy.INFO \
+// --operation=usage_to_csv --log_path=/tmp/reproxy.INFO \
 // --alsologtostderr
 package main
 
@@ -49,7 +49,7 @@ var supportedOps = []OpType{
 
 var (
 	operation = flag.String("operation", "", fmt.Sprintf("Specifies the operation to perform. Supported values: %v", supportedOps))
-	logPath   = flag.String("log-path", "", "Path to log file. E.g., /tmp/reproxy.INFO")
+	logPath   = flag.String("log_path", "", "Path to log file. E.g., /tmp/reproxy.INFO")
 )
 
 func main() {

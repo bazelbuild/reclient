@@ -16,19 +16,6 @@
 // to a CSV file, ordered by timestamp. The output csv file will simply append a
 // csv suffix after the full name of the input reproxy.INFO file.
 //
-// To quickly view the csv as a PNG once done, you can use the csv tools inside
-// of G3's contentads/brand/trends/tool directory from your cider v terminal.
-// For example, the following cmd will remote the title row from the csv,
-// transpose the csv and then plot it as a PNG.
-//
-//sed -i '1d' /tmp/reproxy.INFO.csv \
-//&& blaze run //contentads/brand/trends/tool/csv_transpose -- \
-//   --input_file=/tmp/reproxy.INFO.csv --output_file=/tmp/reproxy.INFO.csv \
-//&& blaze run //contentads/brand/trends/tool/csv_plot -- \
-//   --input_file=/tmp/reproxy.INFO.csv --output_file=/tmp/output.png
-//
-// For more info about this tool,
-// see: https://g3doc.corp.google.com/contentads/brand/trends/tool/csv_plot/README.md
 
 package usage2csv
 
@@ -51,7 +38,7 @@ var (
 )
 
 type usage struct {
-	timestamp, CPUPct, MemResMbs, MemVirtMbs, MemPct, PeakNumActioins int64
+	timestamp, CPUPct, MemResMbs, MemVirtMbs, MemPct, PeakNumActions int64
 }
 
 func unmarshall(s string) *usage {
@@ -76,8 +63,8 @@ func unmarshall(s string) *usage {
 			u.MemVirtMbs = value
 		case "MEM_pct":
 			u.MemPct = value
-		case "PEAK_NUM_ACTIOINS":
-			u.PeakNumActioins = value
+		case "PEAK_NUM_ACTIONS":
+			u.PeakNumActions = value
 		}
 	}
 	return &u
@@ -107,7 +94,7 @@ func saveToCSV(logPath string) error {
 		"MEM_RES_mbs",
 		"MEM_VIRT_mbs",
 		"MEM_pct",
-		"PEAK_NUM_ACTIOINS",
+		"PEAK_NUM_ACTIONS",
 	}); err != nil {
 		return err
 	}
@@ -119,7 +106,7 @@ func saveToCSV(logPath string) error {
 			strconv.FormatInt(u.MemResMbs, 10),
 			strconv.FormatInt(u.MemVirtMbs, 10),
 			strconv.FormatInt(u.MemPct, 10),
-			strconv.FormatInt(u.PeakNumActioins, 10),
+			strconv.FormatInt(u.PeakNumActions, 10),
 		}); err != nil {
 			return err
 		}
@@ -131,7 +118,7 @@ func parseLogFileToSlice(file io.Reader) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		l := scanner.Text()
-		// Extract data from "Resource Usage: map[CPU_pct:0 MEM_RES_mbs:1246 MEM_VIRT_mbs:5895 MEM_pct:0 PEAK_NUM_ACTIOINS:0 UNIX_TIME:1697736889]".
+		// Extract data from "Resource Usage: map[CPU_pct:0 MEM_RES_mbs:1246 MEM_VIRT_mbs:5895 MEM_pct:0 PEAK_NUM_ACTIONS:0 UNIX_TIME:1697736889]".
 		dataMatches := usageRegex.FindStringSubmatch(l)
 		if dataMatches == nil || len(dataMatches) != 2 {
 			continue
