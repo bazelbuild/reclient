@@ -39,6 +39,7 @@ var (
 		"--dynamic-list",
 		"-T",
 		"--retain-symbols-file",
+		"--script,",
 	}
 )
 

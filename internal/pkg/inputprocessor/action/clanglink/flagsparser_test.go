@@ -245,6 +245,7 @@ func TestClangLinkParser(t *testing.T) {
 				"-Wl,--dynamic-list=dynamic_list",
 				"-Wl,-T=commandfile",
 				"-Wl,--retain-symbols-file=retain_symbols_file",
+				"-Wl,--script,external/cronet/base/android/library_loader/anchor_functions.lds",
 			},
 			want: &flags.CommandFlags{
 				ExecutablePath: "clang++",
@@ -258,6 +259,7 @@ func TestClangLinkParser(t *testing.T) {
 					&flags.Flag{Value: "-Wl,--dynamic-list=dynamic_list"},
 					&flags.Flag{Value: "-Wl,-T=commandfile"},
 					&flags.Flag{Value: "-Wl,--retain-symbols-file=retain_symbols_file"},
+					&flags.Flag{Value: "-Wl,--script,external/cronet/base/android/library_loader/anchor_functions.lds"},
 				},
 				Dependencies: []string{
 					"prebuilts/gcc/linux-x86/lib",
@@ -267,6 +269,7 @@ func TestClangLinkParser(t *testing.T) {
 					"dynamic_list",
 					"commandfile",
 					"retain_symbols_file",
+					"external/cronet/base/android/library_loader/anchor_functions.lds",
 				},
 				ExecRoot:        er,
 				OutputFilePaths: []string{"test"},
