@@ -97,6 +97,13 @@ func main() {
 
 	if f := flag.Lookup("log_dir"); f != nil && f.Value.String() != "" {
 		logDir = f.Value.String()
+		// Check for output directory and create it if it doesn't exist.
+		if _, err := os.Stat(logDir); err != nil {
+			if !os.IsNotExist(err) {
+				log.Fatalf("Failed checking for logging output directory: %v", err)
+			}
+			os.MkdirAll(logDir, 0777)
+		}
 	}
 
 	cf, err := credsFilePath()
