@@ -17,7 +17,13 @@ package auth
 import (
 	"flag"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
+
+	"golang.org/x/oauth2"
+	grpcOauth "google.golang.org/grpc/credentials/oauth"
 )
 
 func TestMechanismFromFlags(t *testing.T) {
@@ -68,5 +74,41 @@ func TestMechanismFromFlags(t *testing.T) {
 				t.Errorf("MechanismFromFlags(%v) failed, want %v, got %v", test.flags, test.wantMechanism, m)
 			}
 		})
+	}
+}
+
+func TestCredentialsHelperCache(t *testing.T) {
+	dir, err := os.MkdirTemp("", "test")
+	if err != nil {
+		t.Errorf("failed to create the temp directory: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	cf := filepath.Join(dir, "reproxy.creds")
+	err = os.MkdirAll(filepath.Dir(cf), 0755)
+	if err != nil {
+		t.Errorf("failed to create dir for credentials file %q: %v", cf, err)
+	}
+	cmd := exec.Command("credsHelperCmd")
+	baseTs := &externalTokenSource{credsHelperCmd: cmd}
+	ts := &grpcOauth.TokenSource{
+		TokenSource: oauth2.ReuseTokenSourceWithExpiry(
+			&oauth2.Token{},
+			baseTs,
+			5*time.Minute,
+		),
+	}
+	creds := &Credentials{
+		m:           CredentialsHelper,
+		refreshExp:  time.Time{},
+		tokenSource: ts,
+		credsFile:   cf,
+	}
+	creds.SaveCredsToDisk(cmd)
+	c, err := LoadCredsFromDisk(cf, cmd)
+	if err != nil {
+		t.Errorf("LoadCredsFromDisk failed: %v", err)
+	}
+	if creds.m != c.m {
+		t.Errorf("mechanism was cached incorrectly, got: %v, want: %v", c.m, creds.m)
 	}
 }

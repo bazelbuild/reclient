@@ -29,9 +29,10 @@ import (
 
 // CachedCredentials are the credentials cached to disk.
 type cachedCredentials struct {
-	m          Mechanism
-	refreshExp time.Time
-	token      *oauth2.Token
+	m                    Mechanism
+	refreshExp           time.Time
+	token                *oauth2.Token
+	credsHelperCmdDigest string
 }
 
 func loadFromDisk(tf string) (cachedCredentials, error) {
@@ -56,9 +57,10 @@ func loadFromDisk(tf string) (cachedCredentials, error) {
 		}
 	}
 	c := cachedCredentials{
-		m:          protoToMechanism(cPb.GetMechanism()),
-		token:      token,
-		refreshExp: TimeFromProto(cPb.GetRefreshExpiry()),
+		m:                    protoToMechanism(cPb.GetMechanism()),
+		token:                token,
+		refreshExp:           TimeFromProto(cPb.GetRefreshExpiry()),
+		credsHelperCmdDigest: cPb.GetCredsHelperCmdDigest(),
 	}
 	if !c.m.Cacheable() {
 		// Purge non cacheable credentials from disk.
@@ -81,6 +83,7 @@ func saveToDisk(c cachedCredentials, tf string) error {
 	if c.token != nil {
 		cPb.Token = c.token.AccessToken
 		cPb.Expiry = TimeToProto(c.token.Expiry)
+		cPb.CredsHelperCmdDigest = c.credsHelperCmdDigest
 	}
 	if !c.refreshExp.IsZero() {
 		cPb.RefreshExpiry = TimeToProto(c.refreshExp)

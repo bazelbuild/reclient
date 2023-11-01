@@ -24,10 +24,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 
 	log "github.com/golang/glog"
 	"golang.org/x/oauth2"
@@ -62,6 +66,9 @@ const (
 	// Unknown is an unknown auth mechanism.
 	Unknown Mechanism = iota
 
+	// CredentialsHelper is using an externally provided binary to get credentials.
+	CredentialsHelper
+
 	// ADC is GCP's application default credentials authentication mechanism.
 	ADC
 	// GCE is authentication using GCE VM service accounts.
@@ -77,6 +84,8 @@ func (m Mechanism) String() string {
 	switch m {
 	case Unknown:
 		return "Unknown"
+	case CredentialsHelper:
+		return "CredentialsHelper"
 	case ADC:
 		return "ADC"
 	case GCE:
@@ -211,6 +220,78 @@ func buildCredentials(baseCreds cachedCredentials, credsFile, tokenInfoURL strin
 		credsFile:  credsFile,
 	}
 	return c, nil
+}
+
+// build credentials obtained from the credentials helper.
+func buildExternalCredentials(baseCreds cachedCredentials, credsFile string, credsHelperCmd *exec.Cmd) *Credentials {
+	c := &Credentials{
+		m:         CredentialsHelper,
+		credsFile: credsFile,
+	}
+	baseTs := &externalTokenSource{
+		credsHelperCmd: credsHelperCmd,
+	}
+	c.tokenSource = &grpcOauth.TokenSource{
+		// Wrap the base token source with a ReuseTokenSource so that we only
+		// generate new credentials when the current one is about to expire.
+		// This is needed because retrieving the token is expensive and some
+		// token providers have per hour rate limits.
+		TokenSource: oauth2.ReuseTokenSourceWithExpiry(
+			baseCreds.token,
+			baseTs,
+			// Refresh tokens 5 mins early to be safe
+			5*time.Minute,
+		),
+	}
+	return c
+}
+
+func execCmdDigest(credsHelperCmd *exec.Cmd) digest.Digest {
+	chCmd := append(credsHelperCmd.Args, credsHelperCmd.Path)
+	sort.Strings(chCmd)
+	cmdStr := strings.Join(chCmd, ",")
+	return digest.NewFromBlob([]byte(cmdStr))
+}
+
+// LoadCredsFromDisk loads credentials helper creds from disk.
+func LoadCredsFromDisk(credsFile string, credsHelperCmd *exec.Cmd) (*Credentials, error) {
+	cc, err := loadFromDisk(credsFile)
+	if err != nil {
+		return nil, err
+	}
+	cmdDigest := execCmdDigest(credsHelperCmd)
+	if cc.credsHelperCmdDigest != cmdDigest.String() {
+		return nil, fmt.Errorf("cached credshelper command digest: %s is not the same as requested credshelper command digest: %s",
+			cc.credsHelperCmdDigest, cmdDigest.String())
+	}
+	isExpired := cc.token != nil && cc.token.Expiry.Before(nowFn())
+	if isExpired {
+		return nil, fmt.Errorf("cached token is expired at %v", cc.token.Expiry)
+	}
+	return buildExternalCredentials(cc, credsFile, credsHelperCmd), nil
+}
+
+// SaveCredsToDisk saves credentials helper creds to disk.
+func (c *Credentials) SaveCredsToDisk(credsHelperCmd *exec.Cmd) {
+	if c == nil {
+		return
+	}
+	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}
+	if c.tokenSource != nil && c.refreshExp.IsZero() {
+		// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
+		// this will return a cached credential if one exists.
+		t, err := c.tokenSource.Token()
+		if err != nil {
+			log.Errorf("Failed to get token to persist to disk: %v", err)
+			return
+		}
+		cc.token = t
+	}
+	cmdDigest := execCmdDigest(credsHelperCmd)
+	cc.credsHelperCmdDigest = cmdDigest.String()
+	if err := saveToDisk(cc, c.credsFile); err != nil {
+		log.Errorf("Failed to save credentials to disk: %v", err)
+	}
 }
 
 // SaveToDisk saves credentials to disk.
@@ -355,6 +436,19 @@ type gcpTokenProvider interface {
 type gcpTokenSource struct {
 	p            gcpTokenProvider
 	tokenInfoURL string
+}
+
+// externaltokenSource uses a credentialsHelper to obtain gcp oauth tokens.
+// This should be wrapped in a "golang.org/x/oauth2".ReuseTokenSource
+// to avoid obtaining new tokens each time.
+type externalTokenSource struct {
+	credsHelperCmd *exec.Cmd
+}
+
+// Token retrieves a token from the external tokensource
+func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
+	// TODO (b/301423095): Add logic to get token from credentials helper.
+	return &oauth2.Token{}, nil
 }
 
 // Token retrieves a token from the underlying provider and check the expiration
