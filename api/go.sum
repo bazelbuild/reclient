@@ -1,7 +1,7 @@
 github.com/GoogleCloudPlatform/protoc-gen-bq-schema v0.0.0-20190119112626-026f9fcdf705 h1:jVwOUIhgsS+U4xXLETdpIrr8WIP9tSoqDxpuFAXRvUk=
 github.com/GoogleCloudPlatform/protoc-gen-bq-schema v0.0.0-20190119112626-026f9fcdf705/go.mod h1:+BxrME0giHzMqsTGNhfrNgxtzMwWYw6pqtXiGrNu5Xo=
-github.com/bazelbuild/remote-apis-sdks v0.0.0-20231030150154-e00bd323ce42 h1:zRWorJoqU+lVn5CANsKWp/Dse3BO0yX+7+tmRZPIaGM=
-github.com/bazelbuild/remote-apis-sdks v0.0.0-20231030150154-e00bd323ce42/go.mod h1:E6OuuTP51pswhFFf0TwNQeYQjJ6+xt3nnx4QSzYpvbg=
+github.com/bazelbuild/remote-apis-sdks v0.0.0-20231013183727-8e8b43c05b97 h1:Xyt2RU2GW9TBK1yMjRrwQsPeC+rbCoA1FMCJVnJboFU=
+github.com/bazelbuild/remote-apis-sdks v0.0.0-20231013183727-8e8b43c05b97/go.mod h1:E6OuuTP51pswhFFf0TwNQeYQjJ6+xt3nnx4QSzYpvbg=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/golang/protobuf v1.5.3 h1:KhyjKVUg7Usr/dYsdSqoFveMYd5ko72D+zANwlG1mmg=
 github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
