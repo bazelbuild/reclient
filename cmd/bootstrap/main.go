@@ -57,32 +57,35 @@ var (
 )
 
 var (
-	proxyLogDir          []string
-	serverAddr           = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
-	reProxy              = flag.String("re_proxy", reproxyDefaultPath(), "Location of the reproxy binary")
-	waitSeconds          = flag.Int("reproxy_wait_seconds", 20, "Number of seconds to wait for reproxy to start")
-	shutdown             = flag.Bool("shutdown", false, "Whether to shut down the proxy and dump the stats.")
-	shutdownSeconds      = flag.Int("shutdown_seconds", 60, "Number of seconds to wait for reproxy to shutdown")
-	logFormat            = flag.String("log_format", "text", "Format of proxy log. Currently only text and reducedtext are supported.")
-	logPath              = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
-	fastLogCollection    = flag.Bool("fast_log_collection", false, "Enable optimized log aggregation pipeline. Does not work for multileg builds")
-	asyncReproxyShutdown = flag.Bool("async_reproxy_termination", false, "Allows reproxy to finish shutdown asyncronously. Only applicable with fast_log_collection=true")
-	metricsProject       = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
-	outputDir            = flag.String("output_dir", os.TempDir(), "The location to which stats should be written.")
-	useADC               = flag.Bool(auth.UseAppDefaultCredsFlag, false, "Indicates whether to use application default credentials for authentication")
-	useGCE               = flag.Bool(auth.UseGCECredsFlag, false, "Indicates whether to use GCE VM credentials for authentication")
-	useExternalToken     = flag.Bool(auth.UseExternalTokenFlag, false, "Indicates whether to use an externally provided token for authentication")
-	serviceNoAuth        = flag.Bool(auth.ServiceNoAuthFlag, false, "If true, do not authenticate with RBE.")
-	credFile             = flag.String(auth.CredentialFileFlag, "", "The name of a file that contains service account credentials to use when calling remote execution. Used only if --use_application_default_credentials and --use_gce_credentials are false.")
-	remoteDisabled       = flag.Bool("remote_disabled", false, "Whether to disable all remote operations and run all actions locally.")
-	cacheDir             = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
-	metricsUploader      = flag.String("metrics_uploader", defaultMetricsUploader(), "Path to the metrics uploader binary.")
-	logHTTPCalls         = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
+	proxyLogDir                       []string
+	experimentalCredentialsHelperArgs = make(map[string]string)
+	serverAddr                        = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	reProxy                           = flag.String("re_proxy", reproxyDefaultPath(), "Location of the reproxy binary")
+	waitSeconds                       = flag.Int("reproxy_wait_seconds", 20, "Number of seconds to wait for reproxy to start")
+	shutdown                          = flag.Bool("shutdown", false, "Whether to shut down the proxy and dump the stats.")
+	shutdownSeconds                   = flag.Int("shutdown_seconds", 60, "Number of seconds to wait for reproxy to shutdown")
+	logFormat                         = flag.String("log_format", "text", "Format of proxy log. Currently only text and reducedtext are supported.")
+	logPath                           = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
+	fastLogCollection                 = flag.Bool("fast_log_collection", false, "Enable optimized log aggregation pipeline. Does not work for multileg builds")
+	asyncReproxyShutdown              = flag.Bool("async_reproxy_termination", false, "Allows reproxy to finish shutdown asyncronously. Only applicable with fast_log_collection=true")
+	metricsProject                    = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
+	outputDir                         = flag.String("output_dir", os.TempDir(), "The location to which stats should be written.")
+	useADC                            = flag.Bool(auth.UseAppDefaultCredsFlag, false, "Indicates whether to use application default credentials for authentication")
+	useGCE                            = flag.Bool(auth.UseGCECredsFlag, false, "Indicates whether to use GCE VM credentials for authentication")
+	useExternalToken                  = flag.Bool(auth.UseExternalTokenFlag, false, "Indicates whether to use an externally provided token for authentication")
+	serviceNoAuth                     = flag.Bool(auth.ServiceNoAuthFlag, false, "If true, do not authenticate with RBE.")
+	credFile                          = flag.String(auth.CredentialFileFlag, "", "The name of a file that contains service account credentials to use when calling remote execution. Used only if --use_application_default_credentials and --use_gce_credentials are false.")
+	remoteDisabled                    = flag.Bool("remote_disabled", false, "Whether to disable all remote operations and run all actions locally.")
+	cacheDir                          = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
+	metricsUploader                   = flag.String("metrics_uploader", defaultMetricsUploader(), "Path to the metrics uploader binary.")
+	logHTTPCalls                      = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
+	experimentalCredentialsHelper     = flag.String("experimental_credentials_helper", "", "Path to the creds helper binary.")
 )
 
 func main() {
 	defer log.Flush()
 	flag.Var((*moreflag.StringListValue)(&proxyLogDir), "proxy_log_dir", "If provided, the directory path to a proxy log file of executed records.")
+	flag.Var((*moreflag.StringMapValue)(&experimentalCredentialsHelperArgs), "experimental_credentials_helper_args", "Comma-separated key value pairs in the form key=value. This is used to pass in arguments to the credentials helper binary if provided.")
 	rbeflag.Parse()
 	version.PrintAndExitOnVersionFlag(true)
 
@@ -322,6 +325,9 @@ func credsFilePath() (string, error) {
 }
 
 func newCreds(cf string) *auth.Credentials {
+	if *experimentalCredentialsHelper != "" {
+		log.Fatalf("experimental_credentials_helper support is not available at the moment. Please try another authentication method.")
+	}
 	m, err := auth.MechanismFromFlags()
 	if err != nil || m == auth.Unknown {
 		log.Errorf("Failed to determine auth mechanism: %v", err)
