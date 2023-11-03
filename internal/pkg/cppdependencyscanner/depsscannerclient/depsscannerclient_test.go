@@ -701,6 +701,13 @@ func TestBuildAddress(t *testing.T) {
 		wantAddr     string
 	}{
 		{
+			name:         "UnixSocketReplacereproxy",
+			platforms:    []string{"linux", "darwin"},
+			serverAddr:   "unix:///some/dir/reproxy_123.sock",
+			openPortFunc: func() (int, error) { return 111, nil },
+			wantAddr:     "unix:///some/dir/depscan_123.sock",
+		},
+		{
 			name:         "UnixSocketAbsOnUnix",
 			platforms:    []string{"linux", "darwin"},
 			serverAddr:   "unix:///some/dir/somesocket.sock",

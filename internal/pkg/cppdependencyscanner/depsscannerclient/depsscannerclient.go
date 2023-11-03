@@ -193,11 +193,15 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 }
 
 // buildAddress generates an address for the depsscanner process to listen on.
-// If reproxy is on UNIX and using a UDS address then it will prepend _ds to
-// the sock file name. Otherwise a random TCP port will be chosen.
+// If reproxy is on UNIX and using a UDS address then it will replace reproxy
+// with depscan in the sock file name. If reproxy does not exist in the name, it
+// will prepend _ds to the sock file name. Otherwise a random TCP port will be chosen.
 func buildAddress(proxyServerAddress string, openPortFunc func() (int, error)) (string, error) {
 	address := proxyServerAddress
 	if ipc.GrpcCxxSupportsUDS && strings.HasPrefix(address, "unix://") {
+		if strings.Contains(address, "reproxy") {
+			return strings.Replace(address, "reproxy", "depscan", -1), nil
+		}
 		dir, sockFile := filepath.Split(address[len("unix://"):])
 		return fmt.Sprintf("unix://%s", filepath.Join(dir, "ds_"+sockFile)), nil
 	}
