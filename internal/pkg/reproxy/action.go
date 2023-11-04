@@ -156,7 +156,7 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 		ec.ExecuteRemotely()
 	}
 	res, meta = ec.Result, ec.Metadata
-	if ec.Result.Err != nil {
+	if !res.IsOk() {
 		return
 	}
 	if noDl {
