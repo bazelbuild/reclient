@@ -16,6 +16,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -438,19 +439,6 @@ type gcpTokenSource struct {
 	tokenInfoURL string
 }
 
-// externaltokenSource uses a credentialsHelper to obtain gcp oauth tokens.
-// This should be wrapped in a "golang.org/x/oauth2".ReuseTokenSource
-// to avoid obtaining new tokens each time.
-type externalTokenSource struct {
-	credsHelperCmd *exec.Cmd
-}
-
-// Token retrieves a token from the external tokensource
-func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
-	// TODO (b/301423095): Add logic to get token from credentials helper.
-	return &oauth2.Token{}, nil
-}
-
 // Token retrieves a token from the underlying provider and check the expiration
 // via the google HTTP endpoint.
 func (ts *gcpTokenSource) Token() (*oauth2.Token, error) {
@@ -490,4 +478,90 @@ func getExpiry(baseURL, token string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("tokeninfo did not return an expiry time")
 	}
 	return time.Unix(ti.Exp, 0), nil
+}
+
+// externaltokenSource uses a credentialsHelper to obtain gcp oauth tokens.
+// This should be wrapped in a "golang.org/x/oauth2".ReuseTokenSource
+// to avoid obtaining new tokens each time.
+type externalTokenSource struct {
+	credsHelperCmd *exec.Cmd
+}
+
+// Token retrieves an oauth2 token from the external tokensource.
+func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
+	if ts == nil {
+		return nil, fmt.Errorf("empty tokensource")
+	}
+	tk, _, err := runCredsHelperCmd(ts.credsHelperCmd)
+	if err == nil {
+		log.Infof("%s credentials refreshed at %v, expires at %v", ts.credsHelperCmd.Path, time.Now(), tk.Expiry)
+	}
+	return tk, err
+}
+
+// NewExternalCredentials creates credentials obtained from a credshelper.
+func NewExternalCredentials(credsHelperCmd *exec.Cmd, credsFile string) (*Credentials, error) {
+	tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
+	if err != nil {
+		return nil, err
+	}
+	return buildExternalCredentials(cachedCredentials{token: tk, refreshExp: rexp}, credsFile, credsHelperCmd), nil
+}
+
+func runCredsHelperCmd(credsHelperCmd *exec.Cmd) (*oauth2.Token, time.Time, error) {
+	log.V(2).Infof("Running %v", credsHelperCmd)
+	var stdout, stderr bytes.Buffer
+	credsHelperCmd.Stdout = &stdout
+	credsHelperCmd.Stderr = &stderr
+	err := credsHelperCmd.Run()
+	out := stdout.String()
+	if err != nil {
+		return nil, time.Time{},
+			fmt.Errorf("credshelper error: %v", stderr.String())
+	}
+	token, expiry, refreshExpiry, err := parseTokenExpiryFromOutput(out)
+	return &oauth2.Token{
+		AccessToken: token,
+		Expiry:      expiry,
+	}, refreshExpiry, err
+}
+
+// CredsHelperOut is the struct to record the json output from the credshelper.
+type CredsHelperOut struct {
+	Token         string `json:"token"`
+	Expiry        string `json:"expiry"`
+	RefreshExpiry string `json:"refresh_expiry"`
+}
+
+func parseTokenExpiryFromOutput(out string) (string, time.Time, time.Time, error) {
+	var (
+		tk        string
+		exp, rexp time.Time
+		chOut     CredsHelperOut
+	)
+	if err := json.Unmarshal([]byte(out), &chOut); err != nil {
+		return tk, exp, rexp,
+			fmt.Errorf("error while decoding credshelper output:%v", err)
+	}
+	tk = chOut.Token
+	if tk == "" {
+		return tk, exp, rexp,
+			fmt.Errorf("no token was printed by the credentials helper")
+	}
+	if chOut.Expiry != "" {
+		expiry, err := time.Parse(time.UnixDate, chOut.Expiry)
+		if err != nil {
+			return tk, exp, rexp, fmt.Errorf("invalid expiry format: %v (Expected time.UnixDate format)", chOut.Expiry)
+		}
+		exp = expiry
+		rexp = expiry
+	}
+	if chOut.RefreshExpiry != "" {
+		rexpiry, err := time.Parse(time.UnixDate, chOut.RefreshExpiry)
+		if err != nil {
+			return tk, exp, rexp, fmt.Errorf("invalid refresh expiry format: %v (Expected time.UnixDate format)", chOut.RefreshExpiry)
+		}
+		rexp = rexpiry
+	}
+	return tk, exp, rexp, nil
 }
