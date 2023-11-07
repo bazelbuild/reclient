@@ -177,13 +177,7 @@ func main() {
 			return
 		}
 
-		tempRbeMetricsFilePath, err := createTempRbeMetricsFile(s)
-		if err != nil {
-			log.Errorf("Unable to make temp rbe_metrics.pb for upload: %v", err)
-			return
-		}
-
-		uploaderArgs := []string{"--rbe_metrics_path=" + tempRbeMetricsFilePath}
+		var uploaderArgs []string
 		if cfg := flag.Lookup("cfg"); cfg != nil {
 			if cfg.Value.String() != "" {
 				uploaderArgs = append(uploaderArgs, "--cfg="+cfg.Value.String())
@@ -191,7 +185,7 @@ func main() {
 		}
 		if ts := creds.TokenSource(); ts != nil {
 			if t, err := ts.Token(); err == nil {
-				uploaderArgs = append(uploaderArgs, "--oauth_token="+t.AccessToken)
+				uploaderArgs = append(uploaderArgs, "--oauth_token="+t.AccessToken, "--use_external_auth_token=true")
 			}
 		}
 

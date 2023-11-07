@@ -56,7 +56,17 @@ message Stats {
   // shutdown by bootstrap.
   bool fatal_exit = 12;
 
+  // The log directories that are uploaded to CAS.
+  repeated LogDirectory log_directories = 13;
+
   reserved 3, 8;
+}
+
+message LogDirectory {
+  // Absolute path of directory
+  string path = 1;
+  // CAS digest of directory
+  string digest = 2;
 }
 
 message MachineInfo {

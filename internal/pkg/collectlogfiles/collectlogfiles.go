@@ -19,12 +19,21 @@ package collectlogfiles
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
+
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/uploadinfo"
+	log "github.com/golang/glog"
 )
 
 var (
@@ -118,6 +127,92 @@ func CreateLogsArchive(fname string, logDirs []string, logPath string) (err erro
 		}
 	}
 	return nil
+}
+
+// UploadDirsToCas uploads a list of directories to CAS and returns a list of the root digests.
+func UploadDirsToCas(grpcClient *client.Client, dirs []string, logPath string) ([]*spb.LogDirectory, error) {
+	fmc := filemetadata.NewSingleFlightCache()
+	var lds []*spb.LogDirectory
+	var allInputs []*uploadinfo.Entry
+	var needToUploadLogPath bool
+	var logPathBase string
+	var absLogPath string
+	if logPath != "" {
+		_, fp, err := logger.ParseFilepath(logPath)
+		if err != nil {
+			return nil, err
+		}
+		absLogPath, err = toAbsRealPath(fp)
+		if err != nil {
+			return nil, err
+		}
+		logPathBase = filepath.Base(absLogPath)
+		needToUploadLogPath = true
+	}
+	// Uploads the contents of all log directories provided by dirs.
+	for _, dir := range dirs {
+		files := pathtranslator.ListRelToExecRoot(dir, "", collectLogFilesFromDir(dir))
+		if needToUploadLogPath && filepath.Join(dir, logPathBase) == absLogPath {
+			files = append(files, logPathBase)
+			needToUploadLogPath = false
+		}
+		if err := appendRootDigests(dir, files, grpcClient, fmc, &lds, &allInputs); err != nil {
+			log.Errorf("Unable to generate merkle tree for %v: %v", filepath.Dir(dir), err)
+		}
+	}
+	// Uploads the contents of the directory provided by --log_path if it hasn't been uploaded already.
+	if needToUploadLogPath {
+		if err := appendRootDigests(filepath.Dir(absLogPath), []string{logPathBase}, grpcClient, fmc, &lds, &allInputs); err != nil {
+			log.Errorf("Unable to generate merkle tree for %v: %v", filepath.Dir(absLogPath), err)
+		}
+	}
+
+	_, _, err := grpcClient.UploadIfMissing(context.Background(), allInputs...)
+	if err != nil {
+		return nil, err
+	}
+	return lds, nil
+}
+
+func appendRootDigests(dir string, files []string, grpcClient *client.Client, fmc filemetadata.Cache, lds *[]*spb.LogDirectory, allInputs *[]*uploadinfo.Entry) error {
+	root, inputs, _, err := grpcClient.ComputeMerkleTree(
+		context.Background(), dir, "", "", &command.InputSpec{Inputs: files}, fmc)
+	if err != nil {
+		return err
+	}
+	*allInputs = append(*allInputs, inputs...)
+	*lds = append(*lds, &spb.LogDirectory{
+		Path:   dir,
+		Digest: root.String(),
+	})
+	return nil
+}
+
+// DeduplicateDirs filters out duplicate entries from dirs
+func DeduplicateDirs(dirs []string) ([]string, error) {
+	var out []string
+	seen := make(map[string]bool, len(dirs))
+	for _, logDir := range dirs {
+		absLogDir, err := toAbsRealPath(logDir)
+		if err != nil {
+			log.Errorf("Unable to resolve %v: %v", logDir, err)
+			continue
+		}
+		if seen[absLogDir] {
+			continue
+		}
+		seen[absLogDir] = true
+		out = append(out, absLogDir)
+	}
+	return out, nil
+}
+
+func toAbsRealPath(path string) (string, error) {
+	noSym, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Abs(noSym)
 }
 
 func collectLogFilesFromDir(logDir string) []string {

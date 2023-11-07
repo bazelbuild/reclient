@@ -8,10 +8,13 @@ go_library(
     deps = [
         "//api/stats",
         "//internal/pkg/bigquery",
+        "//internal/pkg/collectlogfiles",
         "//internal/pkg/monitoring",
         "//internal/pkg/rbeflag",
         "//internal/pkg/stats",
         "//pkg/version",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/client",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/flags",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
         "@com_github_golang_glog//:go_default_library",
         "@org_golang_google_grpc//credentials/oauth",

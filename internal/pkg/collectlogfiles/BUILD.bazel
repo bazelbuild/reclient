@@ -5,12 +5,29 @@ go_library(
     srcs = ["collectlogfiles.go"],
     importpath = "github.com/bazelbuild/reclient/internal/pkg/collectlogfiles",
     visibility = ["//:__subpackages__"],
-    deps = ["//internal/pkg/logger"],
+    deps = [
+        "//api/stats",
+        "//internal/pkg/logger",
+        "//internal/pkg/pathtranslator",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/client",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/uploadinfo",
+        "@com_github_golang_glog//:go_default_library",
+    ],
 )
 
 go_test(
     name = "collectlogfiles_test",
     srcs = ["collectlogfiles_test.go"],
     embed = [":collectlogfiles"],
-    deps = ["@com_github_google_go_cmp//cmp"],
+    deps = [
+        "//api/stats",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/client",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/fakes",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_google_go_cmp//cmp",
+        "@org_golang_google_protobuf//testing/protocmp",
+    ],
 )

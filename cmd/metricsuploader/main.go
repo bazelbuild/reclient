@@ -20,13 +20,18 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
+	"github.com/bazelbuild/reclient/internal/pkg/collectlogfiles"
 	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/pkg/version"
 
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
+	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"
 	"golang.org/x/oauth2"
@@ -37,13 +42,20 @@ import (
 )
 
 var (
-	labels           = make(map[string]string)
-	metricsProject   = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project.")
-	metricsPrefix    = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring.")
-	metricsNamespace = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project).")
-	metricsTable     = flag.String("metrics_table", "", "Resource specifier of the BigQuery table to upload the contents of rbe_metrics.pb to. If the project is not provided in the specifier metrics_project will be used.")
-	rbeMetricsPb     = flag.String("rbe_metrics_path", "", "Path to rbe_metrics.pb that will be uploaded to bigquery and parsed for cloud monitoring build level metrics.")
-	oauthToken       = flag.String("oauth_token", "", "Token to use when authenticating with GCP.")
+	labels               = make(map[string]string)
+	proxyLogDir          []string
+	logPath              = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
+	metricsProject       = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project.")
+	metricsPrefix        = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring.")
+	metricsNamespace     = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project).")
+	metricsTable         = flag.String("metrics_table", "", "Resource specifier of the BigQuery table to upload the contents of rbe_metrics.pb to. If the project is not provided in the specifier metrics_project will be used.")
+	outputDir            = flag.String("output_dir", os.TempDir(), "The location to which stats should be written.")
+	useCasNg             = flag.Bool("use_casng", false, "Use casng pkg.")
+	compressionThreshold = flag.Int("compression_threshold", -1, "Threshold size in bytes for compressing Bytestream reads or writes. Use a negative value for turning off compression.")
+	useBatches           = flag.Bool("use_batches", true, "Use batch operations for relatively small blobs.")
+	uploadBufferSize     = flag.Int("upload_buffer_size", 10000, "Buffer size to flush unified uploader daemon.")
+	uploadTickDuration   = flag.Duration("upload_tick_duration", 50*time.Millisecond, "How often to flush unified uploader daemon.")
+	oauthToken           = flag.String("oauth_token", "", "Token to use when authenticating with GCP.")
 )
 
 func main() {
@@ -55,15 +67,12 @@ func main() {
 	if *metricsProject == "" {
 		log.Fatalf("--metrics_project is required.")
 	}
+	ctx := context.Background()
 	s := &spb.Stats{}
-	if rbeMetricsBytes, err := os.ReadFile(*rbeMetricsPb); err != nil {
-		log.Fatalf("Error reading rbe_metrics.pb file: %v", err)
+	if rbeMetricsBytes, err := os.ReadFile(filepath.Join(*outputDir, stats.AggregatedMetricsFileBaseName+".pb")); err != nil {
+		log.Fatalf("Error reading %s.pb file: %v", stats.AggregatedMetricsFileBaseName, err)
 	} else if err := proto.Unmarshal(rbeMetricsBytes, s); err != nil {
-		log.Fatalf("Failed to parse rbe_metrics.pb: %v", err)
-	}
-	err := os.Remove(*rbeMetricsPb)
-	if err != nil {
-		log.Errorf("Failed to delete rbe_metrics.pb: %v", err)
+		log.Fatalf("Failed to parse %s.pb: %v", stats.AggregatedMetricsFileBaseName, err)
 	}
 
 	var ts *oauth.TokenSource
@@ -73,32 +82,81 @@ func main() {
 		}
 	}
 
-	if err := uploadToCloudMonitoring(s, ts); err != nil {
+	if err := uploadToCloudMonitoring(ctx, s, ts); err != nil {
 		log.Errorf("Error uploading to cloud monitoring: %v", err)
+	}
+	if len(proxyLogDir) > 0 {
+		*logPath = ""
+	}
+
+	logDirs, err := collectlogfiles.DeduplicateDirs(append(proxyLogDir, getLogDir(), *outputDir))
+	if err != nil {
+		log.Errorf("Unable to determine log dirs for uploading: %v", err)
+	}
+
+	if len(logDirs) > 0 {
+		grpcClient, err := connectToRBE(ctx, ts)
+		if err != nil {
+			log.Errorf("Error connecting to rbe: %v", err)
+		}
+		defer grpcClient.Close()
+		ldgs, err := collectlogfiles.UploadDirsToCas(grpcClient, logDirs, *logPath)
+		if err != nil {
+			log.Errorf("Error uploading logs to rbe: %v", err)
+		}
+		s.LogDirectories = ldgs
+	}
+
+	err = stats.WriteStats(s, *outputDir)
+	if err != nil {
+		log.Errorf("Error writing log digests to rbe_metrics files: %v", err)
 	}
 
 	if *metricsTable != "" {
-		if err := uploadToBigQuery(s, ts); err != nil {
+		if err := uploadToBigQuery(ctx, s, ts); err != nil {
 			log.Errorf("Error uploading to bigquery: %v", err)
 		}
 	}
 }
 
-func uploadToCloudMonitoring(s *spb.Stats, ts *oauth.TokenSource) error {
+// getLogDir retrieves the glog log directory
+func getLogDir() string {
+	if f := flag.Lookup("log_dir"); f != nil {
+		return f.Value.String()
+	}
+	return ""
+}
+
+func connectToRBE(ctx context.Context, ts *oauth.TokenSource) (*client.Client, error) {
+	clientOpts := []client.Opt{
+		client.UnifiedUploadBufferSize(*uploadBufferSize),
+		client.UnifiedUploadTickDuration(*uploadTickDuration),
+		client.UseBatchOps(*useBatches),
+		client.CompressedBytestreamThreshold(*compressionThreshold),
+		client.UseCASNG(*useCasNg),
+	}
+	if ts != nil {
+		clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
+	}
+	log.Infof("Creating a new SDK client")
+	return rflags.NewClientFromFlags(ctx, clientOpts...)
+}
+
+func uploadToCloudMonitoring(ctx context.Context, s *spb.Stats, ts *oauth.TokenSource) error {
 	if err := monitoring.SetupViews(labels); err != nil {
 		return fmt.Errorf("failed to initialize cloud monitoring views: %w", err)
 	}
-	e, err := monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, ts)
+	e, err := monitoring.NewExporter(ctx, *metricsProject, *metricsPrefix, *metricsNamespace, ts)
 	if err != nil {
 		return fmt.Errorf("failed to initialize cloud monitoring exporter: %w", err)
 	}
 	defer e.Close()
-	e.ExportBuildMetrics(context.Background(), s)
+	e.ExportBuildMetrics(ctx, s)
 	return nil
 }
 
-func uploadToBigQuery(s *spb.Stats, ts *oauth.TokenSource) error {
-	inserter, cleanup, err := bigquery.NewInserter(context.Background(), *metricsTable, *metricsProject, ts)
+func uploadToBigQuery(ctx context.Context, s *spb.Stats, ts *oauth.TokenSource) error {
+	inserter, cleanup, err := bigquery.NewInserter(ctx, *metricsTable, *metricsProject, ts)
 	if err != nil {
 		return fmt.Errorf("error creating a bigquery client: %w", err)
 	}
@@ -108,7 +166,7 @@ func uploadToBigQuery(s *spb.Stats, ts *oauth.TokenSource) error {
 			log.Errorf("Error cleaning up bigquery client: %v", err)
 		}
 	}()
-	err = inserter.Put(context.Background(), &stats.ProtoSaver{Stats: s})
+	err = inserter.Put(ctx, &stats.ProtoSaver{Stats: s})
 	if err != nil {
 		return fmt.Errorf("error uploading stats to bigquery: %w", err)
 	}
