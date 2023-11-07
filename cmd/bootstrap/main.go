@@ -98,9 +98,21 @@ func main() {
 		log.Info("--async_reproxy_termination=true is not compatible with --fast_log_collection=false, falling back to synchronous shutdown.")
 	}
 
+	if *outputDir != "" {
+		// Check for existence of output directory, and create if needed.
+		// Build stats and reproxy_outerr are stored in this directory.
+		if _, err := os.Stat(*outputDir); err != nil {
+			if !os.IsNotExist(err) {
+				log.Fatalf("Failed checking for output directory: %v", err)
+			}
+			os.MkdirAll(*outputDir, 0777)
+		}
+	}
+
 	if f := flag.Lookup("log_dir"); f != nil && f.Value.String() != "" {
 		logDir = f.Value.String()
-		// Check for output directory and create it if it doesn't exist.
+		// Check for logging directory and create it if it doesn't exist.
+		// Logs from glog are stored in this directory.
 		if _, err := os.Stat(logDir); err != nil {
 			if !os.IsNotExist(err) {
 				log.Fatalf("Failed checking for logging output directory: %v", err)
