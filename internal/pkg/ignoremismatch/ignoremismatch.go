@@ -53,12 +53,15 @@ func (mi *MismatchIgnorer) ProcessLogRecord(r *lpb.LogRecord) {
 	if r.GetLocalMetadata().GetVerification().GetMismatches() == nil {
 		return
 	}
+	var filteredMismatches []*lpb.Verification_Mismatch
 	for _, m := range r.GetLocalMetadata().GetVerification().GetMismatches() {
 		if mi.shouldIgnore(m) {
-			m.Ignored = true
 			ignored++
+		} else {
+			filteredMismatches = append(filteredMismatches, m)
 		}
 	}
+	r.GetLocalMetadata().GetVerification().Mismatches = filteredMismatches
 	r.GetLocalMetadata().GetVerification().TotalIgnoredMismatches = ignored
 }
 

@@ -19,11 +19,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
-
 	lpb "github.com/bazelbuild/reclient/api/log"
-
-	log "github.com/golang/glog"
 )
 
 func compareAction(ctx context.Context, s *Server, a *action) {
@@ -81,13 +77,6 @@ func compareAction(ctx context.Context, s *Server, a *action) {
 	}
 	verRes := mismatchesToProto(mismatches, numVerified)
 	a.rec.LocalMetadata.Verification = verRes
-	if len(mismatches) > 0 {
-		log.Errorf(
-			"%v: Found diff in outputs:\n%s",
-			a.cmd.Identifiers.ExecutionID,
-			protoencoding.TextWithIndent.Format(a.rec.LocalMetadata.Verification),
-		)
-	}
 }
 
 func mismatchesToProto(mismatches map[string]*lpb.Verification_Mismatch, numVerified int) *lpb.Verification {

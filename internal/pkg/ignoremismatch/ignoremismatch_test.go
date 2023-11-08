@@ -94,11 +94,8 @@ func TestMismatchProcessing(t *testing.T) {
 	for _, r := range recs {
 		mi.ProcessLogRecord(r)
 	}
-	if !recs[0].GetLocalMetadata().GetVerification().GetMismatches()[0].Ignored {
-		t.Error("1st mismatch is not ignored")
-	}
-	if recs[0].GetLocalMetadata().GetVerification().GetMismatches()[1].Ignored {
-		t.Error("2nd mismatch is unexpectedly ignored")
+	if recs[0].GetLocalMetadata().GetVerification().GetMismatches()[0].Ignored {
+		t.Error("Mismatch is unexpectedly ignored")
 	}
 	if ignored := recs[0].GetLocalMetadata().GetVerification().TotalIgnoredMismatches; ignored != 1 {
 		t.Errorf("Total ignored is expected to be 1, got: %v", ignored)
