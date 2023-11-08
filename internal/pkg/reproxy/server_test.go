@@ -2436,14 +2436,25 @@ func TestCompareStashRestore(t *testing.T) {
 		"tool":  []byte("fake"),
 		"inout": []byte("foo"),
 	}
+	inOutDirContents := map[string][]byte{
+		"foo": []byte("foo"),
+	}
 	execroot.AddFilesWithContent(t, env.ExecRoot, fileContents)
+	execroot.AddFilesWithContent(t, filepath.Join(env.ExecRoot, "inoutDir"), inOutDirContents)
 	executor := &execStub{localExec: func() {
 		time.Sleep(time.Second) // Hack to let mtime catch up.
-		content, err := os.ReadFile(filepath.Join(env.ExecRoot, "inout"))
-		if err != nil {
-			t.Errorf("execStub read input: %v", err)
+		contentUpdate := map[string]string{
+			filepath.Join(env.ExecRoot, "inout"):        "baz",
+			filepath.Join(env.ExecRoot, "inoutDir/foo"): "bar",
 		}
-		execroot.AddFileWithContent(t, filepath.Join(env.ExecRoot, "inout"), append(content, []byte("baz")...))
+		for path, toUpdate := range contentUpdate {
+			cur, err := os.ReadFile(path)
+			if err != nil {
+				t.Errorf("execStub read input error for %v: %v", path, err)
+				return
+			}
+			execroot.AddFileWithContent(t, path, append(cur, []byte(toUpdate)...))
+		}
 	}}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{
@@ -2464,6 +2475,7 @@ func TestCompareStashRestore(t *testing.T) {
 	cmdArgs := []string{
 		"tool",
 		"inout",
+		"inoutDir",
 	}
 	ctx := context.Background()
 	remoteExecOptions := &ppb.RemoteExecutionOptions{AcceptCached: false, DoNotCache: true}
@@ -2472,10 +2484,11 @@ func TestCompareStashRestore(t *testing.T) {
 			Args:     cmdArgs,
 			ExecRoot: env.ExecRoot,
 			Input: &cpb.InputSpec{
-				Inputs: []string{"inout"},
+				Inputs: []string{"inout", "inoutDir"},
 			},
 			Output: &cpb.OutputSpec{
-				OutputFiles: []string{"inout"},
+				OutputFiles:       []string{"inout"},
+				OutputDirectories: []string{"inoutDir"},
 			},
 		},
 		Labels: map[string]string{"type": "tool"},
@@ -2499,9 +2512,11 @@ func TestCompareStashRestore(t *testing.T) {
 			Inputs: []string{
 				"tool",
 				"inout",
+				"inoutDir",
 			},
 		},
 		OutputFiles: []string{"inout"},
+		OutputDirs:  []string{"inoutDir"},
 	}
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
@@ -2517,14 +2532,27 @@ func TestCompareStashRestore(t *testing.T) {
 	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
 		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
 	}
-	path := filepath.Join(env.ExecRoot, "inout")
-	contents, err := os.ReadFile(path)
-	if err != nil {
-		t.Errorf("error reading from %s: %v", path, err)
+
+	wantFileContents := []struct {
+		path string
+		want string
+	}{
+		{
+			path: filepath.Join(env.ExecRoot, "inout"),
+			want: "foobaz",
+		}, {
+			path: filepath.Join(env.ExecRoot, "inoutDir/foo"),
+			want: "foobar",
+		},
 	}
-	wantContents := "foobaz"
-	if !bytes.Equal(contents, []byte(wantContents)) {
-		t.Errorf("RunCommand output %s: %q; want %q", path, contents, wantContents)
+	for _, wfc := range wantFileContents {
+		contents, err := os.ReadFile(wfc.path)
+		if err != nil {
+			t.Errorf("error reading from %s: %v", wfc.path, err)
+		}
+		if !bytes.Equal(contents, []byte(wfc.want)) {
+			t.Errorf("RunCommand output %s: %q; want %q", wfc.path, contents, wfc.want)
+		}
 	}
 }
 

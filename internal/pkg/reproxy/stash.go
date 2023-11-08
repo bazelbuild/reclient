@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
+
+	log "github.com/golang/glog"
 )
 
 // StashFiles copies the given files to a temporary location. It returns a function that
@@ -30,29 +32,35 @@ func StashFiles(paths []string) func() {
 	for _, srcPath := range paths {
 		source, err := os.Open(srcPath)
 		if err != nil {
+			log.Warningf("Unable to stash file %v: %v", srcPath, err)
 			continue
 		}
 		defer source.Close()
 		destPath := filepath.Join(parentDir, uuid.New().String())
 		destination, err := os.Create(destPath)
 		if err != nil {
+			log.Warningf("Unable to stash file %v at %v: %v", srcPath, destPath, err)
 			continue
 		}
 		defer destination.Close()
 		_, err = io.Copy(destination, source)
 		if err != nil {
+			log.Warningf("Unable to stash file %v at %v: %v", srcPath, destPath, err)
 			continue
 		}
 		err = destination.Sync()
 		if err != nil {
+			log.Warningf("Unable to stash file %v at %v: %v", srcPath, destPath, err)
 			continue
 		}
 		si, err := os.Stat(srcPath)
 		if err != nil {
+			log.Warningf("Unable to stash file %v at %v: %v", srcPath, destPath, err)
 			continue
 		}
 		err = os.Chmod(destPath, si.Mode())
 		if err != nil {
+			log.Warningf("Unable to stash file %v at %v: %v", srcPath, destPath, err)
 			continue
 		}
 		newFiles[destPath] = srcPath

@@ -812,21 +812,64 @@ func (a *action) inOutFiles() []string {
 	if a.rawInOutFiles == nil {
 		inps := make(map[string]bool, len(a.cmd.InputSpec.Inputs))
 		for _, inp := range a.cmd.InputSpec.Inputs {
-			inps[inp] = true
+			absInp := filepath.Join(a.cmd.ExecRoot, inp)
+			s, err := os.Stat(absInp)
+			if err != nil {
+				log.Warningf("%v: Unable to stat path %v when determining inOutFiles", a.cmd.Identifiers.ExecutionID, absInp, err)
+				continue
+			}
+			inputFiles := []string{absInp}
+			if s.IsDir() {
+				inputFiles, err = collectFiles(absInp)
+				if err != nil {
+					log.Warningf("%v: Unable to collect input files from dir %v: %v", a.cmd.Identifiers.ExecutionID, absInp, err)
+					continue
+				}
+			}
+			for _, f := range inputFiles {
+				inps[f] = true
+			}
 		}
 		a.rawInOutFiles = []string{}
 		for _, f := range pathtranslator.ListRelToExecRoot(a.cmd.ExecRoot, a.cmd.WorkingDir, a.cmd.OutputFiles) {
-			if inps[f] {
-				a.rawInOutFiles = append(a.rawInOutFiles, filepath.Join(a.cmd.ExecRoot, f))
+			absOut := filepath.Join(a.cmd.ExecRoot, f)
+			if inps[absOut] {
+				a.rawInOutFiles = append(a.rawInOutFiles, absOut)
+			}
+		}
+		for _, outDir := range pathtranslator.ListRelToExecRoot(a.cmd.ExecRoot, a.cmd.WorkingDir, a.cmd.OutputDirs) {
+			outputFiles, err := collectFiles(filepath.Join(a.cmd.ExecRoot, outDir))
+			if err != nil {
+				log.Warningf("%v: Unable to collect output files from dir %v: %v", a.cmd.Identifiers.ExecutionID, outDir, err)
+				continue
+			}
+			for _, f := range outputFiles {
+				if inps[f] {
+					a.rawInOutFiles = append(a.rawInOutFiles, f)
+				}
 			}
 		}
 	}
 	return a.rawInOutFiles
 }
 
+func collectFiles(dir string) ([]string, error) {
+	var files []string
+	collectFn := func(path string, _ os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		files = append(files, path)
+		return nil
+	}
+	err := filepath.Walk(dir, collectFn)
+	return files, err
+}
+
 type restoreInOutFilesFn func()
 
 func (a *action) stashInputOutputFiles() restoreInOutFilesFn {
+	log.V(3).Infof("%v: InputOutput files are: %v", a.cmd.Identifiers.ExecutionID, a.inOutFiles())
 	restoreFn := StashFiles(a.inOutFiles())
 	return func() {
 		restoreFn()

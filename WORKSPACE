@@ -491,7 +491,7 @@ go_repository(
     importpath = "github.com/bazelbuild/remote-apis-sdks",
 )
 # Use the local_reprository configuration below to replace the github version of the SDK with a local version.
-#local_repository(
+# local_repository(
 #    name = "com_github_bazelbuild_remote_apis_sdks",
 #    path = "/usr/local/google/home/{user}/remote-apis-sdks"
 #)
