@@ -861,6 +861,10 @@ func (a *action) duplicate(n int) []*action {
 		var tcmd command.Command
 		if a.cmd != nil {
 			tcmd = command.Command(*(a.cmd))
+			if a.cmd.InputSpec != nil {
+				tcmd.InputSpec = &(*a.cmd.InputSpec)
+				tcmd.InputSpec.Inputs = append([]string{}, a.cmd.InputSpec.Inputs...)
+			}
 		}
 		id := command.Identifiers(*(tcmd.Identifiers))
 		tcmd.Identifiers = &id
