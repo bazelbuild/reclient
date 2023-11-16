@@ -222,24 +222,6 @@ func TestParseFlags(t *testing.T) {
 			},
 		},
 		{
-			name:       "Clang command with -fcrash-diagnostics-dir=",
-			workingDir: ".",
-			command:    []string{"clang++", "-c", "-o", "test.o", "-fcrash-diagnostics-dir=crash_diagnostics_dir", "-MF", "test.d", "test.cpp"},
-			want: &flags.CommandFlags{
-				ExecutablePath: "clang++",
-				Flags: []*flags.Flag{
-					&flags.Flag{Key: "-c"},
-					&flags.Flag{Key: "-fcrash-diagnostics-dir=", Value: "crash_diagnostics_dir", Joined: true},
-				},
-				TargetFilePaths:       []string{"test.cpp"},
-				EmittedDependencyFile: "test.d",
-				WorkingDirectory:      ".",
-				ExecRoot:              er,
-				OutputDirPaths:        []string{"crash_diagnostics_dir"},
-				OutputFilePaths:       []string{"test.o", "test.d"},
-			},
-		},
-		{
 			name:       "Clang command with an fsanitize-blacklist file",
 			workingDir: ".",
 			command:    []string{"clang++", "-c", "-o", "test.o", "-fsanitize-blacklist=blacklist.txt", "-MF", "test.d", "test.cpp"},

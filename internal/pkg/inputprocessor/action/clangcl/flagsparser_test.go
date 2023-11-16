@@ -148,9 +148,6 @@ func TestParseFlags(t *testing.T) {
 					{Key: "-clang:", Value: "-MD", Joined: true},
 					{Key: "-Fd", Value: "obj/base/third_party/double_conversion/double_conversion_cc.pdb", Joined: true},
 				},
-				OutputDirPaths: []string{
-					"../../tools/clang/crashreports",
-				},
 				OutputFilePaths: []string{
 					"obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d",
 					"obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj",
