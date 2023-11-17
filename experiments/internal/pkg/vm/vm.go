@@ -100,13 +100,27 @@ func (v *VM) sshPrefix() []string {
 	if v.vmSettings != nil {
 		cmd := append(v.gcePrefix(), "ssh", "--ssh-flag=-tt", v.sshUser()+v.name, "--zone="+v.vmSettings.GetZone())
 		cmd = append(cmd, v.sshKey()...)
-		return append(cmd, "--")
+		cmd = append(cmd, "--")
+		// May be overriden to specify an SSH proxy.
+		proxyCmd := ""
+		cmd = appendProxyArgs(cmd, proxyCmd)
+		return cmd
 	} else if v.wsSettings != nil {
 		cmd := []string{"ssh", v.sshUser() + v.name}
 		cmd = append(cmd, v.sshKey()...)
 		return cmd
 	}
 	return []string{}
+}
+
+// appendProxyArgs adds SSH proxy arguments to an SSH command if non-empty, returning the expanded command.
+// This is used internally at Google, and could be used in the future if this functionality is more broadly needed.
+// Assumes that `cmd` has the complete ssh command up to the point where proxy arguments should be added.
+func appendProxyArgs(cmd []string, proxyCmd string) []string {
+	if len(proxyCmd) > 0 {
+		cmd = append(cmd, "-o", fmt.Sprintf("ProxyCommand=%s", proxyCmd))
+	}
+	return cmd
 }
 
 func (v *VM) scpPrefix() []string {
