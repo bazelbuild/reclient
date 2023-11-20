@@ -120,8 +120,9 @@ func TestProcessToolchainInputs(t *testing.T) {
 
 func TestProcessToolchainInputsMultipleToolchains(t *testing.T) {
 	cwd := getCwd(t)
+	fmc := filemetadata.NewSingleFlightCache()
 	ip := &InputProcessor{}
-	got, err := ip.ProcessToolchainInputs(context.Background(), cwd, ".", "testdata/executable", []string{"testdata/executable2"}, nil)
+	got, err := ip.ProcessToolchainInputs(context.Background(), cwd, ".", "testdata/executable", []string{"testdata/executable2"}, fmc)
 	if err != nil {
 		t.Fatalf("ProcessToolchainInputs() returned error: %v", err)
 	}
@@ -132,6 +133,12 @@ func TestProcessToolchainInputsMultipleToolchains(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("ProcessToolchainInputs() returned diff. (-want +got)\n%v", diff)
+	}
+	if runtime.GOOS == "windows" {
+		md := fmc.Get(filepath.Join(cwd, "testdata/executable2"))
+		if md.Err != nil || !md.IsExecutable {
+			t.Errorf("fmc.Get(\"testdata/executable2\") = %v, IsExecutable: %v, want no err and IsExecutable=true", md.Err, md.IsExecutable)
+		}
 	}
 }
 

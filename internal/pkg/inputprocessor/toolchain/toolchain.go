@@ -20,12 +20,15 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/cache"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
+	log "github.com/golang/glog"
 )
 
 var (
@@ -35,6 +38,8 @@ var (
 
 	// metalavaRe is a regular expression to find the version number of metalava.
 	metalavaRe = regexp.MustCompile(`^[\w\s]+:\s*(.+)`)
+
+	toolchainBinCache cache.SingleFlight
 )
 
 // InputProcessor determines the toolchain inputs of a command.
@@ -50,6 +55,15 @@ func (p *InputProcessor) ProcessToolchainInputs(ctx context.Context, execRoot, w
 	}
 	dirs := make([]string, 0)
 	for _, tc := range toolchains {
+		fp := filepath.Join(execRoot, tc)
+		if runtime.GOOS == "windows" {
+			_, err := toolchainBinCache.LoadOrStore(fp, func() (interface{}, error) {
+				return nil, loadOrStoreBinInFmc(fp, fmc)
+			})
+			if err != nil {
+				log.Errorf("Failed to store %v as an executable in file metadata cache: %v", tc, err)
+			}
+		}
 		tcDir := filepath.Dir(tc)
 		tcDir = pathtranslator.RelToWorkingDir(execRoot, workingDir, tcDir)
 		if tcDir == "" {
@@ -62,4 +76,16 @@ func (p *InputProcessor) ProcessToolchainInputs(ctx context.Context, execRoot, w
 		inp.EnvironmentVariables = map[string]string{"PATH": strings.Join(dirs, ":")}
 	}
 	return inp, nil
+}
+
+func loadOrStoreBinInFmc(fullPath string, fmc filemetadata.Cache) error {
+	if fmc == nil {
+		return nil
+	}
+	md := fmc.Get(fullPath)
+	if md.IsExecutable {
+		return nil
+	}
+	md.IsExecutable = true
+	return fmc.Update(fullPath, md)
 }
