@@ -56,3 +56,12 @@ func TestLock_ExpiredContext(t *testing.T) {
 	cancel()
 	wg.Wait()
 }
+
+func TestMinimumCpus(t *testing.T) {
+	// A fractional manager with a very small fraction should not produce a zero
+	// cpu manager.
+	mgr := NewFractionalDefaultManager(0.001)
+	if mgr.totalCPUs != 1 {
+		t.Errorf("Expected 1 totalCPUs, got %v", mgr.totalCPUs)
+	}
+}

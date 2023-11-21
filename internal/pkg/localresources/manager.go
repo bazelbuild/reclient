@@ -51,10 +51,10 @@ func NewFractionalDefaultManager(fraction float64) *Manager {
 // NewManager is used to initialize the manager with non default local resources.
 func NewManager(cpus, ramMBs int64) *Manager {
 	return &Manager{
-		cpus:        semaphore.NewWeighted(cpus),
-		ram:         semaphore.NewWeighted(ramMBs),
-		totalCPUs:   cpus,
-		totalRAMMBs: ramMBs,
+		cpus:        semaphore.NewWeighted(max(1, cpus)),
+		ram:         semaphore.NewWeighted(max(1, ramMBs)),
+		totalCPUs:   max(1, cpus),
+		totalRAMMBs: max(1, ramMBs),
 	}
 }
 
@@ -83,6 +83,13 @@ func (m *Manager) Lock(ctx context.Context, cpus, ramMBs int64) (func(), error) 
 
 func min(a int64, b int64) int64 {
 	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int64) int64 {
+	if a > b {
 		return a
 	}
 	return b
