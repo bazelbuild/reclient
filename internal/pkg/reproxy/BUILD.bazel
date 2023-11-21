@@ -54,6 +54,9 @@ go_test(
     ],
     embed = [":reproxy"],
     flaky = True,
+    tags = [
+        "local",
+    ],
     deps = [
         "//api/log",
         "//api/proxy",

@@ -98,12 +98,19 @@ type action struct {
 }
 
 func (a *action) runLocal(ctx context.Context, pool *LocalPool) {
-	cmd := a.cmd
+	// command is duplicated here since we append all local env variables of
+	// rewrapper to the command during execution (but these variables shouldn't
+	// become a part of the action-cache key).
+	cmd := a.duplicateCmd(0)
 	if a.lOpt.GetWrapper() != "" {
 		cmd = &command.Command{}
 		*cmd = *a.cmd
 		cmd.Args = append([]string{a.lOpt.GetWrapper()}, a.cmd.Args...)
 	}
+	if a.cmd.InputSpec != nil {
+		cmd.InputSpec.EnvironmentVariables = sliceToMap(a.cmdEnvironment, "=")
+	}
+
 	log.V(2).Infof("%v: Executing locally...\n%s", cmd.Identifiers.ExecutionID, strings.Join(cmd.Args, " "))
 	exitCode, err := pool.Run(ctx, ctx, cmd, a.lbls, a.oe, a.rec)
 	a.res = command.NewResultFromExitCode(exitCode)
@@ -858,17 +865,7 @@ func (a *action) duplicate(n int) []*action {
 		return nil
 	}
 	for i := 0; i < n; i++ {
-		var tcmd command.Command
-		if a.cmd != nil {
-			tcmd = command.Command(*(a.cmd))
-			if a.cmd.InputSpec != nil {
-				tcmd.InputSpec = &(*a.cmd.InputSpec)
-				tcmd.InputSpec.Inputs = append([]string{}, a.cmd.InputSpec.Inputs...)
-			}
-		}
-		id := command.Identifiers(*(tcmd.Identifiers))
-		tcmd.Identifiers = &id
-		tcmd.Identifiers.ExecutionID = fmt.Sprintf("%v-%v", tcmd.Identifiers.ExecutionID, i)
+		tcmd := a.duplicateCmd(i)
 
 		var tforecast Forecast
 		if a.forecast != nil {
@@ -896,7 +893,7 @@ func (a *action) duplicate(n int) []*action {
 
 		newAction := &action{}
 		*newAction = *a
-		newAction.cmd = &tcmd
+		newAction.cmd = tcmd
 		newAction.forecast = &tforecast
 		newAction.rec = trec
 		newAction.rOpt = &trOpt
@@ -905,4 +902,20 @@ func (a *action) duplicate(n int) []*action {
 		res = append(res, newAction)
 	}
 	return res
+}
+
+func (a *action) duplicateCmd(idx int) *command.Command {
+	var tcmd command.Command
+	if a.cmd != nil {
+		tcmd = command.Command(*(a.cmd))
+		if a.cmd.InputSpec != nil {
+			is := *a.cmd.InputSpec
+			tcmd.InputSpec = &is
+			tcmd.InputSpec.Inputs = append([]string{}, a.cmd.InputSpec.Inputs...)
+		}
+	}
+	id := command.Identifiers(*(tcmd.Identifiers))
+	tcmd.Identifiers = &id
+	tcmd.Identifiers.ExecutionID = fmt.Sprintf("%v-%v", tcmd.Identifiers.ExecutionID, idx)
+	return &tcmd
 }

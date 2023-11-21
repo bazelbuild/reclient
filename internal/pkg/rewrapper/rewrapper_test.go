@@ -44,12 +44,21 @@ func (s *proxyStub) RunCommand(_ context.Context, req *ppb.RunRequest, _ ...grpc
 }
 
 func TestRunCommand(t *testing.T) {
-	envKey := "KEY"
-	envVal := "VALUE"
-	if err := os.Setenv(envKey, envVal); err != nil {
-		t.Fatalf("Failed to set environment variable")
-	}
-	defer os.Unsetenv(envKey)
+	allEnv := os.Environ()
+	os.Clearenv()
+	defer func() {
+		for _, v := range allEnv {
+			parts := strings.SplitN(v, "=", 2)
+			os.Setenv(parts[0], parts[1])
+		}
+	}()
+
+	var (
+		envKey = "KEY"
+		envVal = "VALUE"
+	)
+	t.Setenv(envKey, envVal)
+
 	inputs := createRspFile(t, []string{"foo.h", "\"bar.h\""})
 	defer os.RemoveAll(inputs)
 	outputs := createRspFile(t, []string{"foo.o.extra"})
@@ -87,9 +96,11 @@ func TestRunCommand(t *testing.T) {
 			},
 			ExecRoot: "/home/user/code",
 			Input: &cpb.InputSpec{
-				EnvironmentVariables: map[string]string{envKey: envVal},
-				Inputs:               []string{"baz.h", "foo.h", "bar.h"},
-				SymlinkBehavior:      cpb.SymlinkBehaviorType_PRESERVE,
+				EnvironmentVariables: map[string]string{
+					envKey: envVal,
+				},
+				Inputs:          []string{"baz.h", "foo.h", "bar.h"},
+				SymlinkBehavior: cpb.SymlinkBehaviorType_PRESERVE,
 			},
 			Output: &cpb.OutputSpec{
 				OutputFiles:       []string{"foo.o", "foo.o.extra"},
