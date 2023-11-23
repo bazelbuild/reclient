@@ -58,7 +58,6 @@ var (
 
 var (
 	proxyLogDir                       []string
-	experimentalCredentialsHelperArgs = make(map[string]string)
 	serverAddr                        = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
 	reProxy                           = flag.String("re_proxy", reproxyDefaultPath(), "Location of the reproxy binary")
 	waitSeconds                       = flag.Int("reproxy_wait_seconds", 20, "Number of seconds to wait for reproxy to start")
@@ -80,12 +79,12 @@ var (
 	metricsUploader                   = flag.String("metrics_uploader", defaultMetricsUploader(), "Path to the metrics uploader binary.")
 	logHTTPCalls                      = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 	experimentalCredentialsHelper     = flag.String("experimental_credentials_helper", "", "Path to the creds helper binary.")
+	experimentalCredentialsHelperArgs = flag.String("experimental_credentials_helper_args", "", "Arguments for the experimental credentials helper, separated by space.")
 )
 
 func main() {
 	defer log.Flush()
 	flag.Var((*moreflag.StringListValue)(&proxyLogDir), "proxy_log_dir", "If provided, the directory path to a proxy log file of executed records.")
-	flag.Var((*moreflag.StringMapValue)(&experimentalCredentialsHelperArgs), "experimental_credentials_helper_args", "Comma-separated key value pairs in the form key=value. This is used to pass in arguments to the credentials helper binary if provided.")
 	rbeflag.Parse()
 	version.PrintAndExitOnVersionFlag(true)
 
@@ -217,6 +216,9 @@ func main() {
 
 	log.V(3).Infof("Trying to authenticate with %s", creds.Mechanism().String())
 	currArgs := args[:]
+	if *experimentalCredentialsHelper != "" {
+		currArgs = append(currArgs, "--use_external_auth_token=true")
+	}
 	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
 	if exitCode == 0 {
 		fmt.Println(msg)
@@ -330,7 +332,12 @@ func credsFilePath() (string, error) {
 
 func newCreds(cf string) *auth.Credentials {
 	if *experimentalCredentialsHelper != "" {
-		log.Exitf("experimental_credentials_helper support is not available at the moment. Please try another authentication method.")
+		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, *experimentalCredentialsHelperArgs, cf)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Experimental credentials helper failed. Please try again or use application default credentials:%v", err)
+			os.Exit(auth.ExitCodeExternalTokenAuth)
+		}
+		return creds
 	}
 	m, err := auth.MechanismFromFlags()
 	if err != nil || m == auth.Unknown {

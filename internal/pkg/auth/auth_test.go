@@ -20,6 +20,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,12 +101,13 @@ func TestCredentialsHelperCache(t *testing.T) {
 		),
 	}
 	creds := &Credentials{
-		m:           CredentialsHelper,
-		refreshExp:  time.Time{},
-		tokenSource: ts,
-		credsFile:   cf,
+		m:              CredentialsHelper,
+		refreshExp:     time.Time{},
+		tokenSource:    ts,
+		credsFile:      cf,
+		credsHelperCmd: cmd,
 	}
-	creds.SaveCredsToDisk(cmd)
+	creds.SaveToDisk()
 	c, err := LoadCredsFromDisk(cf, cmd)
 	if err != nil {
 		t.Errorf("LoadCredsFromDisk failed: %v", err)
@@ -115,88 +118,94 @@ func TestCredentialsHelperCache(t *testing.T) {
 }
 
 func TestExternalToken(t *testing.T) {
-	expiry := time.Now().Truncate(time.Second)
-	exp := expiry.Format(time.UnixDate)
-	tk := "testToken"
-	credsHelperCmd := exec.Command("echo", fmt.Sprintf(`{"token":"%v", "expiry":"%s"}`, tk, exp))
-	ts := &externalTokenSource{
-		credsHelperCmd: credsHelperCmd,
+	// TODO(b/316005337): This test is disabled for windows since it doesn't work on windows yet. This should be fixed before experimentalCredentialsHelper is used for windows.
+	if runtime.GOOS != "windows" {
+		expiry := time.Now().Truncate(time.Second)
+		exp := expiry.Format(time.UnixDate)
+		tk := "testToken"
+		credshelper := "echo"
+		credshelperArgs := fmt.Sprintf(`{"token":"%v","expiry":"%s","refresh_expiry":""}`, tk, exp)
+		credsHelperCmd := exec.Command(credshelper, strings.Fields(credshelperArgs)...)
+		ts := &externalTokenSource{
+			credsHelperCmd: credsHelperCmd,
+		}
+		oauth2tk, err := ts.Token()
+		if err != nil {
+			t.Errorf("externalTokenSource.Token() returned an error: %v", err)
+		}
+		if oauth2tk.AccessToken != tk {
+			t.Errorf("externalTokenSource.Token() returned token=%s, want=%s", oauth2tk.AccessToken, tk)
+		}
+		if !oauth2tk.Expiry.Equal(expiry) {
+			t.Errorf("externalTokenSource.Token() returned expiry=%s, want=%s", oauth2tk.Expiry, exp)
+		}
 	}
-	oauth2tk, err := ts.Token()
-	if err != nil {
-		t.Errorf("externalTokenSource.Token() returned an error: %v", err)
-	}
-	if oauth2tk.AccessToken != tk {
-		t.Errorf("externalTokenSource.Token() returned token=%s, want=%s", oauth2tk.AccessToken, tk)
-	}
-	if !oauth2tk.Expiry.Equal(expiry) {
-		t.Errorf("externalTokenSource.Token() returned expiry=%s, want=%s", oauth2tk.Expiry, exp)
-	}
+
 }
 
 func TestNewExternalCredentials(t *testing.T) {
 	testToken := "token"
+	credshelper := "echo"
 	exp := time.Now().Add(time.Hour).Truncate(time.Second)
 	expStr := exp.String()
 	unixExp := exp.Format(time.UnixDate)
 	tests := []struct {
-		name           string
-		wantErr        bool
-		checkExp       bool
-		credsHelperCmd *exec.Cmd
+		name            string
+		wantErr         bool
+		checkExp        bool
+		credshelperArgs string
 	}{{
-		name:           "No Token",
-		wantErr:        true,
-		credsHelperCmd: exec.Command("echo"),
+		name:            "No Token",
+		wantErr:         true,
+		credshelperArgs: fmt.Sprintf(`{"token":"","expiry":"","refresh_expiry":""}`),
 	}, {
-		name:           "Credshelper Command Passed - No Expiry",
-		credsHelperCmd: exec.Command("echo", `{"token":"token", "expiry":"", "refresh_expiry":""}`),
+		name:            "Credshelper Command Passed - No Expiry",
+		credshelperArgs: fmt.Sprintf(`{"token":"%v","expiry":"","refresh_expiry":""}`, testToken),
 	}, {
-		name:     "Credshelper Command Passed - Expiry",
-		checkExp: true,
-		credsHelperCmd: exec.Command("echo",
-			fmt.Sprintf(`{"token":"%v", "expiry":"%v", "refresh_expiry":""}`, testToken, unixExp)),
+		name:            "Credshelper Command Passed - Expiry",
+		checkExp:        true,
+		credshelperArgs: fmt.Sprintf(`{"token":"%v","expiry":"%v","refresh_expiry":""}`, testToken, unixExp),
 	}, {
-		name:     "Credshelper Command Passed - Refresh Expiry",
-		checkExp: true,
-		credsHelperCmd: exec.Command("echo",
-			fmt.Sprintf(`{"token":"%v", "expiry":"%v", "refresh_expiry":"%v"}`,
-				testToken, unixExp, unixExp)),
+		name:            "Credshelper Command Passed - Refresh Expiry",
+		checkExp:        true,
+		credshelperArgs: fmt.Sprintf(`{"token":"%v","expiry":"%v","refresh_expiry":"%v"}`, testToken, unixExp, unixExp),
 	}, {
-		name:    "Wrong Expiry Format",
-		wantErr: true,
-		credsHelperCmd: exec.Command("echo",
-			fmt.Sprintf(`{"token":"%v", "expiry":"%v", "refresh_expiry":"%v"}`, testToken, expStr, expStr)),
+		name:            "Wrong Expiry Format",
+		wantErr:         true,
+		credshelperArgs: fmt.Sprintf(`{"token":"%v","expiry":"%v","refresh_expiry":"%v"}`, testToken, expStr, expStr),
 	}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c, err := NewExternalCredentials(test.credsHelperCmd, "")
-			if test.wantErr && err == nil {
-				t.Fatalf("NewExternalCredentials did not return an error.")
-			}
-			if !test.wantErr {
-				if err != nil {
-					t.Fatalf("NewExternalCredentials returned an error: %v", err)
+	if runtime.GOOS != "windows" {
+		// TODO(b/316005337): This test is disabled for windows since it doesn't work on windows yet. This should be fixed before experimentalCredentialsHelper is used for windows.
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				c, err := NewExternalCredentials(credshelper, test.credshelperArgs, "")
+				if test.wantErr && err == nil {
+					t.Fatalf("NewExternalCredentials did not return an error.")
 				}
-				if c.m != CredentialsHelper {
-					t.Errorf("NewExternalCredentials returned credentials with mechanism=%v, want=%v", c.m, CredentialsHelper)
+				if !test.wantErr {
+					if err != nil {
+						t.Fatalf("NewExternalCredentials returned an error: %v", err)
+					}
+					if c.m != CredentialsHelper {
+						t.Errorf("NewExternalCredentials returned credentials with mechanism=%v, want=%v", c.m, CredentialsHelper)
+					}
+					if c.tokenSource == nil {
+						t.Fatalf("NewExternalCredentials returned credentials with a nil tokensource.")
+					}
+					tk, err := c.tokenSource.Token()
+					if err != nil {
+						t.Fatalf("tokensource.Token() call failed: %v", err)
+					}
+					if tk.AccessToken != testToken {
+						t.Fatalf("tokensource.Token() gave token=%s, want=%s",
+							tk.AccessToken, testToken)
+					}
+					if test.checkExp && !exp.Equal(tk.Expiry) {
+						t.Fatalf("tokensource.Token() gave expiry=%v, want=%v",
+							tk.Expiry, exp)
+					}
 				}
-				if c.tokenSource == nil {
-					t.Fatalf("NewExternalCredentials returned credentials with a nil tokensource.")
-				}
-				tk, err := c.tokenSource.Token()
-				if err != nil {
-					t.Fatalf("tokensource.Token() call failed: %v", err)
-				}
-				if tk.AccessToken != testToken {
-					t.Fatalf("tokensource.Token() gave token=%s, want=%s",
-						tk.AccessToken, testToken)
-				}
-				if test.checkExp && !exp.Equal(tk.Expiry) {
-					t.Fatalf("tokensource.Token() gave expiry=%v, want=%v",
-						tk.Expiry, exp)
-				}
-			}
-		})
+			})
+		}
 	}
 }

@@ -73,16 +73,15 @@ var (
 )
 
 var (
-	proxyLogDir                       []string
-	clangDepScanIgnoredPlugins        []string
-	experimentalCredentialsHelperArgs = make(map[string]string)
-	serverAddr                        = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
-	logFormat                         = flag.String("log_format", "reducedtext", "Format of proxy log. Currently only text and reducedtext are supported. Defaults to reducedtext.")
-	logPath                           = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
-	mismatchIgnoreConfigPath          = flag.String("mismatch_ignore_config_path", "", "If provided, mismatches will be ignored according to the provided rule config.")
-	enableDepsCache                   = flag.Bool("enable_deps_cache", false, "Enables the deps cache if --cache_dir is provided")
-	cacheDir                          = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
-	keepRecords                       = flag.Int("num_records_to_keep", 0, "The number of last executed records to keep in memory for serving.")
+	proxyLogDir                []string
+	clangDepScanIgnoredPlugins []string
+	serverAddr                 = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	logFormat                  = flag.String("log_format", "reducedtext", "Format of proxy log. Currently only text and reducedtext are supported. Defaults to reducedtext.")
+	logPath                    = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
+	mismatchIgnoreConfigPath   = flag.String("mismatch_ignore_config_path", "", "If provided, mismatches will be ignored according to the provided rule config.")
+	enableDepsCache            = flag.Bool("enable_deps_cache", false, "Enables the deps cache if --cache_dir is provided")
+	cacheDir                   = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
+	keepRecords                = flag.Int("num_records_to_keep", 0, "The number of last executed records to keep in memory for serving.")
 	// TODO(b/157446611): remove this flag.
 	_                     = flag.String("cpp_dependency_scanner_plugin", "", "Deprecated: Location of the CPP dependency scanner plugin.")
 	localResourceFraction = flag.Float64("local_resource_fraction", 1, "Number [0,1] indicating how much of the local machine resources are available for local execution, 1 being all of the machine's CPUs and RAM, 0 being no resources available for local execution.")
@@ -103,12 +102,13 @@ var (
 	idleTimeout           = flag.Duration("proxy_idle_timeout", 6*time.Hour, "Inactivity period after which the running reproxy process will be killed. Default is 6 hours. When set to 0, idle timeout is disabled.")
 	depsCacheMaxMb        = flag.Int("deps_cache_max_mb", 128, "Maximum size of the deps cache file (for goma input processor only).")
 	// TODO(b/233275188): remove this flag.
-	_                             = flag.Duration("ip_reset_min_delay", 3*time.Minute, "Deprecated. The minimum time after the input processor has been reset before it can be reset again. Negative values disable resetting.")
-	ipTimeout                     = flag.Duration("ip_timeout", 10*time.Minute, "The maximum time to wait for an input processor action. Zero and negative values disable timeout.")
-	metricsProject                = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
-	metricsPrefix                 = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring")
-	metricsNamespace              = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project)")
-	experimentalCredentialsHelper = flag.String("experimental_credentials_helper", "", "Path to the creds helper binary.")
+	_                                 = flag.Duration("ip_reset_min_delay", 3*time.Minute, "Deprecated. The minimum time after the input processor has been reset before it can be reset again. Negative values disable resetting.")
+	ipTimeout                         = flag.Duration("ip_timeout", 10*time.Minute, "The maximum time to wait for an input processor action. Zero and negative values disable timeout.")
+	metricsProject                    = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
+	metricsPrefix                     = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring")
+	metricsNamespace                  = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project)")
+	experimentalCredentialsHelper     = flag.String("experimental_credentials_helper", "", "Path to the creds helper binary.")
+	experimentalCredentialsHelperArgs = flag.String("experimental_credentials_helper_args", "", "Arguments for the experimental credentials helper, separated by space.")
 	failEarlyMinActionCount   = flag.Int64("fail_early_min_action_count", 0, "Minimum number of actions received by reproxy before the fail early mechanism can take effect. 0 indicates fail early is disabled.")
 	failEarlyMinFallbackRatio = flag.Float64("fail_early_min_fallback_ratio", 0, "Minimum ratio of fallbacks to total actions above which the build terminates early. Ratio is a number in the range [0,1]. 0 indicates fail early is disabled.")
 	failEarlyWindow           = flag.Duration("fail_early_window", 0, "Window of time to consider for fail_early_min_action_count and fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.")
@@ -163,7 +163,6 @@ func main() {
 	flag.Var((*moreflag.StringListValue)(&clangDepScanIgnoredPlugins), "clang_depscan_ignored_plugins", `Comma-separated list of plugins that should be ignored by clang dependency scanner.
 Use this flag if you're using custom llvm build as your toolchain and your llvm plugins cause dependency scanning failures.`)
 	flag.Var((*moreflag.StringMapValue)(&labels), "metrics_labels", "Comma-separated key value pairs in the form key=value. This is used to add arbitrary labels to exported metrics.")
-	flag.Var((*moreflag.StringMapValue)(&experimentalCredentialsHelperArgs), "experimental_credentials_helper_args", "Comma-separated key value pairs in the form key=value. This is used to pass in arguments to the credentials helper binary if provided.")
 	rbeflag.Parse()
 	rbeflag.LogAllFlags(0)
 	defer log.Flush()
@@ -261,12 +260,7 @@ Use this flag if you're using custom llvm build as your toolchain and your llvm 
 	ctx := context.Background()
 	var c *auth.Credentials
 	if !*remoteDisabled {
-		m, err := auth.MechanismFromFlags()
-		if err != nil || m == auth.Unknown {
-			log.Errorf("Failed to determine auth mechanism: %v", err)
-			os.Exit(auth.ExitCodeNoAuth)
-		}
-		c = mustBuildCredentials(m)
+		c = mustBuildCredentials()
 		defer c.SaveToDisk()
 	}
 	var e *monitoring.Exporter
@@ -457,9 +451,19 @@ func formatAuthError(m auth.Mechanism, ce *client.InitError) error {
 }
 
 // mustBuildCredentials either returns a valid auth.Credentials struct or exits
-func mustBuildCredentials(m auth.Mechanism) *auth.Credentials {
+func mustBuildCredentials() *auth.Credentials {
 	if *experimentalCredentialsHelper != "" {
-		log.Fatalf("experimental_credentials_helper support is not available at the moment. Please try another authentication method.")
+		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, *experimentalCredentialsHelperArgs, *credsFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Experimental credentials helper failed. Please try again or use application default credentials:%v", err)
+			os.Exit(auth.ExitCodeExternalTokenAuth)
+		}
+		return creds
+	}
+	m, err := auth.MechanismFromFlags()
+	if err != nil || m == auth.Unknown {
+		log.Errorf("Failed to determine auth mechanism: %v", err)
+		os.Exit(auth.ExitCodeNoAuth)
 	}
 	c, err := auth.NewCredentials(m, *credsFile, 0)
 	if err != nil {

@@ -137,10 +137,11 @@ type Error struct {
 
 // Credentials provides auth functionalities with a specific auth mechanism.
 type Credentials struct {
-	m           Mechanism
-	refreshExp  time.Time
-	tokenSource *grpcOauth.TokenSource
-	credsFile   string
+	m              Mechanism
+	refreshExp     time.Time
+	tokenSource    *grpcOauth.TokenSource
+	credsHelperCmd *exec.Cmd
+	credsFile      string
 }
 
 // MechanismFromFlags returns an auth Mechanism based on flags currently set.
@@ -178,6 +179,9 @@ func MechanismFromFlags() (Mechanism, error) {
 
 // Cacheable returns true if this mechanism should be cached to disk
 func (m Mechanism) Cacheable() bool {
+	if m == CredentialsHelper {
+		return true
+	}
 	return false
 }
 
@@ -226,8 +230,9 @@ func buildCredentials(baseCreds cachedCredentials, credsFile, tokenInfoURL strin
 // build credentials obtained from the credentials helper.
 func buildExternalCredentials(baseCreds cachedCredentials, credsFile string, credsHelperCmd *exec.Cmd) *Credentials {
 	c := &Credentials{
-		m:         CredentialsHelper,
-		credsFile: credsFile,
+		m:              CredentialsHelper,
+		credsFile:      credsFile,
+		credsHelperCmd: credsHelperCmd,
 	}
 	baseTs := &externalTokenSource{
 		credsHelperCmd: credsHelperCmd,
@@ -272,27 +277,6 @@ func LoadCredsFromDisk(credsFile string, credsHelperCmd *exec.Cmd) (*Credentials
 	return buildExternalCredentials(cc, credsFile, credsHelperCmd), nil
 }
 
-// SaveCredsToDisk saves credentials helper creds to disk.
-func (c *Credentials) SaveCredsToDisk(credsHelperCmd *exec.Cmd) {
-	if c == nil {
-		return
-	}
-	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}
-	// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
-	// this will return a cached credential if one exists.
-	t, err := c.tokenSource.Token()
-	if err != nil {
-		log.Errorf("Failed to get token to persist to disk: %v", err)
-		return
-	}
-	cc.token = t
-	cmdDigest := execCmdDigest(credsHelperCmd)
-	cc.credsHelperCmdDigest = cmdDigest.String()
-	if err := saveToDisk(cc, c.credsFile); err != nil {
-		log.Errorf("Failed to save credentials to disk: %v", err)
-	}
-}
-
 // SaveToDisk saves credentials to disk.
 func (c *Credentials) SaveToDisk() {
 	if c == nil {
@@ -310,6 +294,10 @@ func (c *Credentials) SaveToDisk() {
 		return
 	}
 	cc.token = t
+	if c.credsHelperCmd != nil {
+		cmdDigest := execCmdDigest(c.credsHelperCmd)
+		cc.credsHelperCmdDigest = cmdDigest.String()
+	}
 	if err := saveToDisk(cc, c.credsFile); err != nil {
 		log.Errorf("Failed to save credentials to disk: %v", err)
 	}
@@ -496,12 +484,18 @@ func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
 }
 
 // NewExternalCredentials creates credentials obtained from a credshelper.
-func NewExternalCredentials(credsHelperCmd *exec.Cmd, credsFile string) (*Credentials, error) {
-	tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
+func NewExternalCredentials(credshelper string, credshelperArgs string, credsFile string) (*Credentials, error) {
+	credsHelperCmd := exec.Command(credshelper, strings.Fields(credshelperArgs)...)
+	creds, err := LoadCredsFromDisk(credsFile, credsHelperCmd)
 	if err != nil {
-		return nil, err
+		log.Warningf("Failed to use cached credentials: %v", err)
+		tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
+		if err != nil {
+			return nil, err
+		}
+		return buildExternalCredentials(cachedCredentials{token: tk, refreshExp: rexp}, credsFile, credsHelperCmd), nil
 	}
-	return buildExternalCredentials(cachedCredentials{token: tk, refreshExp: rexp}, credsFile, credsHelperCmd), nil
+	return creds, err
 }
 
 func runCredsHelperCmd(credsHelperCmd *exec.Cmd) (*oauth2.Token, time.Time, error) {
@@ -511,9 +505,11 @@ func runCredsHelperCmd(credsHelperCmd *exec.Cmd) (*oauth2.Token, time.Time, erro
 	credsHelperCmd.Stderr = &stderr
 	err := credsHelperCmd.Run()
 	out := stdout.String()
+	if stderr.String() != "" {
+		log.Errorf("Credentials helper warnings and errors: %v", stderr.String())
+	}
 	if err != nil {
-		return nil, time.Time{},
-			fmt.Errorf("credshelper error: %v", stderr.String())
+		return nil, time.Time{}, err
 	}
 	token, expiry, refreshExpiry, err := parseTokenExpiryFromOutput(out)
 	return &oauth2.Token{
