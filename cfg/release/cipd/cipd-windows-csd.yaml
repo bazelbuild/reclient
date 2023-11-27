@@ -18,6 +18,7 @@ install_mode: copy
 data:
   - file: bootstrap.exe
   - file: CHANGELOG.md
+  - file: credshelper.exe
   - file: dumpstats.exe
   - file: LICENSE
   - file: logdump.exe
