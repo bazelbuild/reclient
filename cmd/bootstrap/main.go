@@ -300,9 +300,7 @@ func bootstrapReproxy(args []string, startTime time.Time) (string, int) {
 		exiterr, ok := err.(*exec.ExitError)
 		if !ok {
 			reproxyExecutionError := fmt.Sprintf(
-				"%s. \n\033[31mHint: Unable to execute the reproxy binary at %v. "+
-					"Please ensure that the specified path is valid and you have "+
-					"the necessary permissions to execute the reproxy binary in that location.\033[0m\n",
+				"%s. \n\033[31m Unable to execute the reproxy binary at %v.\033[0m\n",
 				defaultErr, *reProxy,
 			)
 			log.Exitf(reproxyExecutionError)
