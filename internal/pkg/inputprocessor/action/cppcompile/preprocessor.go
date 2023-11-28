@@ -32,7 +32,6 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/cache"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"golang.org/x/sync/semaphore"
 
@@ -79,15 +78,7 @@ var (
 		// For details about "-fallow-half-arguments-and-returns", see b/296438658.
 		"-fallow-half-arguments-and-returns": struct{}{},
 	}
-	virtualInputFlags = map[string]bool{
-		"-I":                        true,
-		"-isystem":                  true,
-		"-isysroot":                 true,
-		"--sysroot=":                true,
-		"--sysroot":                 true,
-		"-internal-isystem":         true,
-		"-internal-externc-isystem": true,
-	}
+	virtualInputFlags = map[string]bool{"-I": true, "-isystem": true, "-isysroot": true, "--sysroot=": true, "--sysroot": true}
 )
 
 // CPPDependencyScanner is an interface to dependency scanner which provides
@@ -105,8 +96,6 @@ type resourceDirInfo struct {
 var (
 	resourceDirsMu sync.Mutex
 	resourceDirs   = map[string]resourceDirInfo{}
-	// virtualInputCache is a cache for the virtual inputs calculated from a given path.
-	virtualInputCache = cache.SingleFlight{}
 )
 
 // VirtualInputsProcessor processes the flags and aappends virtual inputs to command's InputSpec.
@@ -352,39 +341,7 @@ func appendNonEmpty(slice []string, value string) []string {
 	return slice
 }
 
-func extractVirtualSubdirectories(path string) []string {
-	viFn := func() (interface{}, error) {
-		var vis []string
-		cpath := ""
-		lastElem := ""
-		for _, elem := range strings.Split(path, string(filepath.Separator)) {
-			// A 'go back' has been hit, handle the various cases.
-			if elem == ".." {
-				// We've hit the first '..' in a possible sequence of '..'.
-				// But we are at a directory that needs to be a virtual input.
-				if lastElem != "" && lastElem != ".." {
-					vis = append(vis, filepath.Clean(cpath))
-				}
-			}
-			cpath = filepath.Join(cpath, elem)
-			lastElem = elem
-		}
-		// cpath needs to be added as a virtual input, only if lastElem isn't '..' or there's
-		// nothing in vis.  (Still needs adding if cpath is just full of '..' elements)
-		if lastElem != ".." || len(vis) == 0 {
-			vis = append(vis, filepath.Clean(cpath))
-		}
-		return vis, nil
-	}
-	val, err := virtualInputCache.LoadOrStore(path, viFn)
-	if err != nil {
-		log.Errorf("failed to process include directory path for virtual inputs %v", path)
-		return []string{path}
-	}
-	return val.([]string)
-}
-
-// VirtualInputs returns paths extracted from virtualInputFlags. If paths are absolute, they're transformed to working dir relative.
+// VirtualInputs returns paths extracted from virtualInputFlags. if paths are absolute, they're transformed to working dir relative
 func VirtualInputs(f *flags.CommandFlags, vip VirtualInputsProcessor) []*command.VirtualInput {
 	var res []*command.VirtualInput
 	for _, flag := range f.Flags {
@@ -398,9 +355,7 @@ func VirtualInputs(f *flags.CommandFlags, vip VirtualInputsProcessor) []*command
 				path, _ = filepath.Rel(filepath.Join(f.ExecRoot, f.WorkingDirectory), path)
 			}
 			path = filepath.Join(f.WorkingDirectory, path)
-			for _, p := range extractVirtualSubdirectories(path) {
-				res = vip.AppendVirtualInput(res, flag.Key, p)
-			}
+			res = vip.AppendVirtualInput(res, flag.Key, path)
 		}
 	}
 	return res
