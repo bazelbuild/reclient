@@ -430,15 +430,14 @@ func TestBuildCommandLine(t *testing.T) {
 	}
 }
 
-func TestVirtualInputs(t *testing.T) {
+// TestVirtualInputFlags checks that all the expected flags that can possibly add virtual
+// inputs actually do.
+func TestVirtualInputFlags(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Unable to get current working directory: %v", err)
 	}
 	f := &flags.CommandFlags{
-		ExecutablePath:   "../bin/clang++",
-		TargetFilePaths:  []string{"../src/test.cpp"},
-		OutputFilePaths:  []string{"test.o"},
 		ExecRoot:         pwd,
 		WorkingDirectory: "out",
 		Flags: []*flags.Flag{
@@ -451,6 +450,8 @@ func TestVirtualInputs(t *testing.T) {
 			{Key: "-I", Value: "i/j", Joined: true},
 			{Key: "-isysroot", Value: "../foo", Joined: true},
 			{Key: "-isystem", Value: "../goo", Joined: true},
+			{Key: "-internal-isystem", Value: "../doo", Joined: true},
+			{Key: "-internal-externc-isystem", Value: "../loo", Joined: true},
 			// These flags should not result in virtual inputs.
 			{Key: "-sysroot", Value: "../bar"},
 			{Key: "-fprofile-sample-use=", Value: "../c/d/abc.prof", Joined: true},
@@ -468,9 +469,55 @@ func TestVirtualInputs(t *testing.T) {
 		{Path: filepath.Clean("out/i/j"), IsEmptyDirectory: true},
 		{Path: filepath.Clean("foo"), IsEmptyDirectory: true},
 		{Path: filepath.Clean("goo"), IsEmptyDirectory: true},
+		{Path: filepath.Clean("doo"), IsEmptyDirectory: true},
+		{Path: filepath.Clean("loo"), IsEmptyDirectory: true},
 	}
 	if diff := cmp.Diff(want, vi); diff != "" {
 		t.Errorf("virtualInputs(%+v) returned incorrect result diff (-want +got): %v", f, diff)
+	}
+}
+
+// TestExtractVirtualSubdirectories checks that paths are translated into virtual inputs correctly.
+func TestExtractVirtualSubdirectories(t *testing.T) {
+	tests := []struct {
+		path string
+		want []string
+	}{
+		{
+			path: filepath.FromSlash("a/b/c"),
+			want: []string{filepath.FromSlash("a/b/c")},
+		},
+		{
+			path: filepath.FromSlash("../a/b/c"),
+			want: []string{filepath.FromSlash("../a/b/c")},
+		},
+		{
+			path: filepath.FromSlash("a/b/../c"),
+			want: []string{filepath.FromSlash("a/b"), filepath.FromSlash("a/c")},
+		},
+		{
+			path: filepath.FromSlash("a/b/../c/../d"),
+			want: []string{filepath.FromSlash("a/b"), filepath.FromSlash("a/c"), filepath.FromSlash("a/d")},
+		}, {
+			path: filepath.FromSlash("a/b/../c/d/../../../e/f"),
+			want: []string{filepath.FromSlash("a/b"), filepath.FromSlash("a/c/d"), filepath.FromSlash("e/f")},
+		}, {
+			path: filepath.FromSlash("a/b/c/../.."),
+			want: []string{filepath.FromSlash("a/b/c")},
+		}, {
+			path: filepath.FromSlash("../../.."),
+			want: []string{filepath.FromSlash("../../..")},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			vi := extractVirtualSubdirectories(test.path)
+
+			if diff := cmp.Diff(test.want, vi); diff != "" {
+				t.Errorf("extractVirtualSubdirectories(%+v) returned incorrect result diff (-want +got): %v", test.path, diff)
+			}
+		})
 	}
 }
 
