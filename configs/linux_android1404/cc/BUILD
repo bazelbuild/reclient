@@ -98,15 +98,13 @@ cc_toolchain_config(
         "--sysroot=configs/linux_android1404/cc/android_prebuilts/x86_64-linux-glibc2.17-4.8/sysroot",
         "-Bconfigs/linux_android1404/cc/android_prebuilts/x86_64-linux-glibc2.17-4.8/x86_64-linux/lib64",
         "-Lconfigs/linux_android1404/cc/android_prebuilts/x86_64-linux-glibc2.17-4.8/x86_64-linux/lib64",
-        # This rpath points to the relative directory that the binary is expected to run in in Android src.
-        "-Wl,-rpath=$ORIGIN/../../clang/host/linux-x86/clang-" + clang_version + "/lib/x86_64-unknown-linux-gnu",
-        # This rpath is required to actually build the binary, since the directory needs to exist.
-        "-Wl,-rpath=configs/linux_android1404/cc/android_prebuilts/clang-" + clang_version + "/lib/x86_64-unknown-linux-gnu",
+        "-Wl,-Bstatic",
+        "-Wl,-Lconfigs/linux_android1404/cc/android_prebuilts/clang-" + clang_version + "/lib/x86_64-unknown-linux-gnu",
         "-stdlib=libc++",
         "-lc++",
+        "-Wl,-Bdynamic",
     ],
     link_libs = [
-        "-lstdc++",
         "-lm",
     ],
     opt_compile_flags = [
