@@ -139,7 +139,6 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
     }
     free(depsStr);
   }
-  response->add_dependencies(request->filename());
 
   // TODO b/268656738: refactor this to common service code
   // Count the action as complete
