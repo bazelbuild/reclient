@@ -278,16 +278,14 @@ func (c *Credentials) SaveCredsToDisk(credsHelperCmd *exec.Cmd) {
 		return
 	}
 	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}
-	if c.tokenSource != nil && c.refreshExp.IsZero() {
-		// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
-		// this will return a cached credential if one exists.
-		t, err := c.tokenSource.Token()
-		if err != nil {
-			log.Errorf("Failed to get token to persist to disk: %v", err)
-			return
-		}
-		cc.token = t
+	// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
+	// this will return a cached credential if one exists.
+	t, err := c.tokenSource.Token()
+	if err != nil {
+		log.Errorf("Failed to get token to persist to disk: %v", err)
+		return
 	}
+	cc.token = t
 	cmdDigest := execCmdDigest(credsHelperCmd)
 	cc.credsHelperCmdDigest = cmdDigest.String()
 	if err := saveToDisk(cc, c.credsFile); err != nil {
@@ -304,16 +302,14 @@ func (c *Credentials) SaveToDisk() {
 		return
 	}
 	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}
-	if c.tokenSource != nil && c.refreshExp.IsZero() {
-		// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
-		// this will return a cached credential if one exists.
-		t, err := c.tokenSource.Token()
-		if err != nil {
-			log.Errorf("Failed to get token to persist to disk: %v", err)
-			return
-		}
-		cc.token = t
+	// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
+	// this will return a cached credential if one exists.
+	t, err := c.tokenSource.Token()
+	if err != nil {
+		log.Errorf("Failed to get token to persist to disk: %v", err)
+		return
 	}
+	cc.token = t
 	if err := saveToDisk(cc, c.credsFile); err != nil {
 		log.Errorf("Failed to save credentials to disk: %v", err)
 	}
