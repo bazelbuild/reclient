@@ -103,7 +103,7 @@ func main() {
 		// Build stats and reproxy_outerr are stored in this directory.
 		if _, err := os.Stat(*outputDir); err != nil {
 			if !os.IsNotExist(err) {
-				log.Fatalf("Failed checking for output directory: %v", err)
+				log.Exitf("Failed checking for output directory: %v", err)
 			}
 			os.MkdirAll(*outputDir, 0777)
 		}
@@ -115,7 +115,7 @@ func main() {
 		// Logs from glog are stored in this directory.
 		if _, err := os.Stat(logDir); err != nil {
 			if !os.IsNotExist(err) {
-				log.Fatalf("Failed checking for logging output directory: %v", err)
+				log.Exitf("Failed checking for logging output directory: %v", err)
 			}
 			os.MkdirAll(logDir, 0777)
 		}
@@ -123,7 +123,7 @@ func main() {
 
 	cf, err := credsFilePath()
 	if err != nil {
-		log.Fatalf("Failed to determine the token cache file name: %v", err)
+		log.Exitf("Failed to determine the token cache file name: %v", err)
 	}
 	var creds *auth.Credentials
 	if !*remoteDisabled {
@@ -330,7 +330,7 @@ func credsFilePath() (string, error) {
 
 func newCreds(cf string) *auth.Credentials {
 	if *experimentalCredentialsHelper != "" {
-		log.Fatalf("experimental_credentials_helper support is not available at the moment. Please try another authentication method.")
+		log.Exitf("experimental_credentials_helper support is not available at the moment. Please try another authentication method.")
 	}
 	m, err := auth.MechanismFromFlags()
 	if err != nil || m == auth.Unknown {
@@ -339,7 +339,7 @@ func newCreds(cf string) *auth.Credentials {
 	}
 	c, err := auth.NewCredentials(m, cf, 0)
 	if err != nil {
-		log.Fatalf("Failed to initialize credentials: %v", err)
+		log.Exitf("Failed to initialize credentials: %v", err)
 	}
 	return c
 }

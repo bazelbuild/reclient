@@ -114,29 +114,32 @@ func main() {
 	cmd := flag.Args()
 	if len(cmd) == 0 {
 		flag.Usage()
-		log.Fatal("No command provided")
+		log.Exitf("No command provided")
 	}
 	if !execStrategyValid() {
 		flag.Usage()
-		log.Fatalf("No exec_strategy provided, must be one of %v", execStrategies)
+		log.Exitf("No exec_strategy provided, must be one of %v", execStrategies)
+	}
+	if serverAddr == "" {
+		log.Exitf("Invalid server address (%q), must be non empty.", serverAddr)
 	}
 
 	ctx := context.Background()
 	conn, err := ipc.DialContext(ctx, serverAddr)
 	if err != nil {
-		log.Fatalf("Fail to dial %s: %v", serverAddr, err)
+		log.Exitf("Fail to dial %s: %v", serverAddr, err)
 	}
 	defer conn.Close()
 
 	proxy := pb.NewCommandsClient(conn)
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("Failed to get current working directory: %v", err)
+		log.Exitf("Failed to get current working directory: %v", err)
 	}
 	if wd == "/proc/self/cwd" {
 		wd, err = os.Readlink(wd)
 		if err != nil {
-			log.Fatalf("Failed to get current true directory: %v", err)
+			log.Exitf("Failed to get current true directory: %v", err)
 		}
 	}
 	if cOpts.ExecRoot == "" {
@@ -153,17 +156,17 @@ func main() {
 	}
 	cOpts.WorkDir, err = filepath.Rel(cOpts.ExecRoot, wd)
 	if err != nil {
-		log.Fatalf("Failed to compute working directory path relative to the exec root: %v", err)
+		log.Exitf("Failed to compute working directory path relative to the exec root: %v", err)
 	}
 	if strings.HasPrefix(cOpts.WorkDir, "..") {
-		log.Fatalf("Current working directory (%q) is not under the exec root (%q), relative working dir = %q", wd, cOpts.ExecRoot, cOpts.WorkDir)
+		log.Exitf("Current working directory (%q) is not under the exec root (%q), relative working dir = %q", wd, cOpts.ExecRoot, cOpts.WorkDir)
 	}
 
 	if cOpts.NumRemoteReruns < 0 {
-		log.Fatalf("Expected num_remote_reruns to be at least 0, got %v.", cOpts.NumRemoteReruns)
+		log.Exitf("Expected num_remote_reruns to be at least 0, got %v.", cOpts.NumRemoteReruns)
 	}
 	if cOpts.NumLocalReruns < 0 {
-		log.Fatalf("Expected num_local_reruns to be at least 0, got %v.", cOpts.NumLocalReruns)
+		log.Exitf("Expected num_local_reruns to be at least 0, got %v.", cOpts.NumLocalReruns)
 	}
 
 	// TODO (b/296409009): Add support for preserve true and download outputs false for downloading stubs.
