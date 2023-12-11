@@ -41,13 +41,18 @@ Reclient consists of the following main binaries:
 
 This is not an officially supported Google product.
 
+# Prerequisites
+
+* `re-client` builds with [Bazel](https://bazel.build/). We recommend using
+  [Bazelisk](https://github.com/bazelbuild/bazelisk) to use the version of Bazel
+  currently supported by this code base.
+* `re-client` also requires `gclient`, which can be installed by checking out
+  [depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools/)
+  and adding the `depot_tools` directory to your `PATH`.
+
 # Building
 
 `re-client` currently builds and is supported on Linux / Mac / Windows.
-
-`re-client` builds with [Bazel](https://bazel.build/). We recommend using
-[Bazelisk](https://github.com/bazelbuild/bazelisk) to use the version of Bazel
-currently supported by this code base.
 
 Once you've installed Bazel, and are in the re-client repo:
 
