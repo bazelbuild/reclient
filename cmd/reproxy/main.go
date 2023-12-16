@@ -27,6 +27,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -453,7 +454,7 @@ func formatAuthError(m auth.Mechanism, ce *client.InitError) error {
 // mustBuildCredentials either returns a valid auth.Credentials struct or exits
 func mustBuildCredentials() *auth.Credentials {
 	if *experimentalCredentialsHelper != "" {
-		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, *experimentalCredentialsHelperArgs, *credsFile)
+		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, strings.Fields(*experimentalCredentialsHelperArgs), *credsFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Experimental credentials helper failed. Please try again or use application default credentials:%v", err)
 			os.Exit(auth.ExitCodeExternalTokenAuth)

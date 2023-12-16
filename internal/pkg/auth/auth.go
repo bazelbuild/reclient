@@ -484,8 +484,8 @@ func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
 }
 
 // NewExternalCredentials creates credentials obtained from a credshelper.
-func NewExternalCredentials(credshelper string, credshelperArgs string, credsFile string) (*Credentials, error) {
-	credsHelperCmd := exec.Command(credshelper, strings.Fields(credshelperArgs)...)
+func NewExternalCredentials(credshelper string, credshelperArgs []string, credsFile string) (*Credentials, error) {
+	credsHelperCmd := exec.Command(credshelper, credshelperArgs...)
 	creds, err := LoadCredsFromDisk(credsFile, credsHelperCmd)
 	if err != nil {
 		log.Warningf("Failed to use cached credentials: %v", err)

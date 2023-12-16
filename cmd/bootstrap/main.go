@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -332,7 +333,7 @@ func credsFilePath() (string, error) {
 
 func newCreds(cf string) *auth.Credentials {
 	if *experimentalCredentialsHelper != "" {
-		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, *experimentalCredentialsHelperArgs, cf)
+		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, strings.Fields(*experimentalCredentialsHelperArgs), cf)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Experimental credentials helper failed. Please try again or use application default credentials:%v", err)
 			os.Exit(auth.ExitCodeExternalTokenAuth)
