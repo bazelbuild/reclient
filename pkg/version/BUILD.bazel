@@ -1,5 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("//:version.bzl", "VERSION_MAJOR", "VERSION_MINOR", "VERSION_PATCH")
+load("//:settings.bzl", "SDK_COMMIT")
 
 go_library(
     name = "version",
@@ -15,6 +16,7 @@ go_library(
         # "{STABLE_VERSION_SHA}" is the git-sha is produced by the workspace status
         #  command set in ".bazelrc" file of this repository.
         "github.com/bazelbuild/reclient/pkg/version.versionSHA": "{STABLE_VERSION_SHA}",
+        "github.com/bazelbuild/reclient/pkg/version.sdkVersionSHA": SDK_COMMIT,
     },
     deps = [
         "//internal/pkg/rbeflag",

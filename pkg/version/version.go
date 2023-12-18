@@ -27,6 +27,8 @@ import (
 	log "github.com/golang/glog"
 )
 
+const undef = "undefined"
+
 // All these variables are over-ridden during link time to set the appropriate
 // version number. Refer to README.md for guidelines on when / how to update
 // version numbers.
@@ -42,10 +44,15 @@ var (
 
 	// versionSHA denotes the SHA of the re-client repository from which
 	// the current version is built.
-	versionSHA = "undefined"
+	versionSHA = undef
+
+	sdkVersionSHA = undef
 
 	// versionFlag is a boolean flag to determine whether to print version number or not.
-	versionFlag = flag.Bool("version", false, "If provided, print the current binary version and exit.")
+	versionFlag = flag.Bool("version", false, "If provided, print the current binary version and exit. If version_sdk is also provided, it takes precedence.")
+
+	// sdkVersionFlag indicates whether to print the SDK version used in the binary.
+	sdkVersionFlag = flag.Bool("version_sdk", false, "If provided, print the current binary version and the version of the SDK used by this binary and then exit.")
 )
 
 // PrintAndExitOnVersionFlag checks if the VersionFlag is specified, and if it is, then
@@ -55,6 +62,13 @@ func PrintAndExitOnVersionFlag(info bool) {
 	v := CurrentVersion()
 	if info {
 		log.Infof("Version: %s\n", v)
+	}
+	if *sdkVersionFlag {
+		fmt.Printf("Version: %s\n", v)
+		if sdkVersionSHA != undef && len(sdkVersionSHA) > 7 {
+			fmt.Printf("SDK: %s\n", sdkVersionSHA[:7])
+		}
+		os.Exit(0)
 	}
 	if *versionFlag {
 		fmt.Printf("Version: %s\n", v)

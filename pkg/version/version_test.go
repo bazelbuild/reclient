@@ -20,10 +20,6 @@ import (
 	"testing"
 )
 
-const (
-	undef = "undefined"
-)
-
 var (
 	expectedVersionFormat = regexp.MustCompile("(\\d+)\\.(\\d+)\\.(\\d+)\\.(([a-z0-9])+)")
 )
