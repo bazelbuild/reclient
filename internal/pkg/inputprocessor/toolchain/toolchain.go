@@ -53,23 +53,29 @@ func (p *InputProcessor) ProcessToolchainInputs(ctx context.Context, execRoot, w
 	if err != nil {
 		return nil, err
 	}
+	// Process the execPath separately since it is expected to be accessible to the user without
+	// PATH manipulations. This is in contrast with toolchains that could require explicit addition
+	// to the PATH variable to be usable remotely.
+	if err := markExtantFileAsExec(filepath.Join(execRoot, execPath), fmc); err != nil {
+		log.Errorf("Failed to store %v as an executable in file metadata cache: %v", execPath, err)
+	}
+
 	dirs := make([]string, 0)
+	dirMap := make(map[string]bool)
 	for _, tc := range toolchains {
 		fp := filepath.Join(execRoot, tc)
-		if runtime.GOOS == "windows" {
-			_, err := toolchainBinCache.LoadOrStore(fp, func() (interface{}, error) {
-				return nil, loadOrStoreBinInFmc(fp, fmc)
-			})
-			if err != nil {
-				log.Errorf("Failed to store %v as an executable in file metadata cache: %v", tc, err)
-			}
+		if err := markExtantFileAsExec(fp, fmc); err != nil {
+			log.Errorf("Failed to store %v as an executable in file metadata cache: %v", tc, err)
 		}
 		tcDir := filepath.Dir(tc)
 		tcDir = pathtranslator.RelToWorkingDir(execRoot, workingDir, tcDir)
 		if tcDir == "" {
 			return nil, fmt.Errorf("failed to make toolchain directory [%s] relative to the working directory [%s]: %w", tcDir, workingDir, err)
 		}
-		dirs = append(dirs, tcDir)
+		if _, ok := dirMap[tcDir]; !ok {
+			dirs = append(dirs, tcDir)
+			dirMap[tcDir] = true
+		}
 	}
 	if len(dirs) > 0 {
 		dirs = append(dirs, defaultPath...)
@@ -78,14 +84,23 @@ func (p *InputProcessor) ProcessToolchainInputs(ctx context.Context, execRoot, w
 	return inp, nil
 }
 
-func loadOrStoreBinInFmc(fullPath string, fmc filemetadata.Cache) error {
+func markExtantFileAsExec(fp string, fmc filemetadata.Cache) error {
 	if fmc == nil {
 		return nil
 	}
-	md := fmc.Get(fullPath)
-	if md.IsExecutable {
+	if runtime.GOOS != "windows" {
 		return nil
 	}
-	md.IsExecutable = true
-	return fmc.Update(fullPath, md)
+	if md := fmc.Get(fp); md.Err != nil {
+		return nil
+	}
+	_, err := toolchainBinCache.LoadOrStore(fp, func() (interface{}, error) {
+		md := fmc.Get(fp)
+		if md.IsExecutable {
+			return nil, nil
+		}
+		md.IsExecutable = true
+		return nil, fmc.Update(fp, md)
+	})
+	return err
 }

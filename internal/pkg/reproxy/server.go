@@ -416,6 +416,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		cmd.Identifiers.InvocationID = invocationID
 	}
 	cmd.FillDefaultFieldValues()
+
 	s.addLabelDigestToCommandID(cmd, req)
 	if cmd.Platform == nil {
 		cmd.Platform = make(map[string]string)
@@ -465,6 +466,14 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid reclient_timeout set. Expected a value > 0, got: %v", reclientTimeout))
 	}
 
+	ti := req.ToolchainInputs
+	rw := req.GetExecutionOptions().GetRemoteExecutionOptions().GetWrapper()
+	if rw != "" {
+		// Add remote wrapper to toolchain for toolchain input processing. remote wrapper is similar
+		// to explicitly passed toolchains in that it may have dependencies and will need to be
+		// findable and executable on the remote machine.
+		ti = append(ti, rw)
+	}
 	aCtx, cancel := cancelWithCause(ctx)
 	a := &action{
 		cmd:             cmd,
@@ -482,7 +491,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		fmc:             s.FileMetadataStore,
 		forecast:        s.Forecast,
 		lbls:            req.Labels,
-		toolchainInputs: req.ToolchainInputs,
+		toolchainInputs: ti,
 		cmdEnvironment:  cmdEnv,
 		cancelFunc:      cancel,
 		racingBias:      s.RacingBias,
