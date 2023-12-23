@@ -102,6 +102,13 @@ type Logger struct {
 	resourceUsage    map[string][]int64
 	u                *usage.PsutilSampler
 	cancelSamplerCtx context.CancelFunc
+
+	// qps indicates the rate of completed actions.
+	// The formula is: number of completed actions / total duration in which the number of running actions was greater than zero.
+	qps             int32
+	qpsStartTime    time.Time
+	qpsLastDuration time.Duration
+	qpsCount        int32
 }
 
 type logEvent interface {
@@ -117,6 +124,10 @@ func (s *startActionEvent) apply(l *Logger) {
 		return
 	}
 	s.lr.open = true
+	if l.runningActions == 0 {
+		// Reset qps start time to exclude the period in which there were no running actions.
+		l.qpsStartTime = time.Now()
+	}
 	l.runningActions++
 	atomic.StoreInt32(&l.peakRunningActions, max(l.runningActions, l.peakRunningActions))
 }
@@ -146,6 +157,18 @@ func (e *endActionEvent) apply(l *Logger) {
 	e.lr.open = false
 	l.completedActions[e.lr.CompletionStatus]++
 	l.runningActions--
+
+	l.qpsCount++
+	totalDuration := time.Since(l.qpsStartTime) + l.qpsLastDuration
+	if seconds := int32(totalDuration.Seconds()); seconds > 0 {
+		l.qps = l.qpsCount / seconds
+	}
+	if l.runningActions == 0 {
+		l.qpsLastDuration = totalDuration
+		// Reset start time here just in case it doesn't get set properly in a start event.
+		l.qpsStartTime = time.Now()
+	}
+
 	blob, err := toBytes(l.Format, e.lr.LogRecord)
 	if err != nil {
 		log.Errorf("Error serializing %v: %v", e.lr.LogRecord, err)
@@ -168,6 +191,7 @@ func (s *summarizeActionsEvent) apply(l *Logger) {
 	s.out <- &ppb.GetStatusSummaryResponse{
 		CompletedActionStats: completedActions,
 		RunningActions:       l.runningActions,
+		Qps:                  l.qps,
 	}
 }
 
@@ -274,7 +298,7 @@ func ParseFilepath(formatfile string) (Format, string, error) {
 	if err != nil {
 		return Format(-1), "", err
 	}
-	return format, formatfile[i+3 : len(formatfile)], nil
+	return format, formatfile[i+3:], nil
 }
 
 // NewFromFormatFile instantiates a new Logger.
@@ -814,7 +838,7 @@ func ParseFromLogDirs(format Format, logDirs []string) ([]*lpb.LogRecord, []*lpb
 	return recs, infoPbs, nil
 }
 
-// RecordEventTime ensures LocalMetedata.EventTimes is instatiated, calculates the time
+// RecordEventTime ensures LocalMetedata.EventTimes is instantiated, calculates the time
 // interval between now and from, adds it to EventTimes with the given event String as key and
 // returns the now time. This method is thread safe.
 func (lr *LogRecord) RecordEventTime(event string, from time.Time) time.Time {

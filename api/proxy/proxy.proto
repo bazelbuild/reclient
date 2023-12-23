@@ -54,6 +54,7 @@ message GetStatusSummaryResponse {
   map<string,int32> completed_action_stats = 1;
   // Current status for each in-progress actions
   int32 running_actions = 2;
+  int32 qps = 3;
 }
 
 message GetRecordsRequest {}

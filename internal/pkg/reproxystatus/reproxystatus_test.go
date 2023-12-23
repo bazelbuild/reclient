@@ -56,11 +56,13 @@ func TestHumanReadable(t *testing.T) {
 						lpb.CompletionStatus_STATUS_LOCAL_EXECUTION.String():  6,
 					},
 					RunningActions: 11,
+					Qps:            1,
 				},
 			},
 			want: `Reproxy(unix://reproxy.sock) is OK
 Actions completed: 13 (2 cache hits, 5 remote executions, 6 local executions)
 Actions in progress: 11
+QPS: 1
 `,
 		},
 		{
@@ -79,6 +81,7 @@ Actions in progress: 11
 			want: `Reproxy(unix://reproxy.sock) had local fallbacks
 Actions completed: 12 (1 cache hit, 5 remote executions, 6 local fallbacks)
 Actions in progress: 11
+QPS: 0
 `,
 		},
 		{
@@ -97,6 +100,7 @@ Actions in progress: 11
 			want: `Reproxy(unix://reproxy.sock) had failed actions
 Actions completed: 13 (2 cache hits, 5 remote executions, 6 non zero exits)
 Actions in progress: 11
+QPS: 0
 `,
 		},
 		{
@@ -115,6 +119,7 @@ Actions in progress: 11
 			want: `Reproxy(unix://reproxy.sock) had errors
 Actions completed: 13 (2 cache hits, 5 remote executions, 6 local failures)
 Actions in progress: 11
+QPS: 0
 `,
 		},
 		{
@@ -144,6 +149,7 @@ sample error occurred
 			want: `Reproxy(unix://reproxy.sock) had errors, had failed actions
 Actions completed: 13 (2 cache hits, 5 remote executions, 2 local failures, 4 non zero exits)
 Actions in progress: 11
+QPS: 0
 `,
 		},
 	}

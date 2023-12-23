@@ -49,10 +49,12 @@ func (s *Summary) HumanReadable() string {
 		`Reproxy(%s) %s
 Actions completed: %s
 Actions in progress: %d
+QPS: %d
 `,
 		s.Addr, strings.Join(s.overallStatuses(), ", "),
 		s.completedActions(),
 		s.Resp.GetRunningActions(),
+		s.Resp.GetQps(),
 	)
 }
 
