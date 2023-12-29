@@ -20,7 +20,7 @@ go_library(
     },
     deps = [
         "//internal/pkg/rbeflag",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
     ],
 )
 

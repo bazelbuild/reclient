@@ -7,6 +7,6 @@ go_library(
     visibility = ["//experiments:__subpackages__"],
     deps = [
         "//experiments/internal/pkg/gcs",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
     ],
 )

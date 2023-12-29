@@ -99,7 +99,7 @@ go_library(
     deps = [
         "//internal/pkg/logger",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
     ],
 )
 

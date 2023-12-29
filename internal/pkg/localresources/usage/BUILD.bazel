@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/internal/pkg/localresources/usage",
     visibility = ["//:__subpackages__"],
     deps = [
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
         "@com_github_shirou_gopsutil//process",
     ],
 )

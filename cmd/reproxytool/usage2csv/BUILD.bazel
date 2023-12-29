@@ -5,5 +5,5 @@ go_library(
     srcs = ["usage2csv.go"],
     importpath = "github.com/bazelbuild/reclient/cmd/reproxytool/usage2csv",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_golang_glog//:go_default_library"],
+    deps = ["@com_github_golang_glog//:glog"],
 )

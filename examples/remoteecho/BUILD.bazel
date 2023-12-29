@@ -12,7 +12,7 @@ go_library(
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/rexec",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
     ],
 )
 

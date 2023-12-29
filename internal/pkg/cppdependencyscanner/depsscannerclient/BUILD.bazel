@@ -11,7 +11,7 @@ go_library(
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/retry",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//types/known/emptypb",

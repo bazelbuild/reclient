@@ -7,7 +7,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
     ],
 )
 

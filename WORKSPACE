@@ -280,6 +280,13 @@ http_archive(
 )
 
 go_repository(
+    name = "com_github_golang_glog",
+    importpath = "github.com/golang/glog",
+    sum = "h1:uCdmnmatrKCgMBlM4rMuJZWOkPDqdbZPnrMXDY4gI68=",
+    version = "v1.2.0",
+)
+
+go_repository(
     name = "org_golang_google_protobuf",
     importpath = "google.golang.org/protobuf",
     sum = "h1:Ejskq+SyPohKW+1uil0JJMtmHCgJPJ/qWTxr8qp+R4c=",

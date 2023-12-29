@@ -9,7 +9,7 @@ go_library(
         "//api/stats",
         "//experiments/api/experiment",
         "//experiments/internal/pkg/gcs",
-        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_glog//:glog",
         "@com_google_cloud_go_bigquery//:bigquery",
         "@org_golang_google_protobuf//encoding/prototext",
     ],
