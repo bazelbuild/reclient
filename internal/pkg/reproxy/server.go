@@ -872,7 +872,12 @@ func (s *Server) runRemote(ctx context.Context, a *action) {
 		go func() {
 			select {
 			case <-time.After(shutdownTimeout):
-				log.Fatalf("%v: Remote execution of didn't finish after %v. Shutting down reproxy.", a.cmd.Identifiers.ExecutionID, shutdownTimeout)
+				if a.rec != nil && a.rec.LogRecord != nil {
+					log.Errorf("%v: LogRecord: %v", a.cmd.Identifiers.ExecutionID, a.rec.LogRecord)
+				} else {
+					log.Errorf("%v: Command: [%v] timed out", a.cmd.Identifiers.ExecutionID, a.cmd.Args)
+				}
+				log.Fatalf("%v: Remote execution didn't finish after %v. Shutting down reproxy.", a.cmd.Identifiers.ExecutionID, shutdownTimeout)
 			case <-done:
 			}
 		}()
