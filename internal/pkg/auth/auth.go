@@ -318,6 +318,14 @@ func (c *Credentials) UpdateStatus() (int, error) {
 	if nowFn().Before(c.refreshExp) {
 		return 0, nil
 	}
+	switch c.m {
+	case ADC:
+		exp, err := checkADCStatus()
+		if err != nil {
+			return ExitCodeAppDefCredsAuth, fmt.Errorf("application default credentials were invalid: %v", err)
+		}
+		c.refreshExp = exp
+	}
 	return 0, nil
 }
 
@@ -370,27 +378,27 @@ func (c *Credentials) TokenSource() *grpcOauth.TokenSource {
 	return c.tokenSource
 }
 
-func checkADCStatus() error {
+func checkADCStatus() (time.Time, error) {
 	ts, err := googleOauth.FindDefaultCredentialsWithParams(context.Background(), googleOauth.CredentialsParams{
+		Scopes:            []string{"https://www.googleapis.com/auth/cloud-platform"},
 		EarlyTokenRefresh: 5 * time.Minute,
 	})
 	if err != nil {
-		return fmt.Errorf("could not find Application Default Credentials: %w", err)
+		return time.Time{}, fmt.Errorf("could not find Application Default Credentials: %w", err)
 	}
 	token, err := ts.TokenSource.Token()
-
 	if err != nil {
 		aerr, ok := err.(*googleOauth.AuthenticationError)
 		if !ok {
-			return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+			return time.Time{}, fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
 		}
 		if aerr.Temporary() {
 			log.Errorf("Ignoring temporary ADC error: %v", err)
-			return nil
+			return time.Time{}, nil
 		}
 		rerr, ok := aerr.Unwrap().(*oauth2.RetrieveError)
 		if !ok {
-			return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+			return time.Time{}, fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
 		}
 		var resp struct {
 			Error        string `json:"error"`
@@ -399,15 +407,15 @@ func checkADCStatus() error {
 		if err := json.Unmarshal(rerr.Body, &resp); err == nil &&
 			resp.Error == "invalid_grant" &&
 			resp.ErrorSubtype == "invalid_rapt" {
-			return fmt.Errorf("reauth required, run `gcloud auth application-default login` and try again")
+			return time.Time{}, fmt.Errorf("reauth required, run `gcloud auth application-default login` and try again")
 		}
-		return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+		return time.Time{}, fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
 	}
 	if !token.Valid() {
 		log.Errorf("Could not get valid Application Default Credentials token: %v", err)
-		return fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
+		return time.Time{}, fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
 	}
-	return nil
+	return token.Expiry, nil
 }
 
 type gcpTokenProvider interface {
