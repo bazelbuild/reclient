@@ -80,8 +80,14 @@ func insertRows(logs []*lpb.LogRecord) error {
 		g.Go(func() error {
 			for item := range items {
 				if err := inserter.Put(ctx, item); err != nil {
-					log.Errorf("Failed to insert record: %v", err)
-					return err
+					// In case of error (gpaste/6313679673360384), retrying the job with
+					// back-off as described in BigQuery Service Level Agreement
+					// https://cloud.google.com/bigquery/sla
+					time.Sleep(1 * time.Second)
+					if err := inserter.Put(ctx, item); err != nil {
+						log.Errorf("Failed to insert record after retry: %v", err)
+						return err
+					}
 				}
 				processedMu.Lock()
 				processed++

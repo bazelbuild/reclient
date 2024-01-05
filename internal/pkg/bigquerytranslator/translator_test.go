@@ -33,6 +33,7 @@ func TestItemSave(t *testing.T) {
 					CommandId:    "a",
 					InvocationId: "b",
 					ToolName:     "c",
+					ExecutionId:  "d",
 				},
 				Args:     []string{"a", "b", "c"},
 				ExecRoot: "/exec/root",
@@ -80,6 +81,7 @@ func TestItemSave(t *testing.T) {
 				ExecutedLocally: false,
 				UpdatedCache:    true,
 			},
+			CompletionStatus: lpb.CompletionStatus_STATUS_CACHE_HIT,
 		},
 	}
 
@@ -91,6 +93,7 @@ func TestItemSave(t *testing.T) {
 				"correlated_invocations_id": "",
 				"tool_name":                 "c",
 				"tool_version":              "",
+				"execution_id":              "d",
 			},
 			"exec_root": "/exec/root",
 			"input": map[string]bigquery.Value{
@@ -151,6 +154,12 @@ func TestItemSave(t *testing.T) {
 			"num_input_files":          int32(2),
 			"num_output_directories":   int32(0),
 			"num_output_files":         int32(0),
+			"logical_bytes_downloaded": int64(0),
+			"logical_bytes_uploaded":   int64(0),
+			"real_bytes_downloaded":    int64(0),
+			"real_bytes_uploaded":      int64(0),
+			"stderr_digest":            "",
+			"stdout_digest":            "",
 			"output_directory_digests": []map[string]bigquery.Value{},
 			"output_file_digests":      []map[string]bigquery.Value{},
 			"result": map[string]bigquery.Value{
@@ -166,6 +175,7 @@ func TestItemSave(t *testing.T) {
 			"msg":       "message",
 			"status":    cpb.CommandResultStatus_CACHE_HIT,
 		},
+		"completion_status": lpb.CompletionStatus_STATUS_CACHE_HIT,
 	}
 	wantID := "a"
 

@@ -19,7 +19,6 @@ import (
 	"sort"
 
 	"cloud.google.com/go/bigquery"
-
 	lpb "github.com/bazelbuild/reclient/api/log"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
@@ -114,16 +113,22 @@ func collectResult(result *cpb.CommandResult) map[string]bigquery.Value {
 
 func collectRemoteMetadata(rm *lpb.RemoteMetadata) (map[string]bigquery.Value, error) {
 	res := map[string]bigquery.Value{
-		"result":                 collectResult(rm.GetResult()),
-		"cache_hit":              rm.GetCacheHit(),
-		"num_input_files":        rm.GetNumInputFiles(),
-		"num_input_directories":  rm.GetNumInputDirectories(),
-		"total_input_bytes":      rm.GetTotalInputBytes(),
-		"num_output_files":       rm.GetNumOutputFiles(),
-		"num_output_directories": rm.GetNumOutputDirectories(),
-		"total_output_bytes":     rm.GetTotalOutputBytes(),
-		"command_digest":         rm.GetCommandDigest(),
-		"action_digest":          rm.GetActionDigest(),
+		"result":                   collectResult(rm.GetResult()),
+		"cache_hit":                rm.GetCacheHit(),
+		"num_input_files":          rm.GetNumInputFiles(),
+		"num_input_directories":    rm.GetNumInputDirectories(),
+		"total_input_bytes":        rm.GetTotalInputBytes(),
+		"num_output_files":         rm.GetNumOutputFiles(),
+		"num_output_directories":   rm.GetNumOutputDirectories(),
+		"total_output_bytes":       rm.GetTotalOutputBytes(),
+		"command_digest":           rm.GetCommandDigest(),
+		"action_digest":            rm.GetActionDigest(),
+		"logical_bytes_uploaded":   rm.LogicalBytesUploaded,
+		"real_bytes_uploaded":      rm.RealBytesUploaded,
+		"logical_bytes_downloaded": rm.LogicalBytesDownloaded,
+		"real_bytes_downloaded":    rm.RealBytesDownloaded,
+		"stderr_digest":            rm.StderrDigest,
+		"stdout_digest":            rm.StdoutDigest,
 	}
 	eventTimes := []map[string]bigquery.Value{}
 	var keys []string
@@ -241,13 +246,13 @@ func collectLocalMetadata(lm *lpb.LocalMetadata) (map[string]bigquery.Value, err
 
 	labels := []map[string]bigquery.Value{}
 	keys = nil
-	for _, k := range lm.GetLabels() {
+	for k := range lm.GetLabels() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
 		v := lm.GetLabels()[k]
-		environment = append(labels, map[string]bigquery.Value{
+		labels = append(labels, map[string]bigquery.Value{
 			"key":   k,
 			"value": v,
 		})
@@ -283,6 +288,7 @@ func (i *Item) Save() (map[string]bigquery.Value, string, error) {
 				"correlated_invocations_id": i.GetCommand().GetIdentifiers().GetCorrelatedInvocationsId(),
 				"tool_name":                 i.GetCommand().GetIdentifiers().GetToolName(),
 				"tool_version":              i.GetCommand().GetIdentifiers().GetToolVersion(),
+				"execution_id":              i.GetCommand().GetIdentifiers().GetExecutionId(),
 			},
 			"exec_root":         i.GetCommand().GetExecRoot(),
 			"input":             inputs,
@@ -292,8 +298,9 @@ func (i *Item) Save() (map[string]bigquery.Value, string, error) {
 			"working_directory": i.GetCommand().GetWorkingDirectory(),
 			"platform":          platform(i.GetCommand().GetPlatform()),
 		},
-		"result":          result,
-		"remote_metadata": remoteMetadata,
-		"local_metadata":  localMetadata,
+		"result":            result,
+		"remote_metadata":   remoteMetadata,
+		"local_metadata":    localMetadata,
+		"completion_status": i.CompletionStatus,
 	}, i.GetCommand().GetIdentifiers().GetCommandId(), nil
 }
