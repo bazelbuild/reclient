@@ -97,6 +97,7 @@ type State struct {
 	objFile     string
 	hasCoverage bool
 	hasSplit    bool
+	saveTemps   string
 }
 
 // HandleClangFlags updates the given CommandFlags with the passed flag given the current ClangState.
@@ -139,6 +140,13 @@ func (s *State) HandleClangFlags(nextRes *args.NextResult, f *flags.CommandFlags
 		if err != nil {
 			return err
 		}
+	case "--save-temps=":
+		s.saveTemps = "cwd"
+		if values[0] == "obj" {
+			s.saveTemps = "obj"
+		}
+	case "--save-temps":
+		s.saveTemps = "cwd"
 	case "":
 		if len(values) > 0 && strings.HasPrefix(values[0], "@") {
 			f.Dependencies = append(f.Dependencies, values[0][1:])
@@ -166,10 +174,29 @@ func (s *State) HandleClangFlags(nextRes *args.NextResult, f *flags.CommandFlags
 
 // Finalize finalizes the passed CommandFlags based on the current State.
 func (s *State) Finalize(f *flags.CommandFlags) {
-	base := strings.TrimSuffix(s.objFile, filepath.Ext(s.objFile))
+	// By default --save-temps will output the intermediate files to the current working directory.
+	// If --save-temps=obj, it will output the intermediate files to the same directory as the object file if -o is specified.
+	if s.saveTemps != "" {
+		for _, srcFile := range f.TargetFilePaths {
+			srcBase := filepath.Base(srcFile)
+			srcName := strings.TrimSuffix(srcBase, filepath.Ext(srcBase))
+			savetempsBase := filepath.Join(f.WorkingDirectory, srcName)
+
+			if s.saveTemps == "obj" && s.objFile != "" {
+				objPath := filepath.Dir(s.objFile)
+				savetempsBase = filepath.Join(objPath, srcName)
+			}
+			tmpExt := []string{".i", ".ii", ".bc", ".s"}
+			for _, ext := range tmpExt {
+				f.OutputFilePaths = append(f.OutputFilePaths, savetempsBase+ext)
+			}
+		}
+	}
+
 	if s.objFile == "" {
 		return
 	}
+	base := strings.TrimSuffix(s.objFile, filepath.Ext(s.objFile))
 	if s.hasCoverage {
 		f.OutputFilePaths = append(f.OutputFilePaths, base+".gcno")
 	}

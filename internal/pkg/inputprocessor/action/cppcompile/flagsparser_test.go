@@ -16,6 +16,7 @@ package cppcompile
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
@@ -484,6 +485,67 @@ func TestParseFlags(t *testing.T) {
 				Dependencies:     []string{"lto.foo/foo.o.thinlto.bc"},
 				WorkingDirectory: "out",
 				ExecRoot:         er,
+			},
+		},
+		{
+			name:       "Clang command with -save-temps",
+			workingDir: ".",
+			command:    []string{"clang++", "-o", "out/objFile.o", "-save-temps", "source.cpp"},
+			want: &flags.CommandFlags{
+				ExecutablePath: "clang++",
+				Flags: []*flags.Flag{
+					&flags.Flag{Key: "--save-temps"},
+				},
+				TargetFilePaths:  []string{"source.cpp"},
+				WorkingDirectory: ".",
+				ExecRoot:         er,
+				OutputFilePaths:  []string{"out/objFile.o", "source.i", "source.ii", "source.bc", "source.s"},
+			},
+		},
+		{
+			name:       "Clang command with -save-temps=obj",
+			workingDir: ".",
+			command:    []string{"clang++", "-o", "out/objFile.o", "-save-temps=obj", "source.cpp"},
+			want: &flags.CommandFlags{
+				ExecutablePath: "clang++",
+				Flags: []*flags.Flag{
+					&flags.Flag{Key: "--save-temps=", Value: "obj", Joined: true},
+				},
+				TargetFilePaths:  []string{"source.cpp"},
+				WorkingDirectory: ".",
+				ExecRoot:         er,
+				OutputFilePaths: []string{"out/objFile.o", filepath.Join("out", "source.i"), filepath.Join("out", "source.ii"),
+					filepath.Join("out", "source.bc"), filepath.Join("out", "source.s")},
+			},
+		},
+		{
+			name:       "Clang command with -save-temps=obj without -o",
+			workingDir: ".",
+			command:    []string{"clang++", "-save-temps=obj", "source.cpp"},
+			want: &flags.CommandFlags{
+				ExecutablePath: "clang++",
+				Flags: []*flags.Flag{
+					&flags.Flag{Key: "--save-temps=", Value: "obj", Joined: true},
+				},
+				TargetFilePaths:  []string{"source.cpp"},
+				WorkingDirectory: ".",
+				ExecRoot:         er,
+				OutputFilePaths:  []string{"source.i", "source.ii", "source.bc", "source.s"},
+			},
+		},
+		{
+			name:       "Clang command with -save-temps=foo",
+			workingDir: ".",
+			command:    []string{"clang++", "-o", "out/objFile.o", "-save-temps=foo", "source.cpp"},
+			want: &flags.CommandFlags{
+				ExecutablePath: "clang++",
+				Flags: []*flags.Flag{
+					&flags.Flag{Key: "--save-temps=", Value: "foo", Joined: true},
+				},
+				TargetFilePaths:  []string{"source.cpp"},
+				WorkingDirectory: ".",
+				ExecRoot:         er,
+				OutputFilePaths:  []string{"out/objFile.o", "source.i", "source.ii", "source.bc", "source.s"},
 			},
 		},
 	}
