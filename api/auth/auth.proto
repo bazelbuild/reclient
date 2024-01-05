@@ -36,6 +36,8 @@ message AuthMechanism {
     CREDENTIAL_FILE = 5;
     // No authentication is used
     NONE = 6;
+    // External credentials helper is used
+    CREDENTIALSHELPER = 7;
   }
 }
 

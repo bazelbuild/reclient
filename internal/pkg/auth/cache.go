@@ -63,6 +63,7 @@ func loadFromDisk(tf string) (cachedCredentials, error) {
 		credsHelperCmdDigest: cPb.GetCredsHelperCmdDigest(),
 	}
 	if !c.m.Cacheable() {
+		log.Infof("Purging credentials, non-cacheable mechanism: %v", c.m)
 		// Purge non cacheable credentials from disk.
 		if err := os.Remove(tf); err != nil {
 			log.Warningf("Unable to remove cached credentials file %q, err=%v", tf, err)
@@ -108,6 +109,8 @@ func mechanismToProto(m Mechanism) apb.AuthMechanism_Value {
 	switch m {
 	case Unknown:
 		return apb.AuthMechanism_UNSPECIFIED
+	case CredentialsHelper:
+		return apb.AuthMechanism_CREDENTIALSHELPER
 	case ADC:
 		return apb.AuthMechanism_ADC
 	case GCE:
@@ -125,6 +128,8 @@ func protoToMechanism(p apb.AuthMechanism_Value) Mechanism {
 	switch p {
 	case apb.AuthMechanism_UNSPECIFIED:
 		return Unknown
+	case apb.AuthMechanism_CREDENTIALSHELPER:
+		return CredentialsHelper
 	case apb.AuthMechanism_ADC:
 		return ADC
 	case apb.AuthMechanism_GCE:

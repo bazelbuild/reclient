@@ -107,12 +107,20 @@ func TestCredentialsHelperCache(t *testing.T) {
 		credsHelperCmd: cmd,
 	}
 	creds.SaveToDisk()
-	c, err := LoadCredsFromDisk(cf, cmd)
+	c1, err := LoadCredsFromDisk(cf, cmd)
 	if err != nil {
 		t.Errorf("LoadCredsFromDisk failed: %v", err)
 	}
-	if creds.m != c.m {
-		t.Errorf("mechanism was cached incorrectly, got: %v, want: %v", c.m, creds.m)
+	// Second load to make sure credentials were not purged.
+	c2, err := LoadCredsFromDisk(cf, cmd)
+	if err != nil {
+		t.Errorf("LoadCredsFromDisk failed: %v", err)
+	}
+	if creds.m != c1.m {
+		t.Errorf("Mechanism was cached incorrectly, got: %v, want: %v", c1.m, creds.m)
+	}
+	if creds.m != c2.m {
+		t.Errorf("Mechanism was cached incorrectly, got: %v, want: %v", c2.m, creds.m)
 	}
 }
 
