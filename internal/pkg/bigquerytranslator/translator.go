@@ -123,12 +123,12 @@ func collectRemoteMetadata(rm *lpb.RemoteMetadata) (map[string]bigquery.Value, e
 		"total_output_bytes":       rm.GetTotalOutputBytes(),
 		"command_digest":           rm.GetCommandDigest(),
 		"action_digest":            rm.GetActionDigest(),
-		"logical_bytes_uploaded":   rm.LogicalBytesUploaded,
-		"real_bytes_uploaded":      rm.RealBytesUploaded,
-		"logical_bytes_downloaded": rm.LogicalBytesDownloaded,
-		"real_bytes_downloaded":    rm.RealBytesDownloaded,
-		"stderr_digest":            rm.StderrDigest,
-		"stdout_digest":            rm.StdoutDigest,
+		"logical_bytes_uploaded":   rm.GetLogicalBytesUploaded(),
+		"real_bytes_uploaded":      rm.GetRealBytesUploaded(),
+		"logical_bytes_downloaded": rm.GetLogicalBytesDownloaded(),
+		"real_bytes_downloaded":    rm.GetRealBytesDownloaded(),
+		"stderr_digest":            rm.GetStderrDigest(),
+		"stdout_digest":            rm.GetStdoutDigest(),
 	}
 	eventTimes := []map[string]bigquery.Value{}
 	var keys []string
