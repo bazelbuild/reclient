@@ -114,7 +114,7 @@ func (p *Preprocessor) resourceDir(f *flags.CommandFlags) (string, error) {
 		// ```
 		// The resource dir is determined in clang as:
 		// `../../<check for lib64 / lib dir>/clang/<hard-coded-clang-version>`.
-		resourceDir := filepath.Join(f.ExecutablePath, "../../", strings.TrimSuffix(matches[0], "\n"))
+		resourceDir := filepath.Join(f.WorkingDirectory, f.ExecutablePath, "../../", strings.TrimSuffix(matches[0], "\n"))
 		if _, err := os.Stat(resourceDir); os.IsNotExist(err) {
 			return nil, fmt.Errorf("resource-directory not found at: %v", resourceDir)
 		}
