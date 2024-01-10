@@ -7,6 +7,7 @@ cc_library(
         "//cmd/scandeps/server:scandeps_server_lib",
         "@com_github_gflags_gflags//:gflags",
         "@com_github_grpc_grpc//:grpc++",
+        "//pkg/version:version_cc",
     ] + select({
         "@platforms//os:windows": [
             "@com_github_google_glog//:glog",

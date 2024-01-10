@@ -25,6 +25,7 @@
 
 #include "gflags/gflags.h"
 #include "server/server.h"
+#include "pkg/version/version.h"
 
 #ifdef __linux__
 #ifndef __GLIBC_NEW__
@@ -80,6 +81,7 @@ DEFINE_uint32(experimental_segfault, 0,
               "for debugging purposes only");
 
 int main(int argc, char** argv) {
+  gflags::SetVersionString(RECLIENT_VERSION " " INPUT_PROCESSOR);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   std::unique_ptr<ScandepsServer> server = std::make_unique<ScandepsServer>(

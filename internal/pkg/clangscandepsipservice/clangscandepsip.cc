@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 
 #include "internal/pkg/cppdependencyscanner/clangscandeps/bridge.h"
+#include "pkg/version/version.h"
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -244,8 +245,8 @@ Status ClangscandepsIPServiceImpl::Shutdown(
 
 void ClangscandepsIPServiceImpl::PopulateStatusResponse(
     scandeps::StatusResponse* response) {
-  response->set_name("ClangscandepsIP");
-  response->set_version("1.0.0-beta");
+  response->set_name(INPUT_PROCESSOR);
+  response->set_version(RECLIENT_VERSION);
   google::protobuf::Duration* uptime = new google::protobuf::Duration();
   uptime->set_seconds(std::time(0) - started_);
   response->set_allocated_uptime(uptime);  // gRPC library takes care of cleanup
