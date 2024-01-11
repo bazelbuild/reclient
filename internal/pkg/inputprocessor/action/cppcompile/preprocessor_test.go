@@ -22,7 +22,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache"
@@ -94,10 +93,6 @@ func TestComputeSpec(t *testing.T) {
 		"-Qunused-arguments", // expect Qunused-arguments to be added, and -Xclang -verify to be removed
 		"-o", "test.o",
 		filepath.Join(er, "src/test.cpp"),
-	}
-	// expect command to be adjusted if Clang dependency scanner used
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		wantCmd = append(wantCmd, "-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("Unexpected command passed to the dependency scanner (-want +got): %v", diff)
@@ -218,21 +213,6 @@ func TestComputeSpec_SysrootAndProfileSampleUseArgsConvertedToAbsolutePath(t *te
 		"test.o",
 		filepath.Join(pwd, "src/test.cpp"),
 	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		wantCmd = append(wantCmd, []string{
-			// adjusted
-			"-o",
-			"/dev/null",
-			"-M",
-			"-MT",
-			"test.o",
-			"-Xclang",
-			"-Eonly",
-			"-Xclang",
-			"-sys-header-deps",
-			"-Wno-error",
-		}...)
-	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("ComputeSpec() called clang-scan-deps incorrectly, diff (-want +got): %v", diff)
 	}
@@ -288,21 +268,6 @@ func TestComputeSpecAbsolutePaths(t *testing.T) {
 		filepath.Join(pwd, wd, "test.o"),
 		filepath.Join(pwd, "src/test.cpp"),
 	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		wantCmd = append(wantCmd, []string{
-			// adjusted
-			"-o",
-			"/dev/null",
-			"-M",
-			"-MT",
-			filepath.Join(pwd, wd, "test.o"),
-			"-Xclang",
-			"-Eonly",
-			"-Xclang",
-			"-sys-header-deps",
-			"-Wno-error",
-		}...)
-	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("ComputeSpec() called clang-scan-deps incorrectly, diff (-want +got): %v", diff)
 	}
@@ -355,10 +320,6 @@ func TestComputeSpec_RemovesUnsupportedFlags(t *testing.T) {
 		// they're not supported in newer clang versions.
 		"-o", "test.o",
 		filepath.Join(er, "src/test.cpp"),
-	}
-	// expect command to be adjusted if Clang dependency scanner used
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		wantCmd = append(wantCmd, "-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("Unexpected command passed to the dependency scanner (-want +got): %v", diff)

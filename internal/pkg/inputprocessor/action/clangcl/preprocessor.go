@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 
@@ -78,9 +77,7 @@ func (p *Preprocessor) ComputeSpec() error {
 	defer p.AppendSpec(s)
 
 	args := p.BuildCommandLine("/Fo", true, toAbsArgs)
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		args = p.adjustCommand(args, filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, p.Flags.TargetFilePaths[0]))
-	}
+	args = p.addResourceDir(args)
 	headerInputFiles, err := p.FindDependencies(args)
 	if err != nil {
 		s.UsedShallowMode = true
@@ -152,24 +149,17 @@ func (p *Preprocessor) AppendVirtualInput(res []*command.VirtualInput, flag, pat
 	return p.Preprocessor.AppendVirtualInput(res, flag, path)
 }
 
-func (p *Preprocessor) adjustCommand(args []string, filename string) []string {
-	adjustedArgs := make([]string, 0, len(args))
-	hasResourceDir := false
-	for _, a := range args {
-		adjustedArgs = append(adjustedArgs, a)
-		if a == "-resource-dir" || strings.HasPrefix(a, "-resource-dir=") {
-			hasResourceDir = true
+func (p *Preprocessor) addResourceDir(args []string) []string {
+	for _, arg := range args {
+		if arg == "-resource-dir" || strings.HasPrefix(arg, "-resource-dir=") {
+			return args
 		}
 	}
-	adjustedArgs = append(adjustedArgs, "/FoNUL")
-	adjustedArgs = append(adjustedArgs, "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
-	if !hasResourceDir {
-		resourceDir := p.resourceDir(args)
-		if resourceDir != "" {
-			adjustedArgs = append(adjustedArgs, "-resource-dir", resourceDir)
-		}
+	resourceDir := p.resourceDir(args)
+	if resourceDir != "" {
+		return append(args, "-resource-dir", resourceDir)
 	}
-	return adjustedArgs
+	return args
 }
 
 func (p *Preprocessor) resourceDir(args []string) string {

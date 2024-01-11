@@ -211,8 +211,7 @@ func TestCppWithDepsCache(t *testing.T) {
 	if _, err := os.Stat(dcPath); os.IsNotExist(err) {
 		t.Errorf("Deps cache file (%v) does not exist", dcPath)
 	}
-	wantDepScanArgs := []string{"-c", "-Xclang", "-add-plugin", "-Xclang", "bar", "-Qunused-arguments", "-o", "test.o", filepath.Join(er, wd, "test.cpp"),
-		"-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error"}
+	wantDepScanArgs := []string{"-c", "-Xclang", "-add-plugin", "-Xclang", "bar", "-Qunused-arguments", "-o", "test.o", filepath.Join(er, wd, "test.cpp")}
 	if diff := cmp.Diff(wantDepScanArgs, ds.processInputsArgs[1:]); diff != "" {
 		t.Errorf("CPPDepScanner called with unexpected arguments (-want +got): %s", diff)
 	}

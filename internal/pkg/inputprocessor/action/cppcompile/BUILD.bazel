@@ -34,7 +34,6 @@ go_test(
     ],
     embed = [":cppcompile"],
     deps = [
-        "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/execroot",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/depscache",

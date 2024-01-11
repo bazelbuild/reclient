@@ -21,7 +21,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 
@@ -223,10 +222,6 @@ func TestComputeSpec(t *testing.T) {
 		"/Fotest.o",
 		"/Fotest.d", // -o normalized to /Fo
 		filepath.Join(pwd, "out", "test.cpp"),
-	}
-	// adjusted
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		wantCmd = append(wantCmd, "/FoNUL", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("CPP command from %v command %v had diff (-want +got): %s", executablePath, p.Flags, diff)

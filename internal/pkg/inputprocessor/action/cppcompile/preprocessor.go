@@ -161,13 +161,7 @@ func (p *Preprocessor) ComputeSpec() error {
 	defer p.AppendSpec(s)
 
 	args := p.BuildCommandLine("-o", false, toAbsArgs)
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		if filepath.IsAbs(p.Flags.TargetFilePaths[0]) {
-			args = p.adjustCommand(args, p.Flags.TargetFilePaths[0])
-		} else {
-			args = p.adjustCommand(args, filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, p.Flags.TargetFilePaths[0]))
-		}
-	}
+	args = p.addResourceDir(args)
 
 	headerInputFiles, err := p.FindDependencies(args)
 	if err != nil {
@@ -416,52 +410,17 @@ func (p *Preprocessor) AppendVirtualInput(res []*command.VirtualInput, flag, pat
 	return append(res, &command.VirtualInput{Path: path, IsEmptyDirectory: true})
 }
 
-func (p *Preprocessor) adjustCommand(args []string, filename string) []string {
-	lastO := ""
-	var hasMT, hasMQ, hasMD, hasResourceDir bool
-	for i := len(args) - 1; i > 0; i-- {
-		switch args[i] {
-		case "-o":
-			lastO = args[i+1]
-		case "-MT":
-			hasMT = true
-		case "-MQ":
-			hasMQ = true
-		case "-MD":
-			hasMD = true
-		case "-resource-dir":
-			hasResourceDir = true
+func (p *Preprocessor) addResourceDir(args []string) []string {
+	for _, arg := range args {
+		if arg == "-resource-dir" {
+			return args
 		}
 	}
-	// If there's no -MT/-MQ, Driver would add -MT with the value of
-	// the last -o option.
-	adjustedArgs := make([]string, len(args))
-	copy(adjustedArgs, args)
-	adjustedArgs = append(adjustedArgs, "-o", "/dev/null")
-	if !hasMT && !hasMQ {
-		adjustedArgs = append(adjustedArgs, "-M")
-		adjustedArgs = append(adjustedArgs, "-MT")
-		// We're interested in source dependencies of an object file.
-		if !hasMD {
-			// FIXME: We are missing the directory
-			// unless the -o value is an absolute path.
-			if lastO == "" {
-				adjustedArgs = append(adjustedArgs, getObjFilePath(filename))
-			} else {
-				adjustedArgs = append(adjustedArgs, lastO)
-			}
-		} else {
-			adjustedArgs = append(adjustedArgs, filename)
-		}
+	resourceDir := p.resourceDir(args)
+	if resourceDir != "" {
+		return append(args, "-resource-dir", resourceDir)
 	}
-	adjustedArgs = append(adjustedArgs, "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
-	if !hasResourceDir {
-		resourceDir := p.resourceDir(args)
-		if resourceDir != "" {
-			adjustedArgs = append(adjustedArgs, "-resource-dir", resourceDir)
-		}
-	}
-	return adjustedArgs
+	return args
 }
 
 func getObjFilePath(fname string) string {
