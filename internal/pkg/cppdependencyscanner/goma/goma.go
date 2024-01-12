@@ -149,6 +149,11 @@ func (ds *DepsScanner) waitForRequests() {
 	}
 }
 
+// SupportsCache implements DepsScanner.SupportsCache.
+func (ds *DepsScanner) SupportsCache() bool {
+	return true
+}
+
 // Close releases resource associated with DepsScanner.
 func (ds *DepsScanner) Close() {
 	if ds.impl != nil {

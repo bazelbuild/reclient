@@ -145,6 +145,11 @@ func (ds *DepsScanner) ProcessInputs(ctx context.Context, execID string, compile
 	}
 }
 
+// SupportsCache implements DepsScanner.SupportsCache.
+func (ds *DepsScanner) SupportsCache() bool {
+	return false
+}
+
 // ShouldIgnorePlugin returns true if the plugin of given name should be ignored when passing compileCommand to the scanner
 func (ds *DepsScanner) ShouldIgnorePlugin(plugin string) bool {
 	_, present := ds.ignoredPluginsMap[plugin]

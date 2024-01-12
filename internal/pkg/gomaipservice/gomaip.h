@@ -39,6 +39,9 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
                       scandeps::StatusResponse*) override;
   grpc::Status Shutdown(grpc::ServerContext*, const google::protobuf::Empty*,
                         scandeps::StatusResponse*) override;
+  grpc::Status Capabilities(grpc::ServerContext*,
+                            const google::protobuf::Empty*,
+                            scandeps::CapabilitiesResponse*) override;
 
   void InitGoma();
 

@@ -61,3 +61,8 @@ func (ds *StubClient) ShouldIgnorePlugin(plugin string) bool {
 	log.Fatalf("Invalid call to StubClient.ShouldIgnorePlugin().")
 	return false
 }
+
+// SupportsCache implements DepsScanner.SupportsCache.
+func (ds *StubClient) SupportsCache() bool {
+	return false
+}

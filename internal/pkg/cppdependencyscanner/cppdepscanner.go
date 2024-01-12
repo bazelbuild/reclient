@@ -39,6 +39,7 @@ type DepsScanner interface {
 	ProcessInputs(ctx context.Context, execID string, compileCommand []string, filename, directory string, cmdEnv []string) ([]string, bool, error)
 	Close()
 	ShouldIgnorePlugin(plugin string) bool
+	SupportsCache() bool
 }
 
 // Executor can run commands and retrieve their outputs.
