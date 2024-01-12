@@ -27,9 +27,7 @@ import (
 
 	lpb "github.com/bazelbuild/reclient/api/log"
 	ppb "github.com/bazelbuild/reclient/api/proxy"
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
-	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
@@ -151,11 +149,6 @@ func TestCppEventTimes(t *testing.T) {
 // correctness of the deps cache as this is already covered by unit tests of the depscache package.
 func TestCppWithDepsCache(t *testing.T) {
 	ctx := context.Background()
-	if cppdependencyscanner.Type() == cppdependencyscanner.Goma {
-		// The goma input processor natively supports deps cache so the reproxy
-		// deps cache will not be initialized in this case.
-		return
-	}
 	ds := &stubCPPDependencyScanner{
 		processInputsReturnValue: []string{
 			"wd/ISoundTriggerClient.cpp",
@@ -1118,68 +1111,6 @@ func TestNoFileCache(t *testing.T) {
 	// But B should still have everything we want
 	if diff := cmp.Diff(wantIO, gotIOB, strSliceCmp); diff != "" {
 		t.Errorf("ProcessInputs(%v) returned diff in CommandIO, (-want +got): %s", opts, diff)
-	}
-}
-
-func TestGetDepsCacheMode(t *testing.T) {
-	tests := []struct {
-		name                      string
-		cacheDir                  string
-		enableDepsCache           bool
-		experimentalGomaDepsCache bool
-		want                      depsCacheMode
-	}{
-		{
-			name:            "NoCacheDir",
-			cacheDir:        "",
-			enableDepsCache: false,
-			want:            noDepsCache,
-		},
-		{
-			name:            "CacheDir",
-			cacheDir:        "/test/abc",
-			enableDepsCache: true,
-			want: func() depsCacheMode {
-				if cppdependencyscanner.Type() == cppdependencyscanner.Goma {
-					return gomaDepsCache
-				}
-				return reproxyDepsCache
-			}(),
-		},
-		{
-			name:                      "ExperimentalGomaCacheDir",
-			cacheDir:                  "/test/abc",
-			enableDepsCache:           true,
-			experimentalGomaDepsCache: true,
-			want:                      reproxyDepsCache,
-		},
-		{
-			name:                      "ExperimentalGomaNoCacheDir",
-			cacheDir:                  "",
-			experimentalGomaDepsCache: true,
-			enableDepsCache:           true,
-			want:                      noDepsCache,
-		},
-		{
-			name:            "CacheDirEnableDepsCacheFalse",
-			cacheDir:        "/test/abc",
-			enableDepsCache: false,
-			want:            noDepsCache,
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			old := features.GetConfig().ExperimentalGomaDepsCache
-			defer func() {
-				features.GetConfig().ExperimentalGomaDepsCache = old
-			}()
-			features.GetConfig().ExperimentalGomaDepsCache = tc.experimentalGomaDepsCache
-			if got := getDepsCacheMode(tc.cacheDir, tc.enableDepsCache); got != tc.want {
-				t.Errorf("getDepsCacheMode(%v, %v) with ExperimentalGomaNoCacheDir=%v returned %v, expected %v", tc.cacheDir, tc.enableDepsCache, tc.experimentalGomaDepsCache, got, tc.want)
-			}
-		})
 	}
 }
 

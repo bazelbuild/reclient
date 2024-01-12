@@ -47,9 +47,7 @@ go_test(
     deps = [
         "//api/log",
         "//api/proxy",
-        "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/execroot",
-        "//internal/pkg/features",
         "//internal/pkg/labels",
         "//internal/pkg/localresources",
         "//internal/pkg/logger",
