@@ -40,6 +40,23 @@ if ! bazelisk run --ui_event_filters=-info,-stderr --noshow_progress //linters:g
 else
   printf "\t\033[32mgolint\033[0m \033[0;30m\033[42mpass\033[0m\n"
 fi
+STAGED_CPP_FILES="$(git diff --cached --name-only --diff-filter=d | grep "\.cc$\|\.h$")"
+if [ -n "$STAGED_CPP_FILES" ]; then
+  echo Running clang-format...
+  if ! command -v clang-format &> /dev/null; then
+    printf "\033[0;30m\033[41mclang-format not installed! Install clang-format.\033[0m\n"
+    LINTPASS=false
+  else
+    non_depot_tools_clang_format="$(which -a clang-format | grep -v depot_tools | head -1)"
+    if [ -z "$non_depot_tools_clang_format" ];then
+      printf "\033[0;30m\033[41mOnly depot_tools clang-format is installed! Install clang-format.\033[0m\n"
+      LINTPASS=false
+    else
+      $non_depot_tools_clang_format -style=google -i $STAGED_CPP_FILES
+    fi
+  fi
+fi
+
 
 PASS=true
 if ! $LINTPASS; then

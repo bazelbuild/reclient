@@ -14,23 +14,24 @@
 
 #include "bridge.h"
 
-#include <iostream>
-#include <memory>
-#include <thread>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+
+#include <iostream>
+#include <memory>
+#include <thread>
 #ifndef GOMA_CPP_SERVICE
 #include <sys/file.h>
 #endif
-#include <set>
 #include <map>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #ifdef _WIN32
-# define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif
 
 #include "breakpad.h"
@@ -39,12 +40,12 @@
 #include "compiler_flags_parser.h"
 #include "compiler_info_cache.h"
 #include "compiler_info_state.h"
-#include "get_compiler_info_param.h"
 #include "compiler_type_specific_collection.h"
-#include "deps_cache.h"
 #include "cxx/include_processor/cpp_include_processor.h"
 #include "cxx/include_processor/include_cache.h"
+#include "deps_cache.h"
 #include "file_stat_cache.h"
+#include "get_compiler_info_param.h"
 #include "goma_init.h"
 #include "ioutil.h"
 #include "list_dir_cache.h"
@@ -68,37 +69,46 @@
 #ifndef __GLIBC_NEW__
 
 extern "C" {
-  int __glob_compatible(const char *pattern, int flags, int (*errfunc) (const char *epath, int errno), glob_t *pglob);
+int __glob_compatible(const char* pattern, int flags,
+                      int (*errfunc)(const char* epath, int errno),
+                      glob_t* pglob);
 }
 
 asm(".symver __glob_compatible, glob@GLIBC_2.2.5");
 
 extern "C" {
-  // Have the __wrap_glob func call to the symver'd version of glob via __glob_compatible.
-  int __wrap_glob(const char *pattern, int flags, int (*errfunc) (const char *epath, int errno), glob_t *pglob) {
-    return __glob_compatible(pattern, flags, errfunc, pglob);
-  }
+// Have the __wrap_glob func call to the symver'd version of glob via
+// __glob_compatible.
+int __wrap_glob(const char* pattern, int flags,
+                int (*errfunc)(const char* epath, int errno), glob_t* pglob) {
+  return __glob_compatible(pattern, flags, errfunc, pglob);
+}
 }
 #else
 extern "C" {
-  int __real_glob(const char *pattern, int flags, int (*errfunc) (const char *epath, int errno), glob_t *pglob);
-  // Have the __wrap_glob func call to the original version of glob via __real_glob.
-  int __wrap_glob(const char *pattern, int flags, int (*errfunc) (const char *epath, int errno), glob_t *pglob) {
-    return __real_glob(pattern, flags, errfunc, pglob);
-  }
+int __real_glob(const char* pattern, int flags,
+                int (*errfunc)(const char* epath, int errno), glob_t* pglob);
+// Have the __wrap_glob func call to the original version of glob via
+// __real_glob.
+int __wrap_glob(const char* pattern, int flags,
+                int (*errfunc)(const char* epath, int errno), glob_t* pglob) {
+  return __real_glob(pattern, flags, errfunc, pglob);
 }
-#endif // __GLIBC_NEW__
+}
+#endif  // __GLIBC_NEW__
 
-#endif // __linux__
+#endif  // __linux__
 
 #ifndef GOMA_CPP_SERVICE
 #include "_cgo_export.h"
 #else
 #include "subprocess.h"
-#include "subprocess_task.h"
 #include "subprocess_controller_client.h"
-// Exported by goma.go when reproxy is built, declare this when building the depsscanner service.
-void gComputeIncludesDone(uintptr_t req_ptr, std::set<std::string> &res, bool used_cache, std::string &err);
+#include "subprocess_task.h"
+// Exported by goma.go when reproxy is built, declare this when building the
+// depsscanner service.
+void gComputeIncludesDone(uintptr_t req_ptr, std::set<std::string>& res,
+                          bool used_cache, std::string& err);
 #endif
 
 #define REPROXY_CACHE_FILE "reproxy-gomaip.cache"
@@ -129,51 +139,49 @@ class Request;
 // across requests like CompilerInfo querying. The code mostly comes from
 // https://chromium.googlesource.com/infra/goma/client/+/refs/heads/main/client/compile_service.cc
 class IncludeProcessor {
-public:
-
+ public:
   unique_ptr<WorkerThreadManager> wm_;
   int include_processor_pool_;
-  int ComputeIncludes(const string& exec_id, const string& cwd, const vector<string>& args,
-                      const vector<string>& envs, uintptr_t req);
+  int ComputeIncludes(const string& exec_id, const string& cwd,
+                      const vector<string>& args, const vector<string>& envs,
+                      uintptr_t req);
   void ComputeIncludesDone(Request* request);
 
   void Quit();
-  IncludeProcessor(string tmpdir) : compiler_type_specific_collection_(
-                make_unique<CompilerTypeSpecificCollection>()),
-                wm_(make_unique<WorkerThreadManager>())
-  {
+  IncludeProcessor(string tmpdir)
+      : compiler_type_specific_collection_(
+            make_unique<CompilerTypeSpecificCollection>()),
+        wm_(make_unique<WorkerThreadManager>()) {
     wm_.get()->Start(FLAGS_COMPILER_PROXY_THREADS);
-    compiler_info_pool_ = wm_->StartPool(FLAGS_COMPILER_INFO_POOL, "compiler_info");
-    request_pool_ = wm_->StartPool(FLAGS_COMPILER_PROXY_THREADS, "request_pool");
-    include_processor_pool_ = wm_->StartPool(FLAGS_INCLUDE_PROCESSOR_THREADS, "include_processor");
+    compiler_info_pool_ =
+        wm_->StartPool(FLAGS_COMPILER_INFO_POOL, "compiler_info");
+    request_pool_ =
+        wm_->StartPool(FLAGS_COMPILER_PROXY_THREADS, "request_pool");
+    include_processor_pool_ =
+        wm_->StartPool(FLAGS_INCLUDE_PROCESSOR_THREADS, "include_processor");
 
 #ifdef GOMA_CPP_SERVICE
     SubProcessControllerClient::Initialize(wm_.get(), tmpdir);
 #endif
 
     load_deps_cache_ = make_unique<WorkerThreadRunner>(
-            wm_.get(), FROM_HERE,
-            NewCallback(DepsCache::LoadIfEnabled));
+        wm_.get(), FROM_HERE, NewCallback(DepsCache::LoadIfEnabled));
     load_compiler_info_cache_ = make_unique<WorkerThreadRunner>(
-            wm_.get(), FROM_HERE,
-            NewCallback(CompilerInfoCache::LoadIfEnabled));
+        wm_.get(), FROM_HERE, NewCallback(CompilerInfoCache::LoadIfEnabled));
   }
-  void GetCompilerInfo(const string exec_id,
-                       GetCompilerInfoParam* param,
+  void GetCompilerInfo(const string exec_id, GetCompilerInfoParam* param,
                        OneshotClosure* callback);
 
   CompilerTypeSpecificCollection* compiler_type_specific_collection() {
-        return compiler_type_specific_collection_.get();
+    return compiler_type_specific_collection_.get();
   }
 
-private:
-  void GetCompilerInfoInternal(
-            GetCompilerInfoParam* param,
-                  OneshotClosure* callback);
+ private:
+  void GetCompilerInfoInternal(GetCompilerInfoParam* param,
+                               OneshotClosure* callback);
   typedef std::pair<GetCompilerInfoParam*, OneshotClosure*> CompilerInfoWaiter;
   typedef std::vector<CompilerInfoWaiter> CompilerInfoWaiterList;
-  unique_ptr<CompilerTypeSpecificCollection>
-            compiler_type_specific_collection_;
+  unique_ptr<CompilerTypeSpecificCollection> compiler_type_specific_collection_;
   unique_ptr<WorkerThreadRunner> load_compiler_info_cache_;
   unique_ptr<WorkerThreadRunner> load_deps_cache_;
   mutable Lock gmu_;
@@ -181,9 +189,9 @@ private:
   int request_pool_;
   mutable Lock compiler_info_mu_;
   absl::flat_hash_map<std::string, CompilerInfoWaiterList*>
-            compiler_info_waiters_ ABSL_GUARDED_BY(compiler_info_mu_);
-  unordered_map<string, shared_ptr<Lock>>
-      compiler_info_locks_ ABSL_GUARDED_BY(gmu_);
+      compiler_info_waiters_ ABSL_GUARDED_BY(compiler_info_mu_);
+  unordered_map<string, shared_ptr<Lock>> compiler_info_locks_
+      ABSL_GUARDED_BY(gmu_);
 };
 
 // Request holds information about a single command we receive for input
@@ -191,7 +199,7 @@ private:
 // running the include scanner. Most of the code comes from
 // https://chromium.googlesource.com/infra/goma/client/+/refs/heads/main/client/compile_task.cc
 class Request {
-public:
+ public:
   unique_ptr<CompilerFlags> flags_;
   string exec_id_;
   const string cwd_;
@@ -209,37 +217,37 @@ public:
   uintptr_t go_req_;
 
   IncludeProcessor* processor_;
-  CompilerTypeSpecific *compiler_type_specific_;
+  CompilerTypeSpecific* compiler_type_specific_;
   ScopedCompilerInfoState compiler_info_state_;
   std::unique_ptr<FileStatCache> input_file_stat_cache_;
-  Request(const string exec_id, const string cwd, const vector<string>& args, const vector<string>& env):
-    exec_id_(exec_id), cwd_(cwd), args_(args), env_(env) {}
+  Request(const string exec_id, const string cwd, const vector<string>& args,
+          const vector<string>& env)
+      : exec_id_(exec_id), cwd_(cwd), args_(args), env_(env) {}
   void StartInputProcessing();
   void SaveToDepsCache();
 
-private:
+ private:
   void InputProcessingDone();
   void FillCompilerInfo();
   void FillCompilerInfoDone(std::unique_ptr<GetCompilerInfoParam> param);
   void StartIncludeProcessor();
   void RunIncludeProcessor(
-    std::unique_ptr<IncludeProcessorRequestParam> request_param);
+      std::unique_ptr<IncludeProcessorRequestParam> request_param);
   void RunIncludeProcessorDone(
-    std::unique_ptr<IncludeProcessorResponseParam> response_param);
+      std::unique_ptr<IncludeProcessorResponseParam> response_param);
 };
 
-void GetAdditionalEnv(const vector<string>& in_envs,
-                      const char* name,
+void GetAdditionalEnv(const vector<string>& in_envs, const char* name,
                       vector<string>* envs) {
   int namelen = strlen(name);
   for (const auto& e : in_envs) {
-  #ifdef _WIN32
+#ifdef _WIN32
     // environment variables are case insensitive on Windows
     // that means that we should pass on either PATH or Path
     if (strnicmp(e.c_str(), name, namelen) == 0 && e[namelen] == '=') {
-  #else
+#else
     if (strncmp(e.c_str(), name, namelen) == 0 && e[namelen] == '=') {
-  #endif
+#endif
       envs->push_back(e);
       return;
     }
@@ -268,26 +276,22 @@ void IncludeProcessor::Quit() {
   }
 }
 
-
-void IncludeProcessor::GetCompilerInfo(
-    const string exec_id,
-    GetCompilerInfoParam* param,
-    OneshotClosure* callback) {
-  VLOG(1)  << exec_id << ": Started GetCompilerInfo";
+void IncludeProcessor::GetCompilerInfo(const string exec_id,
+                                       GetCompilerInfoParam* param,
+                                       OneshotClosure* callback) {
+  VLOG(1) << exec_id << ": Started GetCompilerInfo";
   param->state.reset(CompilerInfoCache::instance()->Lookup(param->key));
   if (param->state.get() != nullptr) {
     param->cache_hit = true;
     callback->Run();
-    VLOG(1)  << exec_id << ": Finished GetCompilerInfo with cache hit";
+    VLOG(1) << exec_id << ": Finished GetCompilerInfo with cache hit";
     return;
   }
   {
     AUTOLOCK(lock, &compiler_info_mu_);
-    auto p = compiler_info_waiters_.insert(
-      std::make_pair(
-          param->key.ToString(
-              CompilerInfoCache::Key::kCwdRelative),
-          static_cast<CompilerInfoWaiterList*>(nullptr)));
+    auto p = compiler_info_waiters_.insert(std::make_pair(
+        param->key.ToString(CompilerInfoCache::Key::kCwdRelative),
+        static_cast<CompilerInfoWaiterList*>(nullptr)));
     if (p.second) {
       // first call for the key.
       p.first->second = new CompilerInfoWaiterList;
@@ -298,30 +302,28 @@ void IncludeProcessor::GetCompilerInfo(
       return;
     }
   }
-  VLOG(1)  << exec_id << ": Finished GetCompilerInfo";
-  wm_->RunClosureInPool(FROM_HERE,
-                        compiler_info_pool_,
-                        NewCallback(
-                            this, &IncludeProcessor::GetCompilerInfoInternal,
-                            param, callback),
-                        WorkerThread::PRIORITY_MED);
+  VLOG(1) << exec_id << ": Finished GetCompilerInfo";
+  wm_->RunClosureInPool(
+      FROM_HERE, compiler_info_pool_,
+      NewCallback(this, &IncludeProcessor::GetCompilerInfoInternal, param,
+                  callback),
+      WorkerThread::PRIORITY_MED);
 }
 
-void IncludeProcessor::GetCompilerInfoInternal(
-    GetCompilerInfoParam* param,
-    OneshotClosure* callback) {
+void IncludeProcessor::GetCompilerInfoInternal(GetCompilerInfoParam* param,
+                                               OneshotClosure* callback) {
   std::vector<std::string> env(param->run_envs);
   env.push_back("GOMA_WILL_FAIL_WITH_UKNOWN_FLAG=true");
   param->state.reset(CompilerInfoCache::instance()->Lookup(param->key));
   if (param->state.get() == nullptr) {
     SimpleTimer timer;
-    CompilerTypeSpecific *compiler_type_specific_ =
-            compiler_type_specific_collection()->Get(param->flags->type());
+    CompilerTypeSpecific* compiler_type_specific_ =
+        compiler_type_specific_collection()->Get(param->flags->type());
     std::unique_ptr<CompilerInfoData> cid(
-        compiler_type_specific_->BuildCompilerInfoData(*param->flags,
-                                    param->key.local_compiler_path, env));
-    param->state.reset(CompilerInfoCache::instance()->Store(
-        param->key, std::move(cid)));
+        compiler_type_specific_->BuildCompilerInfoData(
+            *param->flags, param->key.local_compiler_path, env));
+    param->state.reset(
+        CompilerInfoCache::instance()->Store(param->key, std::move(cid)));
     param->updated = true;
   }
   std::unique_ptr<CompilerInfoWaiterList> waiters;
@@ -340,26 +342,22 @@ void IncludeProcessor::GetCompilerInfoInternal(
   // param->state might be derefed so CompilerInfoState may be deleted.
   ScopedCompilerInfoState state(param->state.get());
 
-  wm_->RunClosureInThread(FROM_HERE,
-                          param->thread_id,
-                          callback,
+  wm_->RunClosureInThread(FROM_HERE, param->thread_id, callback,
                           WorkerThread::PRIORITY_MED);
   // param may be invalidated here.
-  CHECK(waiters.get() != nullptr)  << " state=" << state.get();
+  CHECK(waiters.get() != nullptr) << " state=" << state.get();
   for (const auto& p : *waiters) {
     GetCompilerInfoParam* wparam = p.first;
     OneshotClosure* wcallback = p.second;
     wparam->state.reset(state.get());
-    wm_->RunClosureInThread(FROM_HERE,
-                            wparam->thread_id,
-                            wcallback,
+    wm_->RunClosureInThread(FROM_HERE, wparam->thread_id, wcallback,
                             WorkerThread::PRIORITY_MED);
   }
 }
 
 void Request::FillCompilerInfo() {
   std::vector<std::string> run_envs;
-  VLOG(1)  << exec_id_ << ": Started FillCompilerInfo";
+  VLOG(1) << exec_id_ << ": Started FillCompilerInfo";
   // Used by nacl on Mac.
   GetAdditionalEnv(env_, "PATH", &run_envs);
 #ifdef _WIN32
@@ -373,27 +371,26 @@ void Request::FillCompilerInfo() {
   // used by (clang-)cl.exe
   GetAdditionalEnv(env_, "INCLUDE", &run_envs);
   GetAdditionalEnv(env_, "LIB", &run_envs);
-  #endif
+#endif
 
   auto param = std::make_unique<GetCompilerInfoParam>();
   param->thread_id = processor_->wm_->GetCurrentThreadId();
-  param->key = CompilerInfoCache::CreateKey(
-      *flags_,
-      flags_->args()[0],
-      run_envs);
-  VLOG(1)  << exec_id_ << ": local_compiler_path=" << param->key.local_compiler_path;
+  param->key =
+      CompilerInfoCache::CreateKey(*flags_, flags_->args()[0], run_envs);
+  VLOG(1) << exec_id_
+          << ": local_compiler_path=" << param->key.local_compiler_path;
   param->flags = flags_.get();
   param->run_envs = run_envs;
 
   GetCompilerInfoParam* param_pointer = param.get();
   processor_->GetCompilerInfo(
-      exec_id_,
-      param_pointer,
+      exec_id_, param_pointer,
       NewCallback(this, &Request::FillCompilerInfoDone, std::move(param)));
 }
 
-void Request::FillCompilerInfoDone(std::unique_ptr<GetCompilerInfoParam> param) {
-  VLOG(1)  << exec_id_ << ": Started FillCompilerInfoDone";
+void Request::FillCompilerInfoDone(
+    std::unique_ptr<GetCompilerInfoParam> param) {
+  VLOG(1) << exec_id_ << ": Started FillCompilerInfoDone";
   if (param->state.get() == nullptr) {
     err_ = "something went wrong trying to get compiler info.";
     processor_->ComputeIncludesDone(this);
@@ -413,7 +410,7 @@ void Request::FillCompilerInfoDone(std::unique_ptr<GetCompilerInfoParam> param) 
 
 void Request::StartIncludeProcessor() {
   auto b = compiler_type_specific_->SupportsDepsCache(*flags_);
-  VLOG(1)  << exec_id_ << ": Started StartIncludeProcessor";
+  VLOG(1) << exec_id_ << ": Started StartIncludeProcessor";
   if (DepsCache::IsEnabled() &&
       compiler_type_specific_->SupportsDepsCache(*flags_) &&
       flags_->input_filenames().size() == 1U) {
@@ -427,7 +424,8 @@ void Request::StartIncludeProcessor() {
     if (deps_identifier_.has_value() &&
         dc->GetDependencies(deps_identifier_, flags_->cwd(), abs_input_filename,
                             &required_files_, input_file_stat_cache_.get())) {
-      VLOG(1)  << exec_id_ << ": Used deps cache, found " << required_files_.size() << " dependencies";
+      VLOG(1) << exec_id_ << ": Used deps cache, found "
+              << required_files_.size() << " dependencies";
       depscache_used_ = true;
       processor_->ComputeIncludesDone(this);
       return;
@@ -441,35 +439,35 @@ void Request::StartIncludeProcessor() {
 
   OneshotClosure* closure = NewCallback(this, &Request::RunIncludeProcessor,
                                         std::move(request_param));
-  processor_->wm_->RunClosureInPool(
-      FROM_HERE, processor_->include_processor_pool_,
-      closure,
-      WorkerThread::PRIORITY_LOW);
+  processor_->wm_->RunClosureInPool(FROM_HERE,
+                                    processor_->include_processor_pool_,
+                                    closure, WorkerThread::PRIORITY_LOW);
 }
 
 void Request::RunIncludeProcessor(
     std::unique_ptr<IncludeProcessorRequestParam> request_param) {
-  VLOG(1)  << exec_id_ << ": Started RunIncludeProcessor";
+  VLOG(1) << exec_id_ << ": Started RunIncludeProcessor";
 
   // Pass ownership temporary to IncludeProcessor thread.
   request_param->file_stat_cache->AcquireOwner();
   auto command_spec = CommandSpec();
   command_spec.set_name(flags_->compiler_name());
-  VLOG(1)  << exec_id_ << ": Got owner of file stat cache";
-  VLOG(1)  << exec_id_ << ": checks " << (compiler_info_state_.get() != nullptr) << (request_param->file_stat_cache.get() != nullptr);
+  VLOG(1) << exec_id_ << ": Got owner of file stat cache";
+  VLOG(1) << exec_id_ << ": checks " << (compiler_info_state_.get() != nullptr)
+          << (request_param->file_stat_cache.get() != nullptr);
 
   CompilerTypeSpecific::IncludeProcessorResult result =
       compiler_type_specific_->RunIncludeProcessor(
-          exec_id_, *flags_, compiler_info_state_.get()->info(),
-          command_spec, request_param->file_stat_cache.get());
-  VLOG(1)  << exec_id_ << ": Got include processor result";
+          exec_id_, *flags_, compiler_info_state_.get()->info(), command_spec,
+          request_param->file_stat_cache.get());
+  VLOG(1) << exec_id_ << ": Got include processor result";
 
   auto response_param = absl::make_unique<IncludeProcessorResponseParam>();
   response_param->result = std::move(result);
   response_param->file_stat_cache = std::move(request_param->file_stat_cache);
   response_param->file_stat_cache->ReleaseOwner();
 
-  VLOG(1)  << exec_id_ << ": Finished RunIncludeProcessor";
+  VLOG(1) << exec_id_ << ": Finished RunIncludeProcessor";
   processor_->wm_->RunClosureInThread(
       FROM_HERE, thread_id_,
       NewCallback(this, &Request::RunIncludeProcessorDone,
@@ -479,7 +477,7 @@ void Request::RunIncludeProcessor(
 
 void Request::RunIncludeProcessorDone(
     std::unique_ptr<IncludeProcessorResponseParam> response_param) {
-  VLOG(1)  << exec_id_ << ": Started RunIncludeProcessorDone";
+  VLOG(1) << exec_id_ << ": Started RunIncludeProcessorDone";
   input_file_stat_cache_ = std::move(response_param->file_stat_cache);
   input_file_stat_cache_->AcquireOwner();
   required_files_ = std::move(response_param->result.required_files);
@@ -494,9 +492,8 @@ void Request::SaveToDepsCache() {
   // When deps_identifier_.has_value() is true, the condition to use DepsCache
   // should be satisfied. However, several checks are done for the safe.
   if (DepsCache::IsEnabled() && !depscache_used_ &&
-      compiler_type_specific_->SupportsDepsCache(*flags_) &&
-      err_ == "" && deps_identifier_.has_value() &&
-      flags_->input_filenames().size() == 1U) {
+      compiler_type_specific_->SupportsDepsCache(*flags_) && err_ == "" &&
+      deps_identifier_.has_value() && flags_->input_filenames().size() == 1U) {
     const std::string& input_filename = flags_->input_filenames()[0];
     const std::string& abs_input_filename =
         file::JoinPathRespectAbsolute(flags_->cwd(), input_filename);
@@ -505,60 +502,62 @@ void Request::SaveToDepsCache() {
                              abs_input_filename, required_files_,
                              input_file_stat_cache_.get())) {
       LOG(WARNING) << "Failed to save dependencies for action with input file "
-               << abs_input_filename;
+                   << abs_input_filename;
     } else {
-      VLOG(1)  << exec_id_ << ": Saved to deps cache";
+      VLOG(1) << exec_id_ << ": Saved to deps cache";
     }
   }
   VLOG(1) << exec_id_ << ": Finished SaveToDepsCache";
 }
 
 void Request::StartInputProcessing() {
-  VLOG(1)  << exec_id_ << ": Starting input processing";
+  VLOG(1) << exec_id_ << ": Starting input processing";
   input_file_stat_cache_ = absl::make_unique<FileStatCache>();
   flags_ = CompilerFlagsParser::MustNew(args_, cwd_);
-  compiler_type_specific_ = processor_->compiler_type_specific_collection()->Get(flags_->type());
+  compiler_type_specific_ =
+      processor_->compiler_type_specific_collection()->Get(flags_->type());
   vector<string> compiler_info_envs;
   thread_id_ = processor_->wm_->GetCurrentThreadId();
   err_ = "";
 
-  VLOG(1)  << exec_id_ << ": Input processing on thread " << thread_id_;
+  VLOG(1) << exec_id_ << ": Input processing on thread " << thread_id_;
   FillCompilerInfo();
 }
 
 void IncludeProcessor::ComputeIncludesDone(Request* request) {
-      VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
+  VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
 #ifndef GOMA_CPP_SERVICE
-      string s;
-      for (const auto &piece : request->required_files_) absl::StrAppend(&s, piece, ";");
-      VLOG(1) << request->exec_id_ << ": Started gComputeIncludesDone";
-      gComputeIncludesDone(request->go_req_, const_cast<char*>(s.c_str()),
-                           (int)request->depscache_used_, const_cast<char*>(request->err_.c_str()));
-      VLOG(1) << request->exec_id_ << ": Finished gComputeIncludesDone";
+  string s;
+  for (const auto& piece : request->required_files_)
+    absl::StrAppend(&s, piece, ";");
+  VLOG(1) << request->exec_id_ << ": Started gComputeIncludesDone";
+  gComputeIncludesDone(request->go_req_, const_cast<char*>(s.c_str()),
+                       (int)request->depscache_used_,
+                       const_cast<char*>(request->err_.c_str()));
+  VLOG(1) << request->exec_id_ << ": Finished gComputeIncludesDone";
 #else
-      gComputeIncludesDone(request->go_req_, request->required_files_,
-                           request->depscache_used_, request->err_);
+  gComputeIncludesDone(request->go_req_, request->required_files_,
+                       request->depscache_used_, request->err_);
 #endif
-      request->SaveToDepsCache();
-      delete request;
+  request->SaveToDepsCache();
+  delete request;
 }
 
-int IncludeProcessor::ComputeIncludes(const string& exec_id,
-    const string& cwd, const vector<string>& args,
-    const vector<string>& envs, uintptr_t req) {
+int IncludeProcessor::ComputeIncludes(const string& exec_id, const string& cwd,
+                                      const vector<string>& args,
+                                      const vector<string>& envs,
+                                      uintptr_t req) {
   // TODO(b/246553914): add logic to prevent a memory leak here.
   auto request = new Request(exec_id, cwd, args, envs);
   request->processor_ = this;
   request->go_req_ = req;
-  wm_->RunClosureInPool(FROM_HERE,
-         request_pool_,
-         NewCallback(
-             request, &Request::StartInputProcessing),
-         WorkerThread::PRIORITY_MED);
+  wm_->RunClosureInPool(FROM_HERE, request_pool_,
+                        NewCallback(request, &Request::StartInputProcessing),
+                        WorkerThread::PRIORITY_MED);
   return 0;
 }
 
-} // include_processor namespace
+}  // namespace include_processor
 
 // converts a vector of c++ std strings to an array of c strings
 unique_ptr<char*[]> toCStringsArray(const vector<string>& strings) {
@@ -571,35 +570,34 @@ unique_ptr<char*[]> toCStringsArray(const vector<string>& strings) {
 
 #ifndef GOMA_CPP_SERVICE
 // wraps Go function (with a C interface) with a C++ function expected by Goma
-string ReadCommandOutputWrapper(
-  const string& prog,
-  const vector<string>& argv,
-  const vector<string>& envs,
-  const string& cwd,
-  CommandOutputOption option,
-  int32_t* status) {
-
-  return gReadCommandOutput(const_cast<char*>(prog.c_str()), toCStringsArray(argv).get(), argv.size(),
-    toCStringsArray(envs).get(), envs.size(), const_cast<char*>(cwd.c_str()), option, status);
+string ReadCommandOutputWrapper(const string& prog, const vector<string>& argv,
+                                const vector<string>& envs, const string& cwd,
+                                CommandOutputOption option, int32_t* status) {
+  return gReadCommandOutput(const_cast<char*>(prog.c_str()),
+                            toCStringsArray(argv).get(), argv.size(),
+                            toCStringsArray(envs).get(), envs.size(),
+                            const_cast<char*>(cwd.c_str()), option, status);
 }
 #endif
 
-void* NewDepsScanner(const char* process_name, const char* cache_dir, const char* log_dir, int cache_file_max_mb, bool use_deps_cache) {
+void* NewDepsScanner(const char* process_name, const char* cache_dir,
+                     const char* log_dir, int cache_file_max_mb,
+                     bool use_deps_cache) {
   auto argc = 1;
-  char *argv[1];
-  argv[0] =strdup(process_name);
-  const char *envp[1];
+  char* argv[1];
+  argv[0] = strdup(process_name);
+  const char* envp[1];
   envp[0] = NULL;
 #ifdef _WIN32
   PlatformThread::SetName(GetCurrentThread(), "main");
-  // On Windows SubProcessController::Initialize does not use a fork to create a new process
-  // and does not initialize google logging, so it's safe to call InitLogging
-  // before SubProcessController::Initialize
+  // On Windows SubProcessController::Initialize does not use a fork to create a
+  // new process and does not initialize google logging, so it's safe to call
+  // InitLogging before SubProcessController::Initialize
   InitLogging(argv[0]);
-#endif // _WIN32
+#endif  // _WIN32
 
-FLAGS_log_dir=log_dir;
-Init(argc, argv, envp);
+  FLAGS_log_dir = log_dir;
+  Init(argc, argv, envp);
 
 #ifdef GOMA_CPP_SERVICE
   devtools_goma::SubProcessController::Options subproc_options;
@@ -607,14 +605,15 @@ Init(argc, argv, envp);
   subproc_options.max_subprocs_low_priority = FLAGS_MAX_SUBPROCS_LOW;
   subproc_options.max_subprocs_heavy_weight = FLAGS_MAX_SUBPROCS_HEAVY;
   subproc_options.dont_kill_subprocess = FLAGS_DONT_KILL_SUBPROCESS;
-  devtools_goma::SubProcessController::Initialize(process_name, subproc_options);
+  devtools_goma::SubProcessController::Initialize(process_name,
+                                                  subproc_options);
 #endif
 
 #ifndef _WIN32
-  // On *nix-es, SubProcessController::Initialize uses fork to create a new process
-  // and initializes google loging there. Hence, we should initialize logging only after
-  // :SubProcessController::Initialize is called to avoid getting FATAL due to duplicated
-  // google logging initialization.
+  // On *nix-es, SubProcessController::Initialize uses fork to create a new
+  // process and initializes google loging there. Hence, we should initialize
+  // logging only after :SubProcessController::Initialize is called to avoid
+  // getting FATAL due to duplicated google logging initialization.
   InitLogging(argv[0]);
 #endif
 
@@ -645,12 +644,12 @@ Init(argc, argv, envp);
   // We don't use CREATE_DEFAULT_ERROR_MODE for dwCreationFlags in
   // CreateProcess function.
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms680621(v=vs.85).aspx
-  UINT old_error_mode = SetErrorMode(
-      SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
-  LOG(INFO) << "Set error mode from " << old_error_mode
-            << " to " << GetErrorMode();
-#endif // NDEBUG
-#endif // _WIN32
+  UINT old_error_mode =
+      SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+  LOG(INFO) << "Set error mode from " << old_error_mode << " to "
+            << GetErrorMode();
+#endif  // NDEBUG
+#endif  // _WIN32
   if (FLAGS_COMPILER_PROXY_ENABLE_CRASH_DUMP) {
     InitCrashReporter(log_dir);
     LOG(INFO) << "breakpad is enabled in " << log_dir;
@@ -658,7 +657,7 @@ Init(argc, argv, envp);
 
 #ifndef GOMA_CPP_SERVICE
   InstallReadCommandOutputFunc(ReadCommandOutputWrapper);
-#else // GOMA_CPP_SERVICE
+#else  // GOMA_CPP_SERVICE
   InstallReadCommandOutputFunc(SubProcessTask::ReadCommandOutput);
 #endif
 
@@ -671,14 +670,12 @@ Init(argc, argv, envp);
   }
   IncludeCache::Init(FLAGS_MAX_INCLUDE_CACHE_ENTRIES, use_deps_cache);
   if (use_deps_cache) {
-    DepsCache::Init(
-    cache_filename,
-    FLAGS_DEPS_CACHE_IDENTIFIER_ALIVE_DURATION >= 0 ?
-        absl::optional<absl::Duration>(
-            absl::Seconds(FLAGS_DEPS_CACHE_IDENTIFIER_ALIVE_DURATION)) :
-        absl::nullopt,
-    FLAGS_DEPS_CACHE_TABLE_THRESHOLD,
-    cache_file_max_mb);
+    DepsCache::Init(cache_filename,
+                    FLAGS_DEPS_CACHE_IDENTIFIER_ALIVE_DURATION >= 0
+                        ? absl::optional<absl::Duration>(absl::Seconds(
+                              FLAGS_DEPS_CACHE_IDENTIFIER_ALIVE_DURATION))
+                        : absl::nullopt,
+                    FLAGS_DEPS_CACHE_TABLE_THRESHOLD, cache_file_max_mb);
   }
   modulemap::Cache::Init(FLAGS_MAX_MODULEMAP_CACHE_ENTRIES);
   ListDirCache::Init(FLAGS_MAX_LIST_DIR_CACHE_ENTRY_NUM);
@@ -689,14 +686,9 @@ Init(argc, argv, envp);
   return new include_processor::IncludeProcessor(tmpdir);
 }
 
-int ScanDependencies(void *impl,
-                     const char* exec_id,
-                     int argc,
-                     const char** argv,
-                     const char** envp,
-                     const char* filename,
-                     const char* dir,
-                     uintptr_t req) {
+int ScanDependencies(void* impl, const char* exec_id, int argc,
+                     const char** argv, const char** envp, const char* filename,
+                     const char* dir, uintptr_t req) {
   include_processor::IncludeProcessor* scanner =
       reinterpret_cast<include_processor::IncludeProcessor*>(impl);
   vector<string> arguments(argv, argv + argc);
@@ -709,7 +701,7 @@ int ScanDependencies(void *impl,
   return result;
 }
 
-void Close(void *impl) {
+void Close(void* impl) {
   include_processor::IncludeProcessor* scanner =
       reinterpret_cast<include_processor::IncludeProcessor*>(impl);
   LOG(INFO) << "Shutting down input processor";

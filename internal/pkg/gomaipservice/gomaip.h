@@ -28,8 +28,9 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
  public:
   GomaIPServiceImpl(std::function<void()> shutdown_server,
                     const char* process_name, std::string cache_dir,
-                    std::string log_dir, int cache_file_max_mb, bool use_deps_cache,
-                    uint32_t experimental_deadlock, uint32_t experimental_segfault);
+                    std::string log_dir, int cache_file_max_mb,
+                    bool use_deps_cache, uint32_t experimental_deadlock,
+                    uint32_t experimental_segfault);
   ~GomaIPServiceImpl();
   grpc::Status ProcessInputs(grpc::ServerContext*,
                              const scandeps::CPPProcessInputsRequest*,
@@ -40,6 +41,7 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
                         scandeps::StatusResponse*) override;
 
   void InitGoma();
+
  private:
   std::thread init_thread_;
   std::mutex init_mutex_;
@@ -48,7 +50,7 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
   std::atomic<std::size_t> current_actions_;
   std::atomic<std::size_t> completed_actions_;
   std::function<void()> shutdown_server_;
-  void *deps_scanner_cache_;
+  void* deps_scanner_cache_;
   const char* process_name_;
   std::string cache_dir_;
   std::string log_dir_;

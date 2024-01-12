@@ -30,22 +30,16 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-extern void* NewDepsScanner(const char* process_name,
-                            const char* cache_dir,
-                            const char* log_dir,
-                            int cache_file_max_mb,
+extern void* NewDepsScanner(const char* process_name, const char* cache_dir,
+                            const char* log_dir, int cache_file_max_mb,
                             bool use_deps_cache);
 
-extern void Close(void *impl);
+extern void Close(void* impl);
 
-extern int ScanDependencies(void *impl,
-                     const char* exec_id,
-                     int argc,
-                     const char** argv,
-                     const char** envp,
-                     const char* filename,
-                     const char* dir,
-                     uintptr_t req);
+extern int ScanDependencies(void* impl, const char* exec_id, int argc,
+                            const char** argv, const char** envp,
+                            const char* filename, const char* dir,
+                            uintptr_t req);
 
 #ifdef __cplusplus
 }

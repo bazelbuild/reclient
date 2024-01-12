@@ -32,49 +32,43 @@
 // See explanation example in https://thecharlatan.ch/GLIBC-Back-Compat/
 #ifdef __linux__
 extern "C" {
-  double __exp2_compatible(double);
-  double __pow_compatible(double, double);
-  float __log2f_compatible(float);
+double __exp2_compatible(double);
+double __pow_compatible(double, double);
+float __log2f_compatible(float);
 }
 
 #ifndef __GLIBC_NEW__
-  asm(".symver __exp2_compatible, exp2@GLIBC_2.2.5");
-  asm(".symver __pow_compatible, pow@GLIBC_2.2.5");
-  asm(".symver __log2f_compatible, log2f@GLIBC_2.2.5");
+asm(".symver __exp2_compatible, exp2@GLIBC_2.2.5");
+asm(".symver __pow_compatible, pow@GLIBC_2.2.5");
+asm(".symver __log2f_compatible, log2f@GLIBC_2.2.5");
 #else
-  asm(".symver __exp2_compatible, exp2@GLIBC_2.29");
-  asm(".symver __pow_compatible, pow@GLIBC_2.29");
-  asm(".symver __log2f_compatible, log2f@GLIBC_2.27");
-#endif // __GLIBC_NEW__
+asm(".symver __exp2_compatible, exp2@GLIBC_2.29");
+asm(".symver __pow_compatible, pow@GLIBC_2.29");
+asm(".symver __log2f_compatible, log2f@GLIBC_2.27");
+#endif  // __GLIBC_NEW__
 
 extern "C" {
-  double __wrap_exp2(double exp) {
-    return __exp2_compatible(exp);
-  }
+double __wrap_exp2(double exp) { return __exp2_compatible(exp); }
 
-  double __wrap_pow(double x, double y) {
-    return __pow_compatible(x, y);
-  }
+double __wrap_pow(double x, double y) { return __pow_compatible(x, y); }
 
-  float __wrap_log2f(float a) {
-    return __log2f_compatible(a);
-  }
+float __wrap_log2f(float a) { return __log2f_compatible(a); }
 }
-#endif // __linux__
+#endif  // __linux__
 
-class SingleCommandCompilationDatabase :
-    public clang::tooling::CompilationDatabase {
+class SingleCommandCompilationDatabase
+    : public clang::tooling::CompilationDatabase {
  public:
   SingleCommandCompilationDatabase(clang::tooling::CompileCommand Cmd)
       : Command(std::move(Cmd)) {}
 
-  std::vector<clang::tooling::CompileCommand>
-      getCompileCommands(llvm::StringRef FilePath) const override {
+  std::vector<clang::tooling::CompileCommand> getCompileCommands(
+      llvm::StringRef FilePath) const override {
     return {Command};
   }
 
-  std::vector<clang::tooling::CompileCommand> getAllCompileCommands() const override {
-
+  std::vector<clang::tooling::CompileCommand> getAllCompileCommands()
+      const override {
     return {Command};
   }
 
@@ -85,20 +79,14 @@ class SingleCommandCompilationDatabase :
 class DependencyScanner {
  public:
   DependencyScanner()
-      : Service(
-            clang::tooling::dependencies::DependencyScanningService(
-                clang::tooling::dependencies::ScanningMode::DependencyDirectivesScan,
-                clang::tooling::dependencies::ScanningOutputFormat::Make,
-            true, true)) {}
+      : Service(clang::tooling::dependencies::DependencyScanningService(
+            clang::tooling::dependencies::ScanningMode::
+                DependencyDirectivesScan,
+            clang::tooling::dependencies::ScanningOutputFormat::Make, true,
+            true)) {}
 
-  int getDependencies(
-      int argc,
-      const char** argv,
-      const char* filename,
-      const char* directory,
-      char** deps,
-      char** errp) {
-
+  int getDependencies(int argc, const char** argv, const char* filename,
+                      const char* directory, char** deps, char** errp) {
     std::vector<std::string> CommandLine;
     for (int i = 0; i < argc; i++) {
       CommandLine.push_back(std::string(argv[i]));
@@ -106,11 +94,10 @@ class DependencyScanner {
     std::string Filename(filename);
     std::string Directory(directory);
 
-    clang::tooling::CompileCommand command(
-        Directory, Filename, CommandLine, llvm::StringRef());
+    clang::tooling::CompileCommand command(Directory, Filename, CommandLine,
+                                           llvm::StringRef());
     std::unique_ptr<SingleCommandCompilationDatabase> Compilations =
-        std::make_unique<SingleCommandCompilationDatabase>(
-            std::move(command));
+        std::make_unique<SingleCommandCompilationDatabase>(std::move(command));
     // The command options are rewritten to run Clang in preprocessor only
     // mode.
     auto AdjustingCompilations =
@@ -124,21 +111,19 @@ class DependencyScanner {
     }
 
     std::unique_ptr<clang::tooling::dependencies::DependencyScanningTool>
-        WorkerTool =
-        std::make_unique<
-            clang::tooling::dependencies::DependencyScanningTool>(
-                Service);
+        WorkerTool = std::make_unique<
+            clang::tooling::dependencies::DependencyScanningTool>(Service);
 
     auto DependencyScanningRes =
         WorkerTool->getDependencyFile(cmds[0].CommandLine, Directory);
     if (!DependencyScanningRes) {
-          std::string ErrorMessage = "";
-          llvm::handleAllErrors(DependencyScanningRes.takeError(),
-                                [&ErrorMessage](llvm::StringError &Err) {
-                                  ErrorMessage += Err.getMessage();
-                                });
-          *errp = strdup(ErrorMessage.c_str());
-          return 1;
+      std::string ErrorMessage = "";
+      llvm::handleAllErrors(DependencyScanningRes.takeError(),
+                            [&ErrorMessage](llvm::StringError& Err) {
+                              ErrorMessage += Err.getMessage();
+                            });
+      *errp = strdup(ErrorMessage.c_str());
+      return 1;
     }
     *deps = strdup(DependencyScanningRes.get().c_str());
     return 0;
@@ -148,23 +133,15 @@ class DependencyScanner {
   clang::tooling::dependencies::DependencyScanningService Service;
 };
 
-void *NewDepsScanner() {
-  return new(DependencyScanner);
-}
+void* NewDepsScanner() { return new (DependencyScanner); }
 
-void DeleteDepsScanner(void *impl) {
+void DeleteDepsScanner(void* impl) {
   delete reinterpret_cast<DependencyScanner*>(impl);
 }
 
-int ScanDependencies(void *impl,
-                     int argc,
-                     const char** argv,
-                     const char* filename,
-                     const char* dir,
-                     char** deps,
+int ScanDependencies(void* impl, int argc, const char** argv,
+                     const char* filename, const char* dir, char** deps,
                      char** errs) {
-  DependencyScanner* scanner =
-      reinterpret_cast<DependencyScanner*>(impl);
-  return scanner->getDependencies(argc, argv, filename, dir,
-                                  deps, errs);
+  DependencyScanner* scanner = reinterpret_cast<DependencyScanner*>(impl);
+  return scanner->getDependencies(argc, argv, filename, dir, deps, errs);
 }

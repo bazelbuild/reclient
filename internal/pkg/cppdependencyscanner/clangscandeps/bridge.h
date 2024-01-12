@@ -27,15 +27,11 @@ extern "C" {
 
 extern void* NewDepsScanner();
 
-extern void DeleteDepsScanner(void *impl);
+extern void DeleteDepsScanner(void* impl);
 
-extern int ScanDependencies(void *impl,
-                     int argc,
-                     const char** argv,
-                     const char* filename,
-                     const char* dir,
-                     char** deps,
-                     char** errs);
+extern int ScanDependencies(void* impl, int argc, const char** argv,
+                            const char* filename, const char* dir, char** deps,
+                            char** errs);
 
 #ifdef __cplusplus
 }

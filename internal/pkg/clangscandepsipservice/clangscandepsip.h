@@ -20,9 +20,11 @@
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
 
-class ClangscandepsIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
+class ClangscandepsIPServiceImpl final
+    : public scandeps::CPPDepsScanner::Service {
  public:
-  ClangscandepsIPServiceImpl(const char* process_name, std::function<void()> shutdown_server);
+  ClangscandepsIPServiceImpl(const char* process_name,
+                             std::function<void()> shutdown_server);
   ~ClangscandepsIPServiceImpl();
   grpc::Status ProcessInputs(grpc::ServerContext*,
                              const scandeps::CPPProcessInputsRequest*,
@@ -42,12 +44,12 @@ class ClangscandepsIPServiceImpl final : public scandeps::CPPDepsScanner::Servic
   std::function<void()> shutdown_server_;
   std::mutex init_mutex_;
   std::time_t started_;
-  void *deps_scanner_cache_;
+  void* deps_scanner_cache_;
 
   std::vector<std::string> Parse(std::string deps);
   void PopulateStatusResponse(scandeps::StatusResponse*);
   void ScanDependenciesResult(ClangScanDepsResult& clangscandeps_result,
-                              void *impl, int argc, const char** argv,
+                              void* impl, int argc, const char** argv,
                               const char* filename, const char* dir,
                               char** deps, char** errs);
 };

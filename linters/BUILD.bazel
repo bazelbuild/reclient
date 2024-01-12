@@ -27,3 +27,20 @@ sh_binary(
         "manual",
     ],
 )
+
+sh_binary(
+    name = "clang-format",
+    srcs = ["run_in_workspace.sh"],
+    args = [
+        "$(location @llvm-project//clang:clang-format)",
+        "-style",
+        "google",
+    ],
+    data = [
+        "@llvm-project//clang:clang-format",
+    ],
+    tags = [
+        "local",
+        "manual",
+    ],
+)

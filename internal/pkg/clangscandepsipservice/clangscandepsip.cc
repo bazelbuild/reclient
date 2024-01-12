@@ -15,7 +15,7 @@
 #include "clangscandepsip.h"
 
 #ifdef _WIN32
-# define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif
 #include <glog/logging.h>
 
@@ -29,7 +29,8 @@ using scandeps::CPPProcessInputsRequest;
 using scandeps::CPPProcessInputsResponse;
 using scandeps::StatusResponse;
 
-// TODO(b/268656738): Refactor common code between this class and GomaIPServiceImpl.
+// TODO(b/268656738): Refactor common code between this class and
+// GomaIPServiceImpl.
 struct ClangscandepsIPServiceImpl::ClangScanDepsResult {
   bool result_complete = false;
   std::condition_variable result_condition;
@@ -38,18 +39,15 @@ struct ClangscandepsIPServiceImpl::ClangScanDepsResult {
 
 // Implementation of newDepsScanner from scandeps.h
 scandeps::CPPDepsScanner::Service* newDepsScanner(
-    std::function<void()> shutdown_server,
-    const char *process_name,
-    const char *cache_dir, const char *log_dir,
-    int deps_cache_max_mb, bool enable_deps_cache,
-    uint32_t experimental_deadlock,
+    std::function<void()> shutdown_server, const char* process_name,
+    const char* cache_dir, const char* log_dir, int deps_cache_max_mb,
+    bool enable_deps_cache, uint32_t experimental_deadlock,
     uint32_t experimental_segfault) {
   return new ClangscandepsIPServiceImpl(process_name, shutdown_server);
 }
 
 // Implementation of deleteDepsScanner from scandeps.h
-bool deleteDepsScanner(
-    scandeps::CPPDepsScanner::Service* grpc_service_impl) {
+bool deleteDepsScanner(scandeps::CPPDepsScanner::Service* grpc_service_impl) {
   ClangscandepsIPServiceImpl* clangscandepsip_service =
       static_cast<ClangscandepsIPServiceImpl*>(grpc_service_impl);
   // Do necessary shutdown of the dependency scanner
@@ -58,8 +56,8 @@ bool deleteDepsScanner(
   return true;
 }
 
-ClangscandepsIPServiceImpl::ClangscandepsIPServiceImpl(const char* process_name,
-                                                       std::function<void()> shutdown_server)
+ClangscandepsIPServiceImpl::ClangscandepsIPServiceImpl(
+    const char* process_name, std::function<void()> shutdown_server)
     : completed_actions_(0),
       current_actions_(0),
       shutdown_server_(shutdown_server),
@@ -69,14 +67,15 @@ ClangscandepsIPServiceImpl::ClangscandepsIPServiceImpl(const char* process_name,
   InitClangscandeps();
 }
 
-ClangscandepsIPServiceImpl::~ClangscandepsIPServiceImpl(){
+ClangscandepsIPServiceImpl::~ClangscandepsIPServiceImpl() {
   DeleteDepsScanner(deps_scanner_cache_);
 }
 
 void ClangscandepsIPServiceImpl::InitClangscandeps() {
   std::unique_lock<std::mutex> exp_lock(init_mutex_);
   if (deps_scanner_cache_ != nullptr) {
-    LOG(WARNING) << "Clangscandeps dependency scanner is already initialized and will not be reinitialized";
+    LOG(WARNING) << "Clangscandeps dependency scanner is already initialized "
+                    "and will not be reinitialized";
   } else {
     std::time_t start = std::time(0);
     deps_scanner_cache_ = NewDepsScanner();
@@ -84,14 +83,15 @@ void ClangscandepsIPServiceImpl::InitClangscandeps() {
     if (deps_scanner_cache_ == nullptr) {
       LOG(FATAL) << "Unable to create new clangscandeps dependency scanner";
     }
-    LOG(INFO) << "Initializing clangscandeps dependency scanner took " << end - start << " seconds";
+    LOG(INFO) << "Initializing clangscandeps dependency scanner took "
+              << end - start << " seconds";
   }
   init_cv_.notify_all();
 }
 
-Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
-                                                 const CPPProcessInputsRequest* request,
-                                                 CPPProcessInputsResponse* response){
+Status ClangscandepsIPServiceImpl::ProcessInputs(
+    ServerContext* context, const CPPProcessInputsRequest* request,
+    CPPProcessInputsResponse* response) {
   (void)context;
 
   ++current_actions_;
@@ -102,7 +102,7 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
     if (deps_scanner_cache_ == nullptr) {
       // If we're here, ProcessInputs somehow beat the init thread.
       // Release the lock and wait for the init thread to signal that it's done.
-      init_cv_.wait(init_lock, [&]{return deps_scanner_cache_ != nullptr;});
+      init_cv_.wait(init_lock, [&] { return deps_scanner_cache_ != nullptr; });
     }
   }
 
@@ -115,8 +115,14 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
   char* depsStr = nullptr;
   char* errStr = nullptr;
   std::unique_lock<std::mutex> result_lock(clangscandeps_result.result_mutex);
-  ScanDependenciesResult(clangscandeps_result, deps_scanner_cache_, request->command_size(), argv.data(), request->filename().c_str(), request->directory().c_str(), &depsStr, &errStr);
-  clangscandeps_result.result_condition.wait(result_lock, [&clangscandeps_result]() { return clangscandeps_result.result_complete; });
+  ScanDependenciesResult(clangscandeps_result, deps_scanner_cache_,
+                         request->command_size(), argv.data(),
+                         request->filename().c_str(),
+                         request->directory().c_str(), &depsStr, &errStr);
+  clangscandeps_result.result_condition.wait(
+      result_lock, [&clangscandeps_result]() {
+        return clangscandeps_result.result_complete;
+      });
 
   if (errStr != nullptr) {
     std::string err(errStr);
@@ -124,8 +130,10 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
 
     std::ostringstream command;
     std::copy(request->command().begin(), request->command().end(),
-            std::ostream_iterator<std::string>(command, " "));
-    LOG(ERROR) << "Clangscandeps encountered the following error processing a command: \"" << errStr << "\"; Command: [" << command.str() << "]";
+              std::ostream_iterator<std::string>(command, " "));
+    LOG(ERROR) << "Clangscandeps encountered the following error processing a "
+                  "command: \""
+               << errStr << "\"; Command: [" << command.str() << "]";
     free(errStr);
   }
 
@@ -148,14 +156,9 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(ServerContext* context,
 }
 
 void ClangscandepsIPServiceImpl::ScanDependenciesResult(
-    ClangScanDepsResult& clangscandeps_result,
-    void *impl,
-    int argc,
-    const char** argv,
-    const char* filename,
-    const char* dir,
-    char** deps,
-    char** errs){
+    ClangScanDepsResult& clangscandeps_result, void* impl, int argc,
+    const char** argv, const char* filename, const char* dir, char** deps,
+    char** errs) {
   ScanDependencies(impl, argc, argv, filename, dir, deps, errs);
   clangscandeps_result.result_complete = true;
   clangscandeps_result.result_condition.notify_all();
@@ -166,7 +169,8 @@ void ClangscandepsIPServiceImpl::ScanDependenciesResult(
 // <input> is space sparated
 // '\'+newline is space
 // '\'+space is an escaped space (not separater)
-std::vector<std::string> ClangscandepsIPServiceImpl::Parse(std::string depsStr){
+std::vector<std::string> ClangscandepsIPServiceImpl::Parse(
+    std::string depsStr) {
   std::vector<std::string> dependencies;
 
   // Skip until ':'
@@ -190,12 +194,12 @@ std::vector<std::string> ClangscandepsIPServiceImpl::Parse(std::string depsStr){
     }
 
     // \\ followed by \n is a space. Skip this character.
-    if (c == '\\' && i + 1 < deps.length() && deps[i+1] == '\n') {
+    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == '\n') {
       continue;
     }
 
     // \\ followed by a ' ' is not an escape character. Only append ' '.
-    if (c == '\\' && i + 1 < deps.length() && deps[i+1] == ' ') {
+    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == ' ') {
       dependency += ' ';
       i++;
     } else {
@@ -210,9 +214,9 @@ std::vector<std::string> ClangscandepsIPServiceImpl::Parse(std::string depsStr){
   return dependencies;
 }
 
-Status ClangscandepsIPServiceImpl::Status(ServerContext* context,
-                                          const google::protobuf::Empty* request,
-                                          StatusResponse* response){
+Status ClangscandepsIPServiceImpl::Status(
+    ServerContext* context, const google::protobuf::Empty* request,
+    StatusResponse* response) {
   (void)context;
   (void)request;
 
@@ -222,9 +226,9 @@ Status ClangscandepsIPServiceImpl::Status(ServerContext* context,
   return grpc::Status::OK;
 }
 
-Status ClangscandepsIPServiceImpl::Shutdown(ServerContext* context,
-                                     const google::protobuf::Empty* request,
-                                     StatusResponse* response){
+Status ClangscandepsIPServiceImpl::Shutdown(
+    ServerContext* context, const google::protobuf::Empty* request,
+    StatusResponse* response) {
   (void)context;
   (void)request;
 
@@ -238,7 +242,8 @@ Status ClangscandepsIPServiceImpl::Shutdown(ServerContext* context,
   return grpc::Status::OK;
 }
 
-void ClangscandepsIPServiceImpl::PopulateStatusResponse(scandeps::StatusResponse* response) {
+void ClangscandepsIPServiceImpl::PopulateStatusResponse(
+    scandeps::StatusResponse* response) {
   response->set_name("ClangscandepsIP");
   response->set_version("1.0.0-beta");
   google::protobuf::Duration* uptime = new google::protobuf::Duration();
