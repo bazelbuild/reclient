@@ -1,42 +1,47 @@
 diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-index 5e9986fe0e62..7e1cd757ff9e 100644
+index 99a6942341fb..acffa72124d8 100644
 --- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-@@ -31,6 +31,10 @@ cc_binary(
+@@ -40,6 +40,13 @@ cc_binary(
      copts = [
          "$(STACK_FRAME_UNLIMITED)",
      ],
 +    linkopts = select({
-+        "@bazel_tools//src/conditions:windows": ["-luuid", "-lole32"],
++        "@bazel_tools//src/conditions:windows": [
++            "-luuid",
++            "-lole32",
++        ],
 +        "//conditions:default": ["-ldl"],
 +    }),
      stamp = 0,
      deps = [
          ":support",
 diff --git a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
-index f5f82ab3fffd..51651967df1d 100644
+index 9de9ad8ae2ff..848e86b57c4a 100644
 --- a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
-@@ -581,6 +581,10 @@ cc_binary(
-     deps = [
-         ":tblgen",
-     ],
+@@ -702,6 +702,13 @@ cc_binary(
+         "include/llvm/TargetParser/SubtargetFeature.h",
+     ]),
+     copts = llvm_copts,
 +    linkopts = select({
-+        "@bazel_tools//src/conditions:windows": ["-luuid", "-lole32"],
++        "@bazel_tools//src/conditions:windows": [
++            "-luuid",
++            "-lole32",
++        ],
 +        "//conditions:default": [],
 +    }),
- )
- 
- gentbl(
+     stamp = 0,
+     deps = [
+         ":CodeGenTypes",
 diff --git a/utils/bazel/llvm-project-overlay/llvm/config.bzl b/utils/bazel/llvm-project-overlay/llvm/config.bzl
-index 5beb3cc7c410..f62d0602aa65 100644
+index b15ec9e1bb39..3e70b04cf193 100644
 --- a/utils/bazel/llvm-project-overlay/llvm/config.bzl
 +++ b/utils/bazel/llvm-project-overlay/llvm/config.bzl
-@@ -68,6 +68,8 @@ win32_defines = [
+@@ -75,6 +75,7 @@ win32_defines = [
      # LLVM features
      r'LTDL_SHLIB_EXT=\".dll\"',
      r'LLVM_PLUGIN_EXT=\".dll\"',
-+
 +    "HAVE_UNISTD_H=1",
  ]
  

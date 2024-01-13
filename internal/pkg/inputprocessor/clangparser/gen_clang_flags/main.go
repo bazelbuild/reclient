@@ -280,13 +280,14 @@ func parseOptions(m map[string]interface{}) (Options, error) {
 		if *verbose {
 			log.Printf("key %s option %v", key, o)
 		}
-		if contains(o.flags, "NoDriverOption") {
+		if len(o.visibility) > 0 && !contains(o.visibility, "DefaultVis") && !contains(o.visibility, "CLOption") {
 			if *verbose {
-				log.Printf("key %s skip NoDriverOption", key)
+				log.Printf("key %s skip ", key)
 			}
 			continue
 		}
-		if contains(o.flags, "CoreOption") {
+		switch {
+		case contains(o.visibility, "DefaultVis"):
 			err = setOption(&options.Clang, o)
 			if err != nil {
 				return options, fmt.Errorf("set %v in clang: %v", o, err)
@@ -295,14 +296,12 @@ func parseOptions(m map[string]interface{}) (Options, error) {
 			if err != nil {
 				return options, fmt.Errorf("set %v in clang-cl: %v", o, err)
 			}
-			continue
-		}
-		if contains(o.flags, "CLOption") || contains(o.flags, "CLDXCOption") {
+		case contains(o.visibility, "CLOption"):
 			err = setOption(&options.ClangCL, o)
 			if err != nil {
 				return options, fmt.Errorf("set %v in clang-cl: %v", o, err)
 			}
-		} else {
+		default:
 			err = setOption(&options.Clang, o)
 			if err != nil {
 				return options, fmt.Errorf("set %v in clang: %v", o, err)
@@ -362,11 +361,11 @@ func setOption(od *OptionDefs, o opt) error {
 // helpers
 
 type opt struct {
-	kind     string
-	name     string
-	prefixes []string
-	numArgs  int
-	flags    []string
+	kind       string
+	name       string
+	prefixes   []string
+	numArgs    int
+	visibility []string
 }
 
 func parseOpt(m map[string]interface{}) (opt, error) {
@@ -391,9 +390,9 @@ func parseOpt(m map[string]interface{}) (opt, error) {
 	case "KIND_REMAINING_ARGS", "KIND_REMAINING_ARGS_JOIND":
 		o.numArgs = -1
 	}
-	o.flags, ok = getDefs(m, "Flags")
+	o.visibility, ok = getDefs(m, "Visibility")
 	if !ok {
-		return o, fmt.Errorf("`Flags` not found in %v", m)
+		return o, fmt.Errorf("`Visibility` not found in %v", m)
 	}
 	return o, nil
 }

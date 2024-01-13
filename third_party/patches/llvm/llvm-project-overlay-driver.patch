@@ -1,12 +1,56 @@
 diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-index 79feb0689a5c..710d42617a0e 100644
+index 66fe263dcef1..68d66a436bae 100644
 --- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-@@ -1327,7 +1327,6 @@ cc_library(
+@@ -1540,7 +1540,6 @@ cc_library(
          "lib/Driver",
      ],
      linkopts = select({
--        "@bazel_tools//src/conditions:windows": ["version.lib"],
+-        "@platforms//os:windows": ["version.lib"],
          "//conditions:default": [],
      }),
      textual_hdrs = glob([
+diff --git a/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl b/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl
+--- a/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl	(revision e2b7481ea712878b167920a5174d23071e8ff70b)
++++ b/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl	(date 1705732595364)
+@@ -47,7 +47,7 @@
+             outs = [out],
+             tools = [tblgen],
+             message = "Generating code from table: %s" % td_file,
+-            cmd = (("$(location %s) -I %s/llvm/include " +
++            cmd = (("export PATH=$$PATH:/c/tools/msys64/mingw64/bin; $(location %s) -I %s/llvm/include " +
+                     "-I %s/clang/include " +
+                     "-I $$(dirname $(location %s)) " +
+                     "%s $(location %s) %s -o $@") % (
+
+diff --git a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
+--- a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel	(revision e2b7481ea712878b167920a5174d23071e8ff70b)
++++ b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel	(date 1705595523961)
+@@ -649,6 +649,13 @@
+         "utils/TableGen/VTEmitter.cpp",
+     ],
+     copts = llvm_copts,
++    linkopts = select({
++        "@bazel_tools//src/conditions:windows": [
++            "-luuid",
++            "-lole32",
++        ],
++        "//conditions:default": ["-ldl"],
++    }),
+     stamp = 0,
+     deps = [
+         ":Support",
+@@ -1214,6 +1221,13 @@
+
+ gentbl(
+     name = "RISCVTargetParserDefGen",
++    linkopts = select({
++        "@bazel_tools//src/conditions:windows": [
++            "-luuid",
++            "-lole32",
++        ],
++        "//conditions:default": ["-ldl"],
++    }),
+     tbl_outs = [("-gen-riscv-target-def", "include/llvm/TargetParser/RISCVTargetParserDef.inc")],
+     tblgen = ":llvm-min-tblgen",
+     td_file = "lib/Target/RISCV/RISCV.td",

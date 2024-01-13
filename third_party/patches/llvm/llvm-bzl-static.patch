@@ -1,15 +1,22 @@
 diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-index 5d6bcc15cb95..f80c58e5ebdf 100644
+index acffa72124d8..66fe263dcef1 100644
 --- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-@@ -1111,6 +1111,10 @@ cc_library(
-         ":tooling",
-         "//llvm:Support",
+@@ -1292,10 +1292,17 @@ cc_library(
      ],
+ )
+ 
++# Need to patch tooling_dependency_scanning
++# https://github.com/bazelbuild/rules_go/issues/2848
++# Not ideal, but can't compile binaries without this.
+ cc_library(
+     name = "tooling_dependency_scanning",
+     srcs = glob(["lib/Tooling/DependencyScanning/**/*.cpp"]),
+     hdrs = glob(["include/clang/Tooling/DependencyScanning/**/*.h"]),
 +    linkstatic = select({
 +        "@bazel_tools//src/conditions:windows": True,
 +        "//conditions:default": False,
-+    })
- )
- 
- cc_library(
++    }),
+     deps = [
+         ":basic",
+         ":codegen",

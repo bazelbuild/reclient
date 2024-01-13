@@ -1,8 +1,8 @@
 diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-index 0c6f0069c783..e7a0218cf12a 100644
+index 037719a51dd1..99a6942341fb 100644
 --- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-@@ -1320,6 +1320,20 @@ gentbl(
+@@ -1484,6 +1484,20 @@ gentbl(
      ],
  )
  

@@ -1,6 +1,7 @@
 workspace(name = "re_client")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 http_archive(
     name = "bazel_skylib",
@@ -216,6 +217,14 @@ http_archive(
         # It's not needed to build @llvm-project//clang:tooling_dependency_scanning
         # that's used by clang dependency scanner
         "//third_party/patches/llvm:llvm-project-overlay-driver.patch",
+        # Replace @llvm-raw with @llvm so we can build llvm inside of re-client.
+        # In the llvm-project checkout, @llvm-raw is defined the WORKSPACE file
+        # and point to the root of llvm-project; However, when we invoke the
+        # line `llvm_configure(name = "llvm-project")` below, in the bzl file,
+        # @llvm//utils/bazel:configure.bzl, @llvm-raw is not pre-defined.
+        "//third_party/patches/llvm:llvm-bzl-config.patch",
+        # Disable @llvm_zstd//:zstd on Windows build
+        "//third_party/patches/llvm:llvm-bzl-zstd.patch",
     ],
     sha256 = LLVM_SHA256,
     strip_prefix = "llvm-project-%s" % LLVM_COMMIT,
@@ -225,11 +234,38 @@ http_archive(
     ],
 )
 
-load("@llvm//utils/bazel:configure.bzl", "llvm_configure", "llvm_disable_optional_support_deps")
+load("@llvm//utils/bazel:configure.bzl", "llvm_configure")
 
 llvm_configure(name = "llvm-project")
 
-llvm_disable_optional_support_deps()
+# Need to keep zlib and zstd below to build LLVM on Windows.
+# We also need to have a patch to disable the use of zstd on Windows.
+# See: third_party/patches/llvm/llvm-bzl-zstd.patch
+# Without these two libs, windows build through err msg like this:
+# https://paste.googleplex.com/5724967793065984
+# Without the patch to disable zstd on Windows, we get err msg like this:
+# https://paste.googleplex.com/4613455502376960
+maybe(
+    http_archive,
+    name = "llvm_zlib",
+    build_file = "@llvm//utils/bazel/third_party_build:zlib-ng.BUILD",
+    sha256 = "e36bb346c00472a1f9ff2a0a4643e590a254be6379da7cddd9daeb9a7f296731",
+    strip_prefix = "zlib-ng-2.0.7",
+    urls = [
+        "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.0.7.zip",
+    ],
+)
+
+maybe(
+    http_archive,
+    name = "llvm_zstd",
+    build_file = "@llvm//utils/bazel/third_party_build:zstd.BUILD",
+    sha256 = "7c42d56fac126929a6a85dbc73ff1db2411d04f104fae9bdea51305663a83fd0",
+    strip_prefix = "zstd-1.5.2",
+    urls = [
+        "https://github.com/facebook/zstd/releases/download/v1.5.2/zstd-1.5.2.tar.gz",
+    ],
+)
 
 # This grpc section must come after llvm
 http_archive(

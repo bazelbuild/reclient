@@ -1,5 +1,5 @@
 diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h
-index 84d9cfb2e21b..a0806f2c1bf9 100644
+index fcaa57402bc2..fc040dd6030a 100644
 --- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h
 +++ b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64InstPrinter.h
 @@ -16,7 +16,7 @@
@@ -11,19 +11,6 @@ index 84d9cfb2e21b..a0806f2c1bf9 100644
  
  namespace llvm {
  
-diff --git a/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h b/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h
-index b5b12200505b..eb8caf701265 100644
---- a/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h
-+++ b/llvm/lib/Target/WebAssembly/MCTargetDesc/WebAssemblyMCTargetDesc.h
-@@ -14,7 +14,7 @@
- #ifndef LLVM_LIB_TARGET_WEBASSEMBLY_MCTARGETDESC_WEBASSEMBLYMCTARGETDESC_H
- #define LLVM_LIB_TARGET_WEBASSEMBLY_MCTARGETDESC_WEBASSEMBLYMCTARGETDESC_H
- 
--#include "../WebAssemblySubtarget.h"
-+#include "WebAssemblySubtarget.h"
- #include "llvm/BinaryFormat/Wasm.h"
- #include "llvm/MC/MCInstrDesc.h"
- #include "llvm/Support/DataTypes.h"
 diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp
 index 8be32d2effa6..744007855c6b 100644
 --- a/llvm/utils/TableGen/GlobalISel/GIMatchDag.cpp
@@ -77,7 +64,7 @@ index 6a9e33ac515e..994f4c8d40a6 100644
  
  using namespace llvm;
 diff --git a/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp b/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp
-index d98884493e84..13570de86ea7 100644
+index 23697fd9e2e2..463e9e3358bc 100644
 --- a/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp
 +++ b/llvm/utils/TableGen/GlobalISel/GIMatchTree.cpp
 @@ -9,7 +9,7 @@
