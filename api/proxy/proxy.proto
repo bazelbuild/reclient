@@ -204,7 +204,8 @@ message LocalExecutionOptions {
   // Whether to accept remotely cached action results. Defaults to true.
   bool accept_cached = 3;
 
-  // Wrapper path to run command locally.
+  // Wrapper path to run command locally. Relative to the working directory
+  // of the command.
   string wrapper = 4;
 }
 
@@ -220,7 +221,8 @@ message RemoteExecutionOptions {
 
   reserved 4;
 
-  // Wrapper path to run command in remote worker.
+  // Wrapper path to run command in remote worker. Relative to the working
+  // directory of the command.
   string wrapper = 5;
 
   // When set, local working directory is replaced with a canonicalized form

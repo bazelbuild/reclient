@@ -34,6 +34,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/pkg/version"
@@ -472,6 +473,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		// Add remote wrapper to toolchain for toolchain input processing. remote wrapper is similar
 		// to explicitly passed toolchains in that it may have dependencies and will need to be
 		// findable and executable on the remote machine.
+		rw = pathtranslator.RelToExecRoot(cmd.ExecRoot, cmd.WorkingDir, rw)
 		ti = append(ti, rw)
 	}
 	aCtx, cancel := cancelWithCause(ctx)
