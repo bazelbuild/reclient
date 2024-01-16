@@ -48,29 +48,10 @@ type executor interface {
 	ExecuteInBackground(ctx context.Context, cmd *command.Command, oe outerr.OutErr, ch chan *command.Result) error
 }
 
-// ScannerType is the type of C++ include scanner.
-type ScannerType int
-
-const (
-	// ClangScanDeps is used for include scanning.
-	ClangScanDeps ScannerType = iota
-	// Goma input processor is used for include scanning.
-	Goma
-	// GomaService indicates goma dependency scanner based input processor
-	// is used for include scanning.
-	GomaService
-	// ClangScanDepsService indicates clangscandeps dependency scanner based input processor
-	// is used for include scanning.
-	ClangScanDepsService
-)
-
 var (
 	// ErrDepsScanTimeout is the error returned by the input processor
 	// when it times out during the dependency scanning phase.
 	ErrDepsScanTimeout = errors.New("cpp dependency scanner timed out")
-	// UseDepsScannerService indicates whether we should use
-	// the dependency scanner service or not.
-	UseDepsScannerService = false
 )
 
 // IsStub reflects if the built-in deps scanner is a stub.
@@ -79,32 +60,6 @@ var (
 // build rules.
 func IsStub() bool {
 	return includescanner.IsStub
-}
-
-// Type returns the type of include scaner being used.
-func Type() ScannerType {
-	useGoma := includescanner.Name == "Goma"
-	if UseDepsScannerService {
-		if useGoma {
-			return GomaService
-		}
-		return ClangScanDepsService
-	}
-	if useGoma {
-		return Goma
-	}
-	return ClangScanDeps
-}
-
-// Name returns the name of include scanner used in the current binary.
-func Name() string {
-	if UseDepsScannerService {
-		if includescanner.Name == "Goma" {
-			return "GomaService"
-		}
-		return "ClangScanDepsService"
-	}
-	return includescanner.Name
 }
 
 // New creates new DepsScanner.

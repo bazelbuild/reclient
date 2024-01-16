@@ -186,7 +186,6 @@ func main() {
 			}
 			*depsScannerAddress = "exec://" + scandepsServerPath
 		}
-		cppdependencyscanner.UseDepsScannerService = true
 		// If the depsscanner crashes or times out, all actions in flight will be counted as
 		// timeouts.  Therefore we bump the number allowed to account for multiple fallbacks from
 		// one failure.
@@ -196,7 +195,6 @@ func main() {
 	} else if cppdependencyscanner.IsStub() {
 		log.Fatalf("--depsscanner_address must be specified")
 	}
-	log.Infof("IncludeScanner = %v", cppdependencyscanner.Name())
 	log.Flush()
 	version.PrintAndExitOnVersionFlag(true)
 	verifyFlags()
@@ -483,7 +481,7 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e logger.ExportActionM
 		if err != nil {
 			return nil, fmt.Errorf("error initializing logger: %v", err)
 		}
-		l, err := logger.New(format, proxyLogDir[0], cppdependencyscanner.Name(), stats.New(), mi, e, u)
+		l, err := logger.New(format, proxyLogDir[0], stats.New(), mi, e, u)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing logger: %v", err)
 		}
@@ -491,7 +489,7 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e logger.ExportActionM
 	}
 
 	if *logPath != "" {
-		l, err := logger.NewFromFormatFile(*logPath, cppdependencyscanner.Name(), stats.New(), mi, e, u)
+		l, err := logger.NewFromFormatFile(*logPath, stats.New(), mi, e, u)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing log file %v: %v", *logPath, err)
 		}

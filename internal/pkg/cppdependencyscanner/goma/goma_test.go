@@ -178,7 +178,7 @@ func TestGomaTimeout(t *testing.T) {
 func newLogger(t *testing.T) (*logger.Logger, string) {
 	t.Helper()
 	execRoot := t.TempDir()
-	l, err := logger.New(logger.TextFormat, execRoot, Name, stats.New(), nil, nil, nil)
+	l, err := logger.New(logger.TextFormat, execRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to initialize logger: %v", err)
 	}

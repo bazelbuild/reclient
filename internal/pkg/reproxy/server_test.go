@@ -142,7 +142,7 @@ func TestRemote(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestRemote_CanonicalWorkingDir(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -447,7 +447,7 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -596,7 +596,7 @@ func TestRemoteWithReclientTimeout(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -753,7 +753,7 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 			server.SetREClient(env.Client, func() {})
-			lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+			lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 			if err != nil {
 				t.Errorf("logger.New() returned error: %v", err)
 			}
@@ -896,7 +896,7 @@ func TestRemoteWithSingleActionLog(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -999,7 +999,7 @@ func TestNoRemoteOnInputFail(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1050,7 +1050,7 @@ func TestLERCNoDeps(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1194,7 +1194,7 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1356,7 +1356,7 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1543,7 +1543,7 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1703,7 +1703,7 @@ func TestLERCLocalFailure(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1814,7 +1814,7 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -1995,7 +1995,7 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -2310,7 +2310,7 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -2445,7 +2445,7 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -2633,7 +2633,7 @@ func TestLERCMismatches(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -2807,7 +2807,7 @@ func TestCompareStashRestore(t *testing.T) {
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(nil, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
 	t.Cleanup(server.DrainAndReleaseResources)
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -2896,7 +2896,7 @@ func TestNumRetriesIfMismatched(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -3133,7 +3133,7 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -3294,7 +3294,7 @@ func TestCompareWithReruns(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -3550,7 +3550,7 @@ func TestNoRerunWhenNoCompareMode(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -3680,7 +3680,7 @@ func TestRemoteLocalFallback(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -3932,7 +3932,7 @@ func TestFailEarly(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go server.monitorFailBuildConditions(ctx, 500*time.Millisecond)
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4099,7 +4099,7 @@ func TestRunCommand_LabelDigestAddedToCommandID(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4238,7 +4238,7 @@ func TestLocalFallback(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4333,7 +4333,7 @@ func TestLocalFallback_EnvVariables(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4436,7 +4436,7 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4570,7 +4570,7 @@ func TestRacingRemoteWins(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4684,7 +4684,7 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4788,7 +4788,7 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -4942,7 +4942,7 @@ func TestRacing_DownloadOutputs(t *testing.T) {
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 			server.SetREClient(env.Client, func() {})
-			lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+			lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 			if err != nil {
 				t.Errorf("logger.New() returned error: %v", err)
 			}
@@ -5103,7 +5103,7 @@ func TestRacingRemoteWins_PreserveUnchangedOutputMtime(t *testing.T) {
 			server.Init()
 			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 			server.SetREClient(env.Client, func() {})
-			lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+			lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 			if err != nil {
 				t.Errorf("logger.New() returned error: %v", err)
 			}
@@ -5199,7 +5199,7 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -5322,7 +5322,7 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -5429,7 +5429,7 @@ func TestRacingLocalWins(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -5538,7 +5538,7 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -5648,7 +5648,7 @@ func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -5796,7 +5796,7 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 	}
 	t.Cleanup(release)
 
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -5921,7 +5921,7 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 	t.Cleanup(cancel)
 	t.Cleanup(wg.Wait)
 
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -6030,7 +6030,7 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 	})
 	t.Cleanup(cancel)
 
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -6306,7 +6306,7 @@ func TestCacheSilo(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -6417,7 +6417,7 @@ func TestRemoteDisabled(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}
@@ -6503,7 +6503,7 @@ func TestProxyInfoUptime(t *testing.T) {
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(ds, false, nil, resMgr), func() {})
 	server.SetREClient(env.Client, func() {})
-	lg, err := logger.New(logger.TextFormat, env.ExecRoot, "testScanner", stats.New(), nil, nil, nil)
+	lg, err := logger.New(logger.TextFormat, env.ExecRoot, stats.New(), nil, nil, nil)
 	if err != nil {
 		t.Errorf("error initializing logger: %v", err)
 	}

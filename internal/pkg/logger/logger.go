@@ -303,7 +303,7 @@ func ParseFilepath(formatfile string) (Format, string, error) {
 
 // NewFromFormatFile instantiates a new Logger.
 // TODO(b/279057640): this is deprecated, remove and use New instead when --log_path flag is gone.
-func NewFromFormatFile(formatfile, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
+func NewFromFormatFile(formatfile string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
 	format, filepath, err := ParseFilepath(formatfile)
 	if err != nil {
 		return nil, err
@@ -316,7 +316,7 @@ func NewFromFormatFile(formatfile, includeScanner string, s statCollector, mi *i
 		return nil, err
 	}
 	log.Infof("Created log file %s", filepath)
-	return newLogger(format, f, nil, includeScanner, s, mi, e, u), nil
+	return newLogger(format, f, nil, s, mi, e, u), nil
 }
 
 func logFileSuffix(format Format) string {
@@ -334,7 +334,7 @@ func logFileSuffix(format Format) string {
 	}
 }
 
-func newLogger(format Format, recs, info *os.File, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) *Logger {
+func newLogger(format Format, recs, info *os.File, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) *Logger {
 	l := &Logger{
 		Format:   format,
 		ch:       make(chan logEvent),
@@ -343,9 +343,7 @@ func newLogger(format Format, recs, info *os.File, includeScanner string, s stat
 		info: &lpb.ProxyInfo{
 			EventTimes: make(map[string]*cpb.TimeInterval),
 			Metrics:    make(map[string]*lpb.Metric),
-			Flags: map[string]string{
-				"include_scanner": includeScanner,
-			},
+			Flags:      make(map[string]string),
 		},
 		stats:               s,
 		mi:                  mi,
@@ -371,7 +369,7 @@ func (l *Logger) startBackgroundProcess() {
 }
 
 // New instantiates a new Logger.
-func New(format Format, dir, includeScanner string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
+func New(format Format, dir string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", format)
 	}
@@ -388,7 +386,7 @@ func New(format Format, dir, includeScanner string, s statCollector, mi *ignorem
 		return nil, err
 	}
 	log.Infof("Created log file %s", filename)
-	return newLogger(format, recs, info, includeScanner, s, mi, e, u), nil
+	return newLogger(format, recs, info, s, mi, e, u), nil
 }
 
 // AddEventTimeToProxyInfo will add an reproxy level event to the ProxyInfo object.

@@ -10,17 +10,6 @@ go_library(
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//:__subpackages__"],
-    # x_defs attribute substitutes the string with given values.
-    # Refer to https://github.com/bazelbuild/rules_go/blob/master/go/core.rst#defines-and-stamping.
-    x_defs = select({
-        "//:goma_input_processor_service_config": {
-            "Name": "Goma",
-        },
-        "//:clangscandeps_input_processor_service_config": {
-            "Name": "ClangScanDeps",
-        },
-        "//conditions:default": {},
-    }),
     deps = [
         "//api/scandeps",
         "//internal/pkg/logger",
