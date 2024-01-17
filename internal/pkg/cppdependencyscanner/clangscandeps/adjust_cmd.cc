@@ -28,19 +28,20 @@ bool IsClangClCommand(std::string exec) {
 }
 
 // Adjusts the given command to be compatible with clangscandeps.
-void clangscandeps::AdjustCmd(std::vector<std::string>* cmd,
-                              std::string filename) {
-  if (cmd->empty()) {
+void clangscandeps::AdjustCmd(std::vector<std::string>& cmd,
+                              std::string filename,
+                              const std::set<std::string>& ignoredPlugins) {
+  if (cmd.empty()) {
     return;
   }
   bool hasMT = false;
   bool hasMQ = false;
   bool hasMD = false;
   std::string lastO = "";
-  for (int i = cmd->size() - 1; i > 0; i--) {
-    auto arg = cmd->at(i);
+  for (auto i = cmd.size() - 1; i > 0; i--) {
+    auto arg = cmd.at(i);
     if (arg == "-o") {
-      lastO = cmd->at(i + 1);
+      lastO = cmd.at(i + 1);
     } else if (arg == "-MT") {
       hasMT = true;
     } else if (arg == "-MQ") {
@@ -48,15 +49,21 @@ void clangscandeps::AdjustCmd(std::vector<std::string>* cmd,
     } else if (arg == "-MD") {
       hasMD = true;
     }
+    // Check for -Xclang -add-plugin -Xclang [ignored-plugin]
+    if (i + 3 < cmd.size() && arg == "-Xclang" && cmd[i + 1] == "-add-plugin" &&
+        cmd[i + 2] == "-Xclang" &&
+        ignoredPlugins.find(cmd[i + 3]) != ignoredPlugins.end()) {
+      cmd.erase(cmd.begin() + i, cmd.begin() + i + 4);
+    }
   }
-  bool isClangCl = IsClangClCommand(cmd->front());
+  bool isClangCl = IsClangClCommand(cmd.front());
   if (isClangCl) {
-    cmd->push_back("/FoNUL");
+    cmd.push_back("/FoNUL");
   } else {
-    cmd->insert(cmd->end(), {"-o", "/dev/null"});
+    cmd.insert(cmd.end(), {"-o", "/dev/null"});
   }
   if (!isClangCl && !hasMT && !hasMQ) {
-    cmd->insert(cmd->end(), {"-M", "-MT"});
+    cmd.insert(cmd.end(), {"-M", "-MT"});
     if (!hasMD) {
       // FIXME: We are missing the directory
       // unless the -o value is an absolute path.
@@ -66,14 +73,14 @@ void clangscandeps::AdjustCmd(std::vector<std::string>* cmd,
         if (dotPos != std::string::npos) {
           objName = objName.substr(0, dotPos);
         }
-        cmd->push_back(objName + ".o");
+        cmd.push_back(objName + ".o");
       } else {
-        cmd->push_back(lastO);
+        cmd.push_back(lastO);
       }
     } else {
-      cmd->push_back(filename);
+      cmd.push_back(filename);
     }
   }
-  cmd->insert(cmd->end(), {"-Xclang", "-Eonly", "-Xclang", "-sys-header-deps",
-                           "-Wno-error"});
+  cmd.insert(cmd.end(), {"-Xclang", "-Eonly", "-Xclang", "-sys-header-deps",
+                         "-Wno-error"});
 }

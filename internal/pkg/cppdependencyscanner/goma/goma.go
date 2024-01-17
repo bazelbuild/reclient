@@ -124,7 +124,7 @@ func newGomaCppImpl(cacheDir, logDir string, cacheFileMaxMb int, useDepsCache bo
 // New creates new DepsScanner.
 // The function's definition needs to be identical with the one in clangscandeps.go
 // so reclient can be built with various dependency scanner implementations.
-func New(fmc filemetadata.Cache, cacheDir, logDir string, cacheFileMaxMb int, _ []string, useDepsCache bool, l *logger.Logger) *DepsScanner {
+func New(fmc filemetadata.Cache, cacheDir, logDir string, cacheFileMaxMb int, useDepsCache bool, l *logger.Logger) *DepsScanner {
 	ds := &DepsScanner{
 		l:              l,
 		cacheDir:       cacheDir,
@@ -240,12 +240,6 @@ func gComputeIncludesDone(reqPtr C.uintptr_t, res *C.char, usedCache C.int, errS
 		usedCache: int(usedCache) != 0,
 	}
 }
-
-// ShouldIgnorePlugin returns true if the plugin of given name should be ignored when passing compileCommand to the scanner
-func (ds *DepsScanner) ShouldIgnorePlugin(_ string) bool {
-	return false
-}
-
 func parse(deps string, dir string) []string {
 	d := strings.Split(deps, ";")
 	absDeps := make([]string, 0, len(d))

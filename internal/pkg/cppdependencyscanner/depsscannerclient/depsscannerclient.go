@@ -74,23 +74,22 @@ const (
 
 // DepsScannerClient wraps the dependency scanner gRPC client.
 type DepsScannerClient struct {
-	ctx               context.Context
-	terminate         context.CancelFunc
-	address           string
-	executable        string
-	cacheDir          string
-	ignoredPluginsMap map[string]bool
-	cacheFileMaxMb    int
-	useDepsCache      bool
-	logDir            string
-	client            pb.CPPDepsScannerClient
-	executor          executor
-	oe                outerr.OutErr
-	ch                chan *command.Result
-	serviceRestarted  time.Time
-	m                 sync.Mutex
-	capabilities      *pb.CapabilitiesResponse
-	capabilitiesMu    sync.RWMutex
+	ctx              context.Context
+	terminate        context.CancelFunc
+	address          string
+	executable       string
+	cacheDir         string
+	cacheFileMaxMb   int
+	useDepsCache     bool
+	logDir           string
+	client           pb.CPPDepsScannerClient
+	executor         executor
+	oe               outerr.OutErr
+	ch               chan *command.Result
+	serviceRestarted time.Time
+	m                sync.Mutex
+	capabilities     *pb.CapabilitiesResponse
+	capabilitiesMu   sync.RWMutex
 }
 
 var (
@@ -129,21 +128,15 @@ var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient
 var connTimeout = 30 * time.Second
 
 // New creates new DepsScannerClient.
-func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, ignoredPlugins []string, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string) (*DepsScannerClient, error) {
+func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string) (*DepsScannerClient, error) {
 	log.Infof("Connecting to remote dependency scanner: %v", depsScannerAddress)
-
-	ignoredPluginsMap := map[string]bool{}
-	for _, plugin := range ignoredPlugins {
-		ignoredPluginsMap[plugin] = true
-	}
 	client := &DepsScannerClient{
-		address:           depsScannerAddress,
-		executor:          executor,
-		cacheDir:          cacheDir,
-		logDir:            logDir,
-		ignoredPluginsMap: ignoredPluginsMap,
-		cacheFileMaxMb:    cacheFileMaxMb,
-		useDepsCache:      useDepsCache,
+		address:        depsScannerAddress,
+		executor:       executor,
+		cacheDir:       cacheDir,
+		logDir:         logDir,
+		cacheFileMaxMb: cacheFileMaxMb,
+		useDepsCache:   useDepsCache,
 		// TODO (b/260707840): context shouldn't be a member variable. Pass in as function variable elsewhere and remote this.
 		ctx: ctx,
 	}
@@ -402,12 +395,6 @@ func (ds *DepsScannerClient) ProcessInputs(ctx context.Context, execID string, c
 		}
 		return absDeps, resp.UsedCache, nil
 	}
-}
-
-// ShouldIgnorePlugin implements DepsScanner.ShouldIgnorePlugin.
-func (ds *DepsScannerClient) ShouldIgnorePlugin(plugin string) bool {
-	_, present := ds.ignoredPluginsMap[plugin]
-	return present
 }
 
 func (ds *DepsScannerClient) updateCapabilities(ctx context.Context) error {

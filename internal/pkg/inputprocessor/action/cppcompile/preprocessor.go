@@ -94,7 +94,6 @@ var (
 // functionality to find input dependencies given a compile command.
 type CPPDependencyScanner interface {
 	ProcessInputs(ctx context.Context, execID string, command []string, filename, directory string, cmdEnv []string) ([]string, bool, error)
-	ShouldIgnorePlugin(plugin string) bool
 }
 
 type resourceDirInfo struct {
@@ -256,14 +255,7 @@ func (p *Preprocessor) BuildCommandLine(outputFlag string, outputFlagJoined bool
 	for _, flag := range p.Flags.Flags {
 		key, value := flag.Key, flag.Value
 		if key == clangCompilerArgFlag {
-			argsLen := len(args)
 			if _, present := toRemoveXclangFlags[value]; present {
-				continue
-			}
-			// If current flag is -Xclang [ignored-plugin] that's preceded by -Xclang -add-plugin
-			// skip -Xclang [ignored-plugin] and pop the last 2 arguments (-Xclang -add-plugin)
-			if p.CPPDepScanner.ShouldIgnorePlugin(value) && argsLen >= 2 && args[argsLen-2] == clangCompilerArgFlag && args[argsLen-1] == "-add-plugin" {
-				args = args[:argsLen-2]
 				continue
 			}
 		}

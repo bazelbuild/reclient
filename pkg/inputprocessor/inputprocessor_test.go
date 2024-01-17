@@ -154,7 +154,6 @@ func TestCppWithDepsCache(t *testing.T) {
 			"wd/ISoundTriggerClient.cpp",
 			"wd/frameworks/av/soundtrigger/ISoundTriggerClient.cpp",
 		},
-		ignoredPluginsMap: map[string]bool{"foo": true},
 	}
 	existingFiles := []string{
 		filepath.Clean("wd/libc++.so.1"),
@@ -169,8 +168,7 @@ func TestCppWithDepsCache(t *testing.T) {
 	ip.depsCache, cleanup = newDepsCache(fmc, er, nil)
 
 	cmd := []string{"clang++", "-c", "-o", "test.o",
-		"-Xclang", "-add-plugin", "-Xclang", "foo", // should be stripped because it's included in clangDepsScanIgnoredPlugins
-		"-Xclang", "-add-plugin", "-Xclang", "bar", // should be present in arguments sent to the dependency scanner
+		"-Xclang", "-add-plugin", "-Xclang", "bar",
 		"-MF", "test.d", "test.cpp"}
 	lbls := map[string]string{
 		"type":     "compile",
@@ -1119,18 +1117,12 @@ type stubCPPDependencyScanner struct {
 	processInputsError       error
 	calls                    int
 	processInputsArgs        []string
-	ignoredPluginsMap        map[string]bool
 }
 
 func (s *stubCPPDependencyScanner) ProcessInputs(_ context.Context, _ string, args []string, _ string, _ string, _ []string) ([]string, bool, error) {
 	s.processInputsArgs = args
 	s.calls++
 	return s.processInputsReturnValue, false, s.processInputsError
-}
-
-func (s *stubCPPDependencyScanner) ShouldIgnorePlugin(plugin string) bool {
-	_, present := s.ignoredPluginsMap[plugin]
-	return present
 }
 
 type execStub struct {
