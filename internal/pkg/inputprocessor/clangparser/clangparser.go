@@ -120,6 +120,7 @@ func (s *State) HandleClangFlags(nextRes *args.NextResult, f *flags.CommandFlags
 		"-fprofile-use=",
 		"-fsanitize-blacklist=",
 		"-fsanitize-ignorelist=",
+		"-fsanitize-coverage-allowlist=",
 		"-fprofile-sample-use=",
 		"--prefix=",
 		"-fprofile-list=":
