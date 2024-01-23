@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 
@@ -103,6 +104,21 @@ func TestSpec(t *testing.T) {
 		"-std=c++14", // expect to NOT be normalized (b/215203594)
 		"-Qunused-arguments",
 		filepath.Join(pwd, "test.cpp"),
+	}
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+		wantCmd = append(wantCmd, []string{
+			// adjusted
+			"-o",
+			"/dev/null",
+			"-M",
+			"-MT",
+			filepath.Join(pwd, "test.o"),
+			"-Xclang",
+			"-Eonly",
+			"-Xclang",
+			"-sys-header-deps",
+			"-Wno-error",
+		}...)
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd, opt); diff != "" {
 		t.Errorf("CPP command from clang-tidy command %v had diff (-want +got): %s", p.Flags, diff)

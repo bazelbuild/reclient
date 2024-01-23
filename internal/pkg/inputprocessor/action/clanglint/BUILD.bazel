@@ -19,6 +19,7 @@ go_test(
     srcs = ["preprocessor_test.go"],
     embed = [":clanglint"],
     deps = [
+        "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/action/cppcompile",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

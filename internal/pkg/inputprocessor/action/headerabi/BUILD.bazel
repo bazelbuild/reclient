@@ -24,6 +24,7 @@ go_test(
     ],
     embed = [":headerabi"],
     deps = [
+        "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/execroot",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/action/cppcompile",

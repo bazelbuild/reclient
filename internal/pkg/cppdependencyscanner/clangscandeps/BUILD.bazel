@@ -1,7 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-# gazelle:ignore adjust_cmd.*
-
 filegroup(
     name = "bridge_cc",
     srcs = ["bridge.cc"],
@@ -14,39 +12,6 @@ filegroup(
     visibility = ["//internal/pkg/cppdependencyscanner/clangscandepsservice:__pkg__"],
 )
 
-cc_library(
-    name = "adjust_cmd",
-    srcs = [
-        "adjust_cmd.cc",
-        "adjust_cmd.h",
-    ],
-    hdrs = [
-        "adjust_cmd.h",
-    ],
-    visibility = ["//internal/pkg/cppdependencyscanner/clangscandepsservice:__pkg__"],
-    target_compatible_with = select({
-        "//:clangscandeps_input_processor_service_config": [],
-        "//:clangscandeps_input_processor_config": [],
-        "//conditions:default": ["@platforms//:incompatible"],
-    }),
-)
-
-cc_test(
-    name = "adjust_cmd_test",
-    size = "small",
-    srcs = ["adjust_cmd_test.cc"],
-    deps = [
-        ":adjust_cmd",
-        "@com_google_googletest//:gtest_main",
-        "@llvm-project//clang:tooling_dependency_scanning",
-    ],
-    target_compatible_with = select({
-        "//:clangscandeps_input_processor_service_config": [],
-        "//:clangscandeps_input_processor_config": [],
-        "//conditions:default": ["@platforms//:incompatible"],
-    }),
-)
-
 go_library(
     name = "clangscandeps",
     srcs = [
@@ -54,10 +19,7 @@ go_library(
         "bridge.h",
         "clangscandeps.go",
     ],
-    cdeps = [
-        "@llvm-project//clang:tooling_dependency_scanning",
-        ":adjust_cmd",
-    ],
+    cdeps = ["@llvm-project//clang:tooling_dependency_scanning"],
     cgo = True,
     clinkopts = select({
         "@io_bazel_rules_go//go/platform:android": [

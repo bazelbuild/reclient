@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/clangcl",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/action/cppcompile",
         "//internal/pkg/inputprocessor/args",
@@ -28,6 +29,7 @@ go_test(
     ],
     embed = [":clangcl"],
     deps = [
+        "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/execroot",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/action/cppcompile",
