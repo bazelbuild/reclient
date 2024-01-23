@@ -75,15 +75,14 @@ var (
 
 var (
 	proxyLogDir                []string
-	clangDepScanIgnoredPlugins = flag.String("clang_depscan_ignored_plugins", "", `Comma-separated list of plugins that should be ignored by clang dependency scanner.
-	Use this flag if you're using custom llvm build as your toolchain and your llvm plugins cause dependency scanning failures.`)
-	serverAddr               = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
-	logFormat                = flag.String("log_format", "reducedtext", "Format of proxy log. Currently only text and reducedtext are supported. Defaults to reducedtext.")
-	logPath                  = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
-	mismatchIgnoreConfigPath = flag.String("mismatch_ignore_config_path", "", "If provided, mismatches will be ignored according to the provided rule config.")
-	enableDepsCache          = flag.Bool("enable_deps_cache", false, "Enables the deps cache if --cache_dir is provided")
-	cacheDir                 = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
-	keepRecords              = flag.Int("num_records_to_keep", 0, "The number of last executed records to keep in memory for serving.")
+	clangDepScanIgnoredPlugins []string
+	serverAddr                 = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	logFormat                  = flag.String("log_format", "reducedtext", "Format of proxy log. Currently only text and reducedtext are supported. Defaults to reducedtext.")
+	logPath                    = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
+	mismatchIgnoreConfigPath   = flag.String("mismatch_ignore_config_path", "", "If provided, mismatches will be ignored according to the provided rule config.")
+	enableDepsCache            = flag.Bool("enable_deps_cache", false, "Enables the deps cache if --cache_dir is provided")
+	cacheDir                   = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
+	keepRecords                = flag.Int("num_records_to_keep", 0, "The number of last executed records to keep in memory for serving.")
 	// TODO(b/157446611): remove this flag.
 	_                     = flag.String("cpp_dependency_scanner_plugin", "", "Deprecated: Location of the CPP dependency scanner plugin.")
 	localResourceFraction = flag.Float64("local_resource_fraction", 1, "Number [0,1] indicating how much of the local machine resources are available for local execution, 1 being all of the machine's CPUs and RAM, 0 being no resources available for local execution.")
@@ -157,12 +156,13 @@ func verifyFlags() {
 	if *failEarlyMinActionCount > 0 && *failEarlyMinFallbackRatio == 0 {
 		log.Exitf("fail_early_min_action_count is set to %v while fail_early_min_fallback_ratio is disabled", *failEarlyMinActionCount)
 	}
-	os.Setenv("RBE_clang_depscan_ignored_plugins", *clangDepScanIgnoredPlugins)
 }
 
 func main() {
 	flag.Var((*moreflag.StringListValue)(&proxyLogDir), "proxy_log_dir", "If provided, the directory path to a proxy log file of executed records.")
 	flag.StringVar(&filemetadata.XattrDigestName, "xattr_digest", "", "Extended file attribute to obtain the digest from, if available, formatted as hash/size. If the value contains the hash only, the file size as reported by stat is used.")
+	flag.Var((*moreflag.StringListValue)(&clangDepScanIgnoredPlugins), "clang_depscan_ignored_plugins", `Comma-separated list of plugins that should be ignored by clang dependency scanner.
+Use this flag if you're using custom llvm build as your toolchain and your llvm plugins cause dependency scanning failures.`)
 	flag.Var((*moreflag.StringMapValue)(&labels), "metrics_labels", "Comma-separated key value pairs in the form key=value. This is used to add arbitrary labels to exported metrics.")
 	rbeflag.Parse()
 	rbeflag.LogAllFlags(0)
@@ -317,14 +317,15 @@ func main() {
 	server.Init()
 
 	ipOpts := &inputprocessor.Options{
-		CacheDir:           *cacheDir,
-		EnableDepsCache:    *enableDepsCache,
-		LogDir:             logDir,
-		DepsCacheMaxMb:     *depsCacheMaxMb,
-		CppLinkDeepScan:    *cppLinkDeepScan,
-		IPTimeout:          *ipTimeout,
-		DepsScannerAddress: *depsScannerAddress,
-		ProxyServerAddress: *serverAddr,
+		CacheDir:                    *cacheDir,
+		EnableDepsCache:             *enableDepsCache,
+		LogDir:                      logDir,
+		DepsCacheMaxMb:              *depsCacheMaxMb,
+		ClangDepsScanIgnoredPlugins: clangDepScanIgnoredPlugins,
+		CppLinkDeepScan:             *cppLinkDeepScan,
+		IPTimeout:                   *ipTimeout,
+		DepsScannerAddress:          *depsScannerAddress,
+		ProxyServerAddress:          *serverAddr,
 	}
 	go func() {
 		log.Infof("Setting up input processor")

@@ -117,14 +117,15 @@ const (
 
 // Options adds extra control for the input processor
 type Options struct {
-	EnableDepsCache    bool
-	CacheDir           string
-	LogDir             string
-	DepsCacheMaxMb     int
-	CppLinkDeepScan    bool
-	IPTimeout          time.Duration
-	DepsScannerAddress string
-	ProxyServerAddress string
+	EnableDepsCache             bool
+	CacheDir                    string
+	LogDir                      string
+	DepsCacheMaxMb              int
+	ClangDepsScanIgnoredPlugins []string
+	CppLinkDeepScan             bool
+	IPTimeout                   time.Duration
+	DepsScannerAddress          string
+	ProxyServerAddress          string
 }
 
 // TODO(b/169675226): Replace usage with sync.OnceFunc when we upgrade to go 1.21
@@ -139,7 +140,11 @@ func onceFunc(f func()) func() {
 // Its resources are bound by the local resources manager.
 func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache, l *logger.Logger, opt *Options) (*InputProcessor, func(), error) {
 	useDepsCache := opt.CacheDir != "" && opt.EnableDepsCache
-	depScanner, err := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, useDepsCache && !features.GetConfig().ExperimentalGomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
+	var ignoredPlugins []string
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+		ignoredPlugins = opt.ClangDepsScanIgnoredPlugins
+	}
+	depScanner, err := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, ignoredPlugins, useDepsCache && !features.GetConfig().ExperimentalGomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
 	if err != nil {
 		return nil, func() {}, err
 	}

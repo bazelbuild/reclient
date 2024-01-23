@@ -15,8 +15,6 @@
 #include "bridge.h"
 
 #include <memory>
-#include <set>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -79,21 +77,6 @@ class SingleCommandCompilationDatabase
   clang::tooling::CompileCommand Command;
 };
 
-std::set<std::string> ParsePluginsToIgnore() {
-  const char* envVal = std::getenv("RBE_clang_depscan_ignored_plugins");
-  if (envVal == NULL || *envVal == '\0') {
-    return {};
-  }
-  std::stringstream ss(envVal);
-  std::set<std::string> result;
-  while (ss.good()) {
-    std::string substr;
-    getline(ss, substr, ',');
-    result.insert(substr);
-  }
-  return result;
-};
-
 class DependencyScanner {
  public:
   DependencyScanner()
@@ -101,8 +84,7 @@ class DependencyScanner {
             clang::tooling::dependencies::ScanningMode::
                 DependencyDirectivesScan,
             clang::tooling::dependencies::ScanningOutputFormat::Make, true,
-            true)),
-        PluginsToIgnore(ParsePluginsToIgnore()) {}
+            true)) {}
 
   int getDependencies(int argc, const char** argv, const char* filename,
                       const char* directory, char** deps, char** errp) {
@@ -113,7 +95,7 @@ class DependencyScanner {
     std::string Filename(filename);
     std::string Directory(directory);
 
-    clangscandeps::AdjustCmd(CommandLine, Filename, PluginsToIgnore);
+    clangscandeps::AdjustCmd(&CommandLine, Filename);
 
     clang::tooling::CompileCommand command(Directory, Filename, CommandLine,
                                            llvm::StringRef());
@@ -152,7 +134,6 @@ class DependencyScanner {
 
  private:
   clang::tooling::dependencies::DependencyScanningService Service;
-  std::set<std::string> PluginsToIgnore;
 };
 
 void* NewDepsScanner() { return new (DependencyScanner); }

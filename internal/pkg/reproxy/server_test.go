@@ -6662,6 +6662,10 @@ func (s *stubCPPDependencyScanner) ProcessInputs(context.Context, string, []stri
 	return s.processInputsReturnValue, false, s.processInputsError
 }
 
+func (s *stubCPPDependencyScanner) ShouldIgnorePlugin(_ string) bool {
+	return false
+}
+
 func TestSetPlatformOSfamily(t *testing.T) {
 	defaultOSFamily := knownOSFamilies[runtime.GOOS]
 	for _, tc := range []struct {

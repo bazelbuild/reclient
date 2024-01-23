@@ -123,6 +123,10 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 	return s.res, false, s.err
 }
 
+func (s *stubCPPDepScanner) ShouldIgnorePlugin(_ string) bool {
+	return false
+}
+
 func containsRegexCount(src []string, pattern string) int {
 	total := 0
 	for _, v := range src {

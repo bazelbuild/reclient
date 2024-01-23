@@ -66,7 +66,8 @@ const IsStub = false
 
 // DepsScanner wraps LLVM/Clang's scan deps scanner.
 type DepsScanner struct {
-	impl unsafe.Pointer
+	impl              unsafe.Pointer
+	ignoredPluginsMap map[string]bool
 }
 
 type processInputsResult struct {
@@ -77,9 +78,15 @@ type processInputsResult struct {
 // New creates new DepsScanner.
 // The function's definition needs to be identical with the one in goma.go
 // so reclient can be built with various dependency scanner implementations.
-func New(_, _, _, _, _, _ any) *DepsScanner {
+func New(_, _, _, _ any, ignoredPlugins []string, _, _ any) *DepsScanner {
+	impl := C.NewDepsScanner()
+	ignoredPluginsMap := map[string]bool{}
+	for _, plugin := range ignoredPlugins {
+		ignoredPluginsMap[plugin] = true
+	}
 	return &DepsScanner{
-		impl: C.NewDepsScanner(),
+		impl:              impl,
+		ignoredPluginsMap: ignoredPluginsMap,
 	}
 }
 
@@ -141,6 +148,12 @@ func (ds *DepsScanner) ProcessInputs(ctx context.Context, execID string, compile
 // SupportsCache implements DepsScanner.SupportsCache.
 func (ds *DepsScanner) SupportsCache() bool {
 	return false
+}
+
+// ShouldIgnorePlugin returns true if the plugin of given name should be ignored when passing compileCommand to the scanner
+func (ds *DepsScanner) ShouldIgnorePlugin(plugin string) bool {
+	_, present := ds.ignoredPluginsMap[plugin]
+	return present
 }
 
 func parse(deps string) []string {
