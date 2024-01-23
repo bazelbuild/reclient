@@ -55,6 +55,7 @@ import (
 	"strings"
 	"unsafe"
 
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	log "github.com/golang/glog"
 )
 
@@ -143,6 +144,16 @@ func (ds *DepsScanner) ProcessInputs(ctx context.Context, execID string, compile
 		return nil, false, fmt.Errorf("failed to receive the response from dependency scanner: %w",
 			ctx.Err())
 	}
+}
+
+var capabilities = &spb.CapabilitiesResponse{
+	Caching:            false,
+	ExpectsResourceDir: true,
+}
+
+// Capabilities implements DepsScanner.Capabilities.
+func (ds *DepsScanner) Capabilities() *spb.CapabilitiesResponse {
+	return capabilities
 }
 
 // ShouldIgnorePlugin returns true if the plugin of given name should be ignored when passing compileCommand to the scanner

@@ -90,6 +90,10 @@ type stubClient struct {
 	shutdownError error
 	// The number of times Shutdown has been called.
 	shutdownCalled int
+	// The response to return from Capabilities().
+	capabilitiesResponse *pb.CapabilitiesResponse
+	// The error to return from Capabilities().
+	capabilitiesError error
 }
 
 // Fake ProcessInputs that returns a preset value with optional delay to emulate processing time.
@@ -111,6 +115,10 @@ func (c *stubClient) Status(ctx context.Context, in *emptypb.Empty, opts ...grpc
 func (c *stubClient) Shutdown(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*pb.StatusResponse, error) {
 	c.shutdownCalled++
 	return c.status, c.shutdownError
+}
+
+func (c *stubClient) Capabilities(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*pb.CapabilitiesResponse, error) {
+	return c.capabilitiesResponse, c.capabilitiesError
 }
 
 // Fake Execution that performs a setup but does not actually run the command.
@@ -776,6 +784,25 @@ func TestBuildAddress(t *testing.T) {
 				t.Errorf("buildAddress(%v) returned wrong address, wanted '%v', got '%v'", test.serverAddr, test.wantAddr, gotAddr)
 			}
 		})
+	}
+}
+
+func TestCapabilities(t *testing.T) {
+	want := &pb.CapabilitiesResponse{
+		Caching:            false,
+		ExpectsResourceDir: true,
+	}
+	stubClient := &stubClient{
+		capabilitiesResponse: want,
+	}
+	client := &DepsScannerClient{
+		ctx:    context.Background(),
+		client: stubClient,
+	}
+	client.updateCapabilities(context.Background())
+
+	if got := client.Capabilities(); got != want {
+		t.Errorf("Capabilities() returned unexpected value, wanted %v, got %v", want, got)
 	}
 }
 

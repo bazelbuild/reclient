@@ -45,6 +45,7 @@ import (
 	"time"
 	"unsafe"
 
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
@@ -147,6 +148,16 @@ func (ds *DepsScanner) waitForRequests() {
 	for req := range ds.reqs {
 		ds.impl.processInputs(req)
 	}
+}
+
+var capabilities = &spb.CapabilitiesResponse{
+	Caching:            true,
+	ExpectsResourceDir: false,
+}
+
+// Capabilities implements DepsScanner.Capabilities.
+func (ds *DepsScanner) Capabilities() *spb.CapabilitiesResponse {
+	return capabilities
 }
 
 // Close releases resource associated with DepsScanner.

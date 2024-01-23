@@ -7,6 +7,7 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//api/scandeps",
         "//internal/pkg/cppdependencyscanner/depsscannerclient",
         "//internal/pkg/logger",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

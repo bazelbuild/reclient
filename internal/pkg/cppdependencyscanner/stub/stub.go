@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
@@ -60,4 +61,14 @@ func (ds *StubClient) ProcessInputs(_ context.Context, _ string, _ []string, _, 
 func (ds *StubClient) ShouldIgnorePlugin(plugin string) bool {
 	log.Fatalf("Invalid call to StubClient.ShouldIgnorePlugin().")
 	return false
+}
+
+var capabilities = &spb.CapabilitiesResponse{
+	Caching:            true,
+	ExpectsResourceDir: false,
+}
+
+// Capabilities implements DepsScanner.Capabilities.
+func (ds *StubClient) Capabilities() *spb.CapabilitiesResponse {
+	return capabilities
 }

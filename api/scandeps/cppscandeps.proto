@@ -28,6 +28,8 @@ service CPPDepsScanner {
    rpc Status(google.protobuf.Empty) returns (StatusResponse) {}
    // Tells the process to shutdown; returns the status at time of shutdown.
    rpc Shutdown(google.protobuf.Empty) returns (StatusResponse) {}
+   // Reports the capabilities of the service.
+   rpc Capabilities(google.protobuf.Empty) returns (CapabilitiesResponse) {}
 }
 
 message CPPProcessInputsRequest {
@@ -60,4 +62,11 @@ message StatusResponse {
    int32 running_actions = 5;
    // The length of time the currently longest running action has been running
    google.protobuf.Duration longest_current_action = 6;
+}
+
+message CapabilitiesResponse {
+   // Does this service have a built in caching mechanism
+   bool caching = 1;
+   // Does this service expect a -resource-dir flag in all CPPProcessInputsRequest.command lists
+   bool expects_resource_dir = 2;
 }

@@ -97,6 +97,7 @@ go_library(
     }),
     visibility = ["//:__subpackages__"],
     deps = [
+        "//api/scandeps",
         "//internal/pkg/logger",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
         "@com_github_golang_glog//:glog",

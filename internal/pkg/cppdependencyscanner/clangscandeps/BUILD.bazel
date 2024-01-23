@@ -64,7 +64,10 @@ go_library(
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//:__subpackages__"],
-    deps = ["@com_github_golang_glog//:glog"],
+    deps = [
+        "//api/scandeps",
+        "@com_github_golang_glog//:glog",
+    ],
 )
 
 go_test(

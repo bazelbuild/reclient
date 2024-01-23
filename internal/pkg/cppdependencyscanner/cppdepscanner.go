@@ -29,6 +29,8 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
+
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 )
 
 // DepsScanner is an include scanner for c++ compiles.
@@ -38,6 +40,7 @@ type DepsScanner interface {
 	//exists.
 	ProcessInputs(ctx context.Context, execID string, compileCommand []string, filename, directory string, cmdEnv []string) ([]string, bool, error)
 	Close()
+	Capabilities() *spb.CapabilitiesResponse
 	ShouldIgnorePlugin(plugin string) bool
 }
 
