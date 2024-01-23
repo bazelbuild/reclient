@@ -89,8 +89,6 @@ type DepsScannerClient struct {
 	ch                chan *command.Result
 	serviceRestarted  time.Time
 	m                 sync.Mutex
-	capabilities      *pb.CapabilitiesResponse
-	capabilitiesMu    sync.RWMutex
 }
 
 var (
@@ -190,9 +188,6 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 		}
 		log.Infof("Connected to dependency scanner service on %v", client.address)
 		client.client = c.client
-		if err := client.updateCapabilities(ctx); err != nil {
-			return nil, fmt.Errorf("Failed to update capabilities: %w", err)
-		}
 		return client, nil
 	}
 }
@@ -410,27 +405,6 @@ func (ds *DepsScannerClient) ShouldIgnorePlugin(plugin string) bool {
 	return present
 }
 
-func (ds *DepsScannerClient) updateCapabilities(ctx context.Context) error {
-	if ds.client == nil {
-		return nil
-	}
-	capabilities, err := ds.client.Capabilities(ctx, &emptypb.Empty{})
-	if err != nil {
-		return err
-	}
-	ds.capabilitiesMu.Lock()
-	defer ds.capabilitiesMu.Unlock()
-	ds.capabilities = capabilities
-	return nil
-}
-
-// SupportsCache implements DepsScanner.SupportsCache.
-func (ds *DepsScannerClient) SupportsCache() bool {
-	ds.capabilitiesMu.RLock()
-	defer ds.capabilitiesMu.RUnlock()
-	return ds.capabilities.GetCaching()
-}
-
 func (ds *DepsScannerClient) verifyService(ctx context.Context) error {
 	retries := 10
 	timeout := 10 * time.Second
@@ -447,9 +421,6 @@ func (ds *DepsScannerClient) verifyService(ctx context.Context) error {
 		default:
 			// success?
 			if err == nil {
-				if err := ds.updateCapabilities(ctx); err != nil {
-					return err
-				}
 				return nil
 			} // else
 			// Status call may return an error before the 10 seconds timeout expires if it isn't

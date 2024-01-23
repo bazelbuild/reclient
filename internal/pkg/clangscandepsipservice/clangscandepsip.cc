@@ -25,7 +25,6 @@ using grpc::ServerContext;
 using grpc::Status;
 using grpc::StatusCode;
 
-using scandeps::CapabilitiesResponse;
 using scandeps::CPPProcessInputsRequest;
 using scandeps::CPPProcessInputsResponse;
 using scandeps::StatusResponse;
@@ -239,18 +238,6 @@ Status ClangscandepsIPServiceImpl::Shutdown(
     shutdown_server_();
   }
   PopulateStatusResponse(response);
-
-  return grpc::Status::OK;
-}
-
-Status ClangscandepsIPServiceImpl::Capabilities(
-    ServerContext* context, const google::protobuf::Empty* request,
-    CapabilitiesResponse* response) {
-  (void)context;
-  (void)request;
-
-  VLOG(1) << "Capabilities request received.";
-  response->set_caching(false);
 
   return grpc::Status::OK;
 }
