@@ -16,6 +16,7 @@ go_test(
     srcs = ["preprocessor_test.go"],
     embed = [":nacl"],
     deps = [
+        "//api/scandeps",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/action/cppcompile",
     ],

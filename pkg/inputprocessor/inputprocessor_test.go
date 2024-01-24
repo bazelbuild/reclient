@@ -27,6 +27,7 @@ import (
 
 	lpb "github.com/bazelbuild/reclient/api/log"
 	ppb "github.com/bazelbuild/reclient/api/proxy"
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/features"
@@ -211,8 +212,7 @@ func TestCppWithDepsCache(t *testing.T) {
 	if _, err := os.Stat(dcPath); os.IsNotExist(err) {
 		t.Errorf("Deps cache file (%v) does not exist", dcPath)
 	}
-	wantDepScanArgs := []string{"-c", "-Xclang", "-add-plugin", "-Xclang", "bar", "-Qunused-arguments", "-o", "test.o", filepath.Join(er, wd, "test.cpp"),
-		"-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error"}
+	wantDepScanArgs := []string{"-c", "-Xclang", "-add-plugin", "-Xclang", "bar", "-Qunused-arguments", "-o", "test.o", filepath.Join(er, wd, "test.cpp")}
 	if diff := cmp.Diff(wantDepScanArgs, ds.processInputsArgs[1:]); diff != "" {
 		t.Errorf("CPPDepScanner called with unexpected arguments (-want +got): %s", diff)
 	}
@@ -1201,6 +1201,10 @@ func (s *stubCPPDependencyScanner) ProcessInputs(_ context.Context, _ string, ar
 func (s *stubCPPDependencyScanner) ShouldIgnorePlugin(plugin string) bool {
 	_, present := s.ignoredPluginsMap[plugin]
 	return present
+}
+
+func (s *stubCPPDependencyScanner) Capabilities() *spb.CapabilitiesResponse {
+	return nil
 }
 
 type execStub struct {

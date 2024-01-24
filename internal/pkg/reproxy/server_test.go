@@ -50,6 +50,7 @@ import (
 
 	lpb "github.com/bazelbuild/reclient/api/log"
 	ppb "github.com/bazelbuild/reclient/api/proxy"
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )
@@ -6654,6 +6655,7 @@ func (e *execStub) ExecuteWithOutErr(ctx context.Context, cmd *command.Command, 
 type stubCPPDependencyScanner struct {
 	processInputsReturnValue []string
 	processInputsError       error
+	capabilities             *spb.CapabilitiesResponse
 	counter                  int
 }
 
@@ -6664,6 +6666,10 @@ func (s *stubCPPDependencyScanner) ProcessInputs(context.Context, string, []stri
 
 func (s *stubCPPDependencyScanner) ShouldIgnorePlugin(_ string) bool {
 	return false
+}
+
+func (s *stubCPPDependencyScanner) Capabilities() *spb.CapabilitiesResponse {
+	return s.capabilities
 }
 
 func TestSetPlatformOSfamily(t *testing.T) {

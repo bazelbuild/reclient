@@ -22,7 +22,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache"
@@ -39,68 +39,126 @@ var (
 )
 
 func TestComputeSpec(t *testing.T) {
-	ctx := context.Background()
-	fmc := filemetadata.NewSingleFlightCache()
-	s := &stubCPPDepScanner{
-		res: []string{"include/foo.h"},
-		err: nil,
+	tests := []struct {
+		name                 string
+		scandepsCapabilities *spb.CapabilitiesResponse
+		printResDirOut       string
+		inputExtraCmd        []string
+		wantResDir           string
+	}{
+		{
+			name:                 "ResourceDirProvided/ExpectsResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: true},
+			printResDirOut:       "  /some/other/dir   ",
+			inputExtraCmd:        []string{"-resource-dir", "/some/dir"},
+			wantResDir:           "/some/dir",
+		},
+		{
+			name:                 "ResourceDirProvided/DoesntExpectResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: false},
+			printResDirOut:       "  /some/other/dir   ",
+			inputExtraCmd:        []string{"-resource-dir", "/some/dir"},
+			wantResDir:           "/some/dir",
+		},
+		{
+			name:                 "ResourceDirMissing/ExpectsResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: true},
+			printResDirOut:       "  /some/other/dir   ",
+			wantResDir:           "/some/other/dir",
+		},
+		{
+			name:                 "ResourceDirMissing/DoesntExpectResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: false},
+			printResDirOut:       "  /some/other/dir   ",
+		},
 	}
-	c := &Preprocessor{CPPDepScanner: s, BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc}}
 
-	// Tests that virtual inputs only include existing directories and excludes files.
-	existingFiles := []string{
-		filepath.Clean("bin/clang++"),
-		filepath.Clean("src/test.cpp"),
-		filepath.Clean("include/foo/a"),
-		filepath.Clean("include/a/b.hmap"),
-		filepath.Clean("out/dummy"),
-	}
-	er, cleanup := execroot.Setup(t, existingFiles)
-	defer cleanup()
-	inputs := []string{filepath.Clean("include/a/b.hmap")}
-	opts := inputprocessor.Options{
-		Cmd: []string{"../bin/clang++", "-o", "test.o", "-MF", "test.d", "-I../include/foo", "-I../include/bar", "-I../include/a/b.hmap",
-			"-std=c++14", "-Xclang", "-verify", "-c", "../src/test.cpp"},
-		WorkingDir: "out",
-		ExecRoot:   er,
-		Labels:     map[string]string{"type": "compile", "compiler": "clang", "lang": "cpp"},
-		Inputs: &command.InputSpec{
-			Inputs: inputs,
-		},
-	}
-	got, err := inputprocessor.Compute(c, opts)
-	if err != nil {
-		t.Errorf("Spec() failed: %v", err)
-	}
-	want := &command.InputSpec{
-		Inputs: []string{
-			filepath.Clean("src/test.cpp"),
-			filepath.Clean("bin/clang++"),
-			filepath.Clean("include/a/b.hmap"),
-		},
-		VirtualInputs: []*command.VirtualInput{
-			{Path: filepath.Clean("include/foo"), IsEmptyDirectory: true},
-		},
-	}
-	if diff := cmp.Diff(want, got.InputSpec, strSliceCmp); diff != "" {
-		t.Errorf("Compute() returned diff (-want +got): %v", diff)
-	}
-	wantCmd := []string{
-		filepath.Join(er, "bin/clang++"),
-		"-I../include/foo",
-		"-I../include/bar",
-		"-I../include/a/b.hmap",
-		"-std=c++14", "-c", // expect -std=xx to not be normalized
-		"-Qunused-arguments", // expect Qunused-arguments to be added, and -Xclang -verify to be removed
-		"-o", "test.o",
-		filepath.Join(er, "src/test.cpp"),
-	}
-	// expect command to be adjusted if Clang dependency scanner used
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
-		wantCmd = append(wantCmd, "-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
-	}
-	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
-		t.Errorf("Unexpected command passed to the dependency scanner (-want +got): %v", diff)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			fmc := filemetadata.NewSingleFlightCache()
+			s := &stubCPPDepScanner{
+				res:          []string{"include/foo.h"},
+				err:          nil,
+				capabilities: tc.scandepsCapabilities,
+			}
+			c := &Preprocessor{
+				CPPDepScanner: s,
+				BasePreprocessor: &inputprocessor.BasePreprocessor{
+					Ctx:               ctx,
+					FileMetadataCache: fmc,
+					Executor:          &stubExecutor{outStr: tc.printResDirOut},
+				},
+			}
+
+			// Tests that virtual inputs only include existing directories and excludes files.
+			existingFiles := []string{
+				filepath.Clean("bin/clang++"),
+				filepath.Clean("src/test.cpp"),
+				filepath.Clean("include/foo/a"),
+				filepath.Clean("include/a/b.hmap"),
+				filepath.Clean("out/dummy"),
+			}
+			er, cleanup := execroot.Setup(t, existingFiles)
+			defer cleanup()
+			inputs := []string{filepath.Clean("include/a/b.hmap")}
+			opts := inputprocessor.Options{
+				Cmd: append([]string{"../bin/clang++", "-o", "test.o", "-MF", "test.d", "-I../include/foo", "-I../include/bar", "-I../include/a/b.hmap",
+					"-std=c++14", "-Xclang", "-verify", "-c", "../src/test.cpp"}, tc.inputExtraCmd...),
+				WorkingDir: "out",
+				ExecRoot:   er,
+				Labels:     map[string]string{"type": "compile", "compiler": "clang", "lang": "cpp"},
+				Inputs: &command.InputSpec{
+					Inputs: inputs,
+				},
+			}
+			got, err := inputprocessor.Compute(c, opts)
+			if err != nil {
+				t.Errorf("Spec() failed: %v", err)
+			}
+			want := &command.InputSpec{
+				Inputs: []string{
+					filepath.Clean("src/test.cpp"),
+					filepath.Clean("bin/clang++"),
+					filepath.Clean("include/a/b.hmap"),
+				},
+				VirtualInputs: []*command.VirtualInput{
+					{Path: filepath.Clean("include/foo"), IsEmptyDirectory: true},
+				},
+			}
+			if diff := cmp.Diff(want, got.InputSpec, strSliceCmp); diff != "" {
+				t.Errorf("Compute() returned diff (-want +got): %v", diff)
+			}
+			wantCmd := []string{
+				filepath.Join(er, "bin/clang++"),
+				"-I../include/foo",
+				"-I../include/bar",
+				"-I../include/a/b.hmap",
+				"-std=c++14", "-c", // expect -std=xx to not be normalized
+				"-Qunused-arguments", // expect Qunused-arguments to be added, and -Xclang -verify to be removed
+				"-o", "test.o",
+				filepath.Join(er, "src/test.cpp"),
+			}
+			gotCmdNoResDir := make([]string, 0, len(s.gotCmd))
+			i := 0
+			gotResDir := ""
+			for i < len(s.gotCmd) {
+				if s.gotCmd[i] == "-resource-dir" {
+					i++
+					gotResDir = s.gotCmd[i]
+				} else {
+					gotCmdNoResDir = append(gotCmdNoResDir, s.gotCmd[i])
+				}
+				i++
+			}
+			if diff := cmp.Diff(wantCmd, gotCmdNoResDir); diff != "" {
+				t.Errorf("Unexpected command passed to the dependency scanner (-want +got): %v", diff)
+			}
+			if tc.wantResDir != gotResDir {
+				t.Errorf("CPP command had incorrect resource dir, wanted %v, got %v", tc.wantResDir, gotResDir)
+			}
+		})
 	}
 }
 
@@ -152,11 +210,13 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 		t.Errorf("Compute() returned diff (-want +got): %v", diff)
 	}
 	wg.Wait()
+	c.DepsCache.WriteToDisk(er)
 	c = &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        c.DepsCache,
+		DepsCache:        depscache.New(filemetadata.NewSingleFlightCache()),
 	}
+	c.DepsCache.LoadFromDir(er)
 	got, err = inputprocessor.Compute(c, opts)
 	if err != nil {
 		t.Errorf("Compute() failed: %v", err)
@@ -167,6 +227,91 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 	if s.processCalls != 1 {
 		t.Errorf("Wrong number of ProcessInputs calls: got %v, want 1", s.processCalls)
 	}
+}
+
+func TestComputeSpecWithDepsCache_ResourceDirChanged(t *testing.T) {
+	ctx := context.Background()
+	fmc := filemetadata.NewSingleFlightCache()
+	s := &stubCPPDepScanner{
+		res:          []string{"include/foo.h"},
+		err:          nil,
+		capabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: true},
+	}
+	c := &Preprocessor{
+		CPPDepScanner: s,
+		BasePreprocessor: &inputprocessor.BasePreprocessor{
+			Ctx:               ctx,
+			FileMetadataCache: fmc,
+			Executor:          &stubExecutor{outStr: "/first/resource/dir"},
+		},
+		DepsCache: depscache.New(filemetadata.NewSingleFlightCache()),
+	}
+
+	existingFiles := []string{
+		filepath.Clean("bin/clang++"),
+		filepath.Clean("src/test.cpp"),
+		filepath.Clean("include/foo/a"),
+		filepath.Clean("out/dummy"),
+	}
+	er, cleanup := execroot.Setup(t, existingFiles)
+	defer cleanup()
+	c.DepsCache.LoadFromDir(er)
+	opts := inputprocessor.Options{
+		Cmd:        []string{"../bin/clang++", "-o", "test.o", "-MF", "test.d", "-I../include/foo", "-I", "../include/bar", "-c", "../src/test.cpp"},
+		WorkingDir: "out",
+		ExecRoot:   er,
+		Labels:     map[string]string{"type": "compile", "compiler": "clang", "lang": "cpp"},
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	c.testOnlySetDone = func() { wg.Done() }
+	got, err := inputprocessor.Compute(c, opts)
+	if err != nil {
+		t.Errorf("Compute() failed: %v", err)
+	}
+	want := &command.InputSpec{
+		Inputs: []string{
+			filepath.Clean("src/test.cpp"),
+			filepath.Clean("bin/clang++"),
+		},
+		VirtualInputs: []*command.VirtualInput{
+			{Path: filepath.Clean("include/foo"), IsEmptyDirectory: true},
+		},
+	}
+	if diff := cmp.Diff(want, got.InputSpec, strSliceCmp); diff != "" {
+		t.Errorf("Compute() returned diff (-want +got): %v", diff)
+	}
+	wg.Wait()
+	c.DepsCache.WriteToDisk(er)
+	// Simulate new run of reproxy
+	clearResourceDirCache(t)
+	c = &Preprocessor{
+		CPPDepScanner: s,
+		BasePreprocessor: &inputprocessor.BasePreprocessor{
+			Ctx:               ctx,
+			FileMetadataCache: fmc,
+			Executor:          &stubExecutor{outStr: "/second/resource/dir"},
+		},
+		DepsCache: depscache.New(filemetadata.NewSingleFlightCache()),
+	}
+	c.DepsCache.LoadFromDir(er)
+	got, err = inputprocessor.Compute(c, opts)
+	if err != nil {
+		t.Errorf("Compute() failed: %v", err)
+	}
+	if diff := cmp.Diff(want, got.InputSpec, strSliceCmp); diff != "" {
+		t.Errorf("Compute() returned diff (-want +got): %v", diff)
+	}
+	if s.processCalls != 2 {
+		t.Errorf("Wrong number of ProcessInputs calls: got %v, want 1", s.processCalls)
+	}
+}
+
+func clearResourceDirCache(t *testing.T) {
+	t.Helper()
+	resourceDirsMu.Lock()
+	defer resourceDirsMu.Unlock()
+	resourceDirs = map[string]resourceDirInfo{}
 }
 
 func TestComputeSpec_SysrootAndProfileSampleUseArgsConvertedToAbsolutePath(t *testing.T) {
@@ -217,21 +362,6 @@ func TestComputeSpec_SysrootAndProfileSampleUseArgsConvertedToAbsolutePath(t *te
 		"-o",
 		"test.o",
 		filepath.Join(pwd, "src/test.cpp"),
-	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
-		wantCmd = append(wantCmd, []string{
-			// adjusted
-			"-o",
-			"/dev/null",
-			"-M",
-			"-MT",
-			"test.o",
-			"-Xclang",
-			"-Eonly",
-			"-Xclang",
-			"-sys-header-deps",
-			"-Wno-error",
-		}...)
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("ComputeSpec() called clang-scan-deps incorrectly, diff (-want +got): %v", diff)
@@ -288,21 +418,6 @@ func TestComputeSpecAbsolutePaths(t *testing.T) {
 		filepath.Join(pwd, wd, "test.o"),
 		filepath.Join(pwd, "src/test.cpp"),
 	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
-		wantCmd = append(wantCmd, []string{
-			// adjusted
-			"-o",
-			"/dev/null",
-			"-M",
-			"-MT",
-			filepath.Join(pwd, wd, "test.o"),
-			"-Xclang",
-			"-Eonly",
-			"-Xclang",
-			"-sys-header-deps",
-			"-Wno-error",
-		}...)
-	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("ComputeSpec() called clang-scan-deps incorrectly, diff (-want +got): %v", diff)
 	}
@@ -355,10 +470,6 @@ func TestComputeSpec_RemovesUnsupportedFlags(t *testing.T) {
 		// they're not supported in newer clang versions.
 		"-o", "test.o",
 		filepath.Join(er, "src/test.cpp"),
-	}
-	// expect command to be adjusted if Clang dependency scanner used
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
-		wantCmd = append(wantCmd, "-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
 		t.Errorf("Unexpected command passed to the dependency scanner (-want +got): %v", diff)
@@ -621,6 +732,7 @@ type stubCPPDepScanner struct {
 	minimizeCalls int
 
 	ignoredPluginsMap map[string]bool
+	capabilities      *spb.CapabilitiesResponse
 
 	cacheInput bool
 }
@@ -634,7 +746,24 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 	return s.res, s.cacheInput, s.err
 }
 
+func (s *stubCPPDepScanner) Capabilities() *spb.CapabilitiesResponse {
+	return s.capabilities
+}
+
 func (s *stubCPPDepScanner) ShouldIgnorePlugin(plugin string) bool {
 	_, present := s.ignoredPluginsMap[plugin]
 	return present
+}
+
+type stubExecutor struct {
+	gotCmd *command.Command
+
+	outStr string
+	errStr string
+	err    error
+}
+
+func (s *stubExecutor) Execute(ctx context.Context, cmd *command.Command) (string, string, error) {
+	s.gotCmd = cmd
+	return s.outStr, s.errStr, s.err
 }

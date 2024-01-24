@@ -60,6 +60,7 @@ go_test(
     deps = [
         "//api/log",
         "//api/proxy",
+        "//api/scandeps",
         "//internal/pkg/deps",
         "//internal/pkg/execroot",
         "//internal/pkg/labels",

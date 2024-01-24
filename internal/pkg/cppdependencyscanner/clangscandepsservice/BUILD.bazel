@@ -29,6 +29,7 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
+        "//internal/pkg/cppdependencyscanner/clangscandeps:adjust_cmd",
         "@com_github_google_glog//:glog",
         "@llvm-project//clang:tooling_dependency_scanning",
     ],

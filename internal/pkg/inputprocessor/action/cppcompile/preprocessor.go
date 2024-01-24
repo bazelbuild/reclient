@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache"
@@ -95,6 +96,7 @@ var (
 type CPPDependencyScanner interface {
 	ProcessInputs(ctx context.Context, execID string, command []string, filename, directory string, cmdEnv []string) ([]string, bool, error)
 	ShouldIgnorePlugin(plugin string) bool
+	Capabilities() *spb.CapabilitiesResponse
 }
 
 type resourceDirInfo struct {
@@ -161,12 +163,8 @@ func (p *Preprocessor) ComputeSpec() error {
 	defer p.AppendSpec(s)
 
 	args := p.BuildCommandLine("-o", false, toAbsArgs)
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
-		if filepath.IsAbs(p.Flags.TargetFilePaths[0]) {
-			args = p.adjustCommand(args, p.Flags.TargetFilePaths[0])
-		} else {
-			args = p.adjustCommand(args, filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, p.Flags.TargetFilePaths[0]))
-		}
+	if p.CPPDepScanner.Capabilities().GetExpectsResourceDir() {
+		args = p.addResourceDir(args)
 	}
 
 	headerInputFiles, err := p.FindDependencies(args)
@@ -185,7 +183,7 @@ func (p *Preprocessor) ComputeSpec() error {
 // FindDependencies finds the dependencies of the given adjusted command args
 // using the current include scanner.
 func (p *Preprocessor) FindDependencies(args []string) ([]string, error) {
-	dg := digest.NewFromBlob([]byte(strings.Join(p.Options.Cmd, " ")))
+	dg := digest.NewFromBlob([]byte(strings.Join(args, " ")))
 	key := depscache.Key{
 		CommandDigest: dg.String(),
 		SrcFilePath:   filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, p.Flags.TargetFilePaths[0]),
@@ -416,52 +414,17 @@ func (p *Preprocessor) AppendVirtualInput(res []*command.VirtualInput, flag, pat
 	return append(res, &command.VirtualInput{Path: path, IsEmptyDirectory: true})
 }
 
-func (p *Preprocessor) adjustCommand(args []string, filename string) []string {
-	lastO := ""
-	var hasMT, hasMQ, hasMD, hasResourceDir bool
-	for i := len(args) - 1; i > 0; i-- {
-		switch args[i] {
-		case "-o":
-			lastO = args[i+1]
-		case "-MT":
-			hasMT = true
-		case "-MQ":
-			hasMQ = true
-		case "-MD":
-			hasMD = true
-		case "-resource-dir":
-			hasResourceDir = true
+func (p *Preprocessor) addResourceDir(args []string) []string {
+	for _, arg := range args {
+		if arg == "-resource-dir" {
+			return args
 		}
 	}
-	// If there's no -MT/-MQ, Driver would add -MT with the value of
-	// the last -o option.
-	adjustedArgs := make([]string, len(args))
-	copy(adjustedArgs, args)
-	adjustedArgs = append(adjustedArgs, "-o", "/dev/null")
-	if !hasMT && !hasMQ {
-		adjustedArgs = append(adjustedArgs, "-M")
-		adjustedArgs = append(adjustedArgs, "-MT")
-		// We're interested in source dependencies of an object file.
-		if !hasMD {
-			// FIXME: We are missing the directory
-			// unless the -o value is an absolute path.
-			if lastO == "" {
-				adjustedArgs = append(adjustedArgs, getObjFilePath(filename))
-			} else {
-				adjustedArgs = append(adjustedArgs, lastO)
-			}
-		} else {
-			adjustedArgs = append(adjustedArgs, filename)
-		}
+	resourceDir := p.resourceDir(args)
+	if resourceDir != "" {
+		return append(args, "-resource-dir", resourceDir)
 	}
-	adjustedArgs = append(adjustedArgs, "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
-	if !hasResourceDir {
-		resourceDir := p.resourceDir(args)
-		if resourceDir != "" {
-			adjustedArgs = append(adjustedArgs, "-resource-dir", resourceDir)
-		}
-	}
-	return adjustedArgs
+	return args
 }
 
 func getObjFilePath(fname string) string {

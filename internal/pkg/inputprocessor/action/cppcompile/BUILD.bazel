@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile",
     visibility = ["//visibility:public"],
     deps = [
+        "//api/scandeps",
         "//internal/pkg/cppdependencyscanner",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/clangparser",
@@ -34,7 +35,7 @@ go_test(
     ],
     embed = [":cppcompile"],
     deps = [
-        "//internal/pkg/cppdependencyscanner",
+        "//api/scandeps",
         "//internal/pkg/execroot",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/depscache",

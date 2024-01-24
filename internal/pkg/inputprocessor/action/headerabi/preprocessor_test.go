@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 
@@ -86,21 +86,6 @@ func TestSpec(t *testing.T) {
 		"test.sdump",
 		filepath.Join(pwd, "test.cpp"),
 	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		wantCmd = append(wantCmd, []string{
-			// adjusted
-			"-o",
-			"/dev/null",
-			"-M",
-			"-MT",
-			"test.sdump",
-			"-Xclang",
-			"-Eonly",
-			"-Xclang",
-			"-sys-header-deps",
-			"-Wno-error",
-		}...)
-	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd[1:]); diff != "" {
 		t.Errorf("CPP command from ABI header command %v had diff (-want +got): %s", p.Flags, diff)
 	}
@@ -125,4 +110,8 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 
 func (s *stubCPPDepScanner) ShouldIgnorePlugin(_ string) bool {
 	return false
+}
+
+func (s *stubCPPDepScanner) Capabilities() *spb.CapabilitiesResponse {
+	return nil
 }

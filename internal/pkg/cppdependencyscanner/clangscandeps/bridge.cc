@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "adjust_cmd.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/DependencyScanning/DependencyScanningService.h"
@@ -93,6 +94,8 @@ class DependencyScanner {
     }
     std::string Filename(filename);
     std::string Directory(directory);
+
+    clangscandeps::AdjustCmd(CommandLine, Filename);
 
     clang::tooling::CompileCommand command(Directory, Filename, CommandLine,
                                            llvm::StringRef());

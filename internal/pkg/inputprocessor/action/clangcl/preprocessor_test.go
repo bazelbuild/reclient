@@ -21,7 +21,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
+	spb "github.com/bazelbuild/reclient/api/scandeps"
+	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 
@@ -137,99 +138,165 @@ func TestResourceDir(t *testing.T) {
 }
 
 func TestComputeSpec(t *testing.T) {
-	ctx := context.Background()
-	s := &stubCPPDepScanner{
-		res: []string{"foo.h"},
-		err: nil,
-	}
-	pwd := t.TempDir()
-	os.MkdirAll(filepath.Join(pwd, "Windows Kits", "10", "Include", "10.0.20348.0"), 0755)
-	os.MkdirAll(filepath.Join(pwd, "VC", "Tools", "MSVC", "14.29.30133"), 0755)
-	p := Preprocessor{
-		Preprocessor: &cppcompile.Preprocessor{
-			BasePreprocessor: &inputprocessor.BasePreprocessor{
-				Ctx: ctx,
-			},
-			CPPDepScanner: s,
+	tests := []struct {
+		name                 string
+		scandepsCapabilities *spb.CapabilitiesResponse
+		versionOutput        string
+		inputExtraCmd        []string
+		wantResDir           string
+		wantResDirRelToEr    bool
+	}{
+		{
+			name:                 "ResourceDirProvided/ExpectsResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: true},
+			versionOutput:        "clang version 16.0.6 (16)",
+			inputExtraCmd:        []string{"-resource-dir", "/some/dir"},
+			wantResDir:           "/some/dir",
+		},
+		{
+			name:                 "ResourceDirProvided/DoesntExpectResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: false},
+			versionOutput:        "clang version 16.0.6 (16)",
+			inputExtraCmd:        []string{"-resource-dir", "/some/dir"},
+			wantResDir:           "/some/dir",
+		},
+		{
+			name:                 "ResourceDirMissing/ExpectsResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: true},
+			versionOutput:        "clang version 16.0.6 (16)",
+			wantResDir:           "lib/clang/16.0.6",
+			wantResDirRelToEr:    true,
+		},
+		{
+			name:                 "ResourceDirMissing/DoesntExpectResourceDir",
+			scandepsCapabilities: &spb.CapabilitiesResponse{ExpectsResourceDir: false},
+			versionOutput:        "clang version 16.0.6 (16)",
 		},
 	}
-	p.Options = inputprocessor.Options{
-		ExecRoot:   pwd,
-		WorkingDir: "out",
-		Cmd: []string{executablePath,
-			"-header-filter=\"(packages)\"",
-			"-extra-arg-before=-Xclang",
-			"test.cpp",
-			"--",
-			// These flags should result in virtual inputs.
-			"/I", "a/b",
-			"/I../c/d",
-			"-I", "g/h",
-			"-Ii/j",
-			"-imsvc", "../foo",
-			"/winsysroot", pwd,
-			// These flags should not result in virtual inputs.
-			"-sysroot../bar",
-			"--sysroot../baz",
-			"-fprofile-sample-use=../c/d/abc.prof",
-			// -Xclang -verify should be removed from output
-			"-Xclang",
-			"-verify",
-			"-c",
-			"/Fotest.o",
-			"-o", "test.d",
-		}}
-	if err := p.ParseFlags(); err != nil {
-		t.Fatalf("ParseFlags() failed: %v", err)
-	}
-	if err := p.ComputeSpec(); err != nil {
-		t.Fatalf("ComputeSpec() failed: %v", err)
-	}
-	spec, _ := p.Spec()
-	// expect files specified both by -o and /Fo
-	if diff := cmp.Diff(spec.OutputFiles, []string{filepath.Join("out", "test.o"), filepath.Join("out", "test.d")}); diff != "" {
-		t.Errorf("OutputFiles has diff (-want +got): %s", diff)
-	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			s := &stubCPPDepScanner{
+				res:          []string{"foo.h"},
+				err:          nil,
+				capabilities: tc.scandepsCapabilities,
+			}
 
-	wantVirtualOutputs := []*command.VirtualInput{
-		{Path: filepath.Clean(filepath.Join("out", "a/b")), IsEmptyDirectory: true},
-		{Path: filepath.Clean("c/d"), IsEmptyDirectory: true},
-		{Path: filepath.Clean(filepath.Join("out", "g/h")), IsEmptyDirectory: true},
-		{Path: filepath.Clean(filepath.Join("out", "i/j")), IsEmptyDirectory: true},
-		{Path: filepath.Clean("foo"), IsEmptyDirectory: true},
-		{Path: filepath.Clean(filepath.Join("Windows Kits", "10", "Include", "10.0.20348.0")), IsEmptyDirectory: true},
-		{Path: filepath.Clean(filepath.Join("VC", "Tools", "MSVC", "14.29.30133")), IsEmptyDirectory: true},
-	}
-	if diff := cmp.Diff(wantVirtualOutputs, spec.InputSpec.VirtualInputs); diff != "" {
-		t.Errorf("InputSpec.VirtualInputs had diff (-want +got): %v", diff)
-	}
+			// Tests that virtual inputs only include existing directories and excludes files.
+			existingFiles := []string{
+				filepath.Clean("bin/clang-cl"),
+				filepath.Clean("out/dummy"),
+			}
+			er, cleanup := execroot.Setup(t, existingFiles)
+			t.Cleanup(cleanup)
+			os.MkdirAll(filepath.Join(er, "Windows Kits", "10", "Include", "10.0.20348.0"), 0755)
+			os.MkdirAll(filepath.Join(er, "VC", "Tools", "MSVC", "14.29.30133"), 0755)
+			p := Preprocessor{
+				Preprocessor: &cppcompile.Preprocessor{
+					BasePreprocessor: &inputprocessor.BasePreprocessor{
+						Ctx:      ctx,
+						Executor: &stubExecutor{outStr: tc.versionOutput},
+					},
+					CPPDepScanner: s,
+				},
+			}
+			p.Options = inputprocessor.Options{
+				ExecRoot:   er,
+				WorkingDir: "out",
+				Cmd: append(
+					[]string{filepath.Join(er, "bin/clang-cl"),
+						"-header-filter=\"(packages)\"",
+						"-extra-arg-before=-Xclang",
+						"test.cpp",
+						"--",
+						// These flags should result in virtual inputs.
+						"/I", "a/b",
+						"/I../c/d",
+						"-I", "g/h",
+						"-Ii/j",
+						"-imsvc", "../foo",
+						"/winsysroot", er,
+						// These flags should not result in virtual inputs.
+						"-sysroot../bar",
+						"--sysroot../baz",
+						"-fprofile-sample-use=../c/d/abc.prof",
+						// -Xclang -verify should be removed from output
+						"-Xclang",
+						"-verify",
+						"-c",
+						"/Fotest.o",
+						"-o", "test.d",
+					}, tc.inputExtraCmd...),
+			}
+			if err := p.ParseFlags(); err != nil {
+				t.Fatalf("ParseFlags() failed: %v", err)
+			}
+			if err := p.ComputeSpec(); err != nil {
+				t.Fatalf("ComputeSpec() failed: %v", err)
+			}
+			spec, _ := p.Spec()
+			// expect files specified both by -o and /Fo
+			if diff := cmp.Diff(spec.OutputFiles, []string{filepath.Join("out", "test.o"), filepath.Join("out", "test.d")}); diff != "" {
+				t.Errorf("OutputFiles has diff (-want +got): %s", diff)
+			}
 
-	wantCmd := []string{
-		filepath.Join(pwd, "out", executablePath),
-		"-header-filter=\"(packages)\"",
-		"-extra-arg-before=-Xclang",
-		"--",
-		"/I", "a/b",
-		"/I../c/d",
-		"-I", "g/h",
-		"-Ii/j",
-		"-imsvc", "../foo",
-		"/winsysroot", pwd,
-		"-sysroot../bar",
-		"--sysroot../baz",
-		"-fprofile-sample-use=../c/d/abc.prof",
-		"-c",
-		"-Qunused-arguments",
-		"/Fotest.o",
-		"/Fotest.d", // -o normalized to /Fo
-		filepath.Join(pwd, "out", "test.cpp"),
-	}
-	// adjusted
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
-		wantCmd = append(wantCmd, "/FoNUL", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
-	}
-	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
-		t.Errorf("CPP command from %v command %v had diff (-want +got): %s", executablePath, p.Flags, diff)
+			wantVirtualOutputs := []*command.VirtualInput{
+				{Path: filepath.Clean(filepath.Join("out", "a/b")), IsEmptyDirectory: true},
+				{Path: filepath.Clean("c/d"), IsEmptyDirectory: true},
+				{Path: filepath.Clean(filepath.Join("out", "g/h")), IsEmptyDirectory: true},
+				{Path: filepath.Clean(filepath.Join("out", "i/j")), IsEmptyDirectory: true},
+				{Path: filepath.Clean("foo"), IsEmptyDirectory: true},
+				{Path: filepath.Clean(filepath.Join("Windows Kits", "10", "Include", "10.0.20348.0")), IsEmptyDirectory: true},
+				{Path: filepath.Clean(filepath.Join("VC", "Tools", "MSVC", "14.29.30133")), IsEmptyDirectory: true},
+			}
+			if diff := cmp.Diff(wantVirtualOutputs, spec.InputSpec.VirtualInputs); diff != "" {
+				t.Errorf("InputSpec.VirtualInputs had diff (-want +got): %v", diff)
+			}
+
+			wantCmd := []string{
+				filepath.Join(er, "bin/clang-cl"),
+				"-header-filter=\"(packages)\"",
+				"-extra-arg-before=-Xclang",
+				"--",
+				"/I", "a/b",
+				"/I../c/d",
+				"-I", "g/h",
+				"-Ii/j",
+				"-imsvc", "../foo",
+				"/winsysroot", er,
+				"-sysroot../bar",
+				"--sysroot../baz",
+				"-fprofile-sample-use=../c/d/abc.prof",
+				"-c",
+				"-Qunused-arguments",
+				"/Fotest.o",
+				"/Fotest.d", // -o normalized to /Fo
+				filepath.Join(er, "out", "test.cpp"),
+			}
+			gotCmdNoResDir := make([]string, 0, len(s.gotCmd))
+			i := 0
+			gotResDir := ""
+			for i < len(s.gotCmd) {
+				if s.gotCmd[i] == "-resource-dir" {
+					i++
+					gotResDir = s.gotCmd[i]
+				} else {
+					gotCmdNoResDir = append(gotCmdNoResDir, s.gotCmd[i])
+				}
+				i++
+			}
+			if diff := cmp.Diff(wantCmd, gotCmdNoResDir); diff != "" {
+				t.Errorf("CPP command from %v command %v had diff (-want +got): %s", executablePath, p.Flags, diff)
+			}
+			wantResDir := tc.wantResDir
+			if wantResDir != "" && tc.wantResDirRelToEr {
+				wantResDir = filepath.Join(er, wantResDir)
+			}
+			if wantResDir != gotResDir {
+				t.Errorf("CPP command had incorrect resource dir, wanted %v, got %v", wantResDir, gotResDir)
+			}
+		})
 	}
 }
 
@@ -240,6 +307,8 @@ type stubCPPDepScanner struct {
 
 	res []string
 	err error
+
+	capabilities *spb.CapabilitiesResponse
 
 	processCalls  int
 	minimizeCalls int
@@ -256,4 +325,21 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 
 func (s *stubCPPDepScanner) ShouldIgnorePlugin(_ string) bool {
 	return false
+}
+
+func (s *stubCPPDepScanner) Capabilities() *spb.CapabilitiesResponse {
+	return s.capabilities
+}
+
+type stubExecutor struct {
+	gotCmd *command.Command
+
+	outStr string
+	errStr string
+	err    error
+}
+
+func (s *stubExecutor) Execute(ctx context.Context, cmd *command.Command) (string, string, error) {
+	s.gotCmd = cmd
+	return s.outStr, s.errStr, s.err
 }

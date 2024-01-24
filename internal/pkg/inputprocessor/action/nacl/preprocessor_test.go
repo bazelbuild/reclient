@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"testing"
 
+	spb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor"
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/action/cppcompile"
 )
@@ -125,6 +126,10 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 
 func (s *stubCPPDepScanner) ShouldIgnorePlugin(_ string) bool {
 	return false
+}
+
+func (s *stubCPPDepScanner) Capabilities() *spb.CapabilitiesResponse {
+	return nil
 }
 
 func containsRegexCount(src []string, pattern string) int {
