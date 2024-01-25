@@ -225,7 +225,7 @@ func TestComputeSpec(t *testing.T) {
 		filepath.Join(pwd, "out", "test.cpp"),
 	}
 	// adjusted
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		wantCmd = append(wantCmd, "/FoNUL", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {

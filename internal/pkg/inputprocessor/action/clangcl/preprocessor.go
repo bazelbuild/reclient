@@ -78,7 +78,7 @@ func (p *Preprocessor) ComputeSpec() error {
 	defer p.AppendSpec(s)
 
 	args := p.BuildCommandLine("/Fo", true, toAbsArgs)
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		args = p.adjustCommand(args, filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, p.Flags.TargetFilePaths[0]))
 	}
 	headerInputFiles, err := p.FindDependencies(args)

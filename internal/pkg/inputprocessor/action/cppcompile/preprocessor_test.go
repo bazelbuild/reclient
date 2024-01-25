@@ -96,7 +96,7 @@ func TestComputeSpec(t *testing.T) {
 		filepath.Join(er, "src/test.cpp"),
 	}
 	// expect command to be adjusted if Clang dependency scanner used
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		wantCmd = append(wantCmd, "-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {
@@ -218,7 +218,7 @@ func TestComputeSpec_SysrootAndProfileSampleUseArgsConvertedToAbsolutePath(t *te
 		"test.o",
 		filepath.Join(pwd, "src/test.cpp"),
 	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		wantCmd = append(wantCmd, []string{
 			// adjusted
 			"-o",
@@ -288,7 +288,7 @@ func TestComputeSpecAbsolutePaths(t *testing.T) {
 		filepath.Join(pwd, wd, "test.o"),
 		filepath.Join(pwd, "src/test.cpp"),
 	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		wantCmd = append(wantCmd, []string{
 			// adjusted
 			"-o",
@@ -357,7 +357,7 @@ func TestComputeSpec_RemovesUnsupportedFlags(t *testing.T) {
 		filepath.Join(er, "src/test.cpp"),
 	}
 	// expect command to be adjusted if Clang dependency scanner used
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		wantCmd = append(wantCmd, "-o", "/dev/null", "-M", "-MT", "test.o", "-Xclang", "-Eonly", "-Xclang", "-sys-header-deps", "-Wno-error")
 	}
 	if diff := cmp.Diff(wantCmd, s.gotCmd); diff != "" {

@@ -161,7 +161,7 @@ func (p *Preprocessor) ComputeSpec() error {
 	defer p.AppendSpec(s)
 
 	args := p.BuildCommandLine("-o", false, toAbsArgs)
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
+	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps || cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDepsService {
 		if filepath.IsAbs(p.Flags.TargetFilePaths[0]) {
 			args = p.adjustCommand(args, p.Flags.TargetFilePaths[0])
 		} else {
