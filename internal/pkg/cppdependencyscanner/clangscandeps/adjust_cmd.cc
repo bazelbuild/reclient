@@ -35,7 +35,8 @@ bool IsClangClCommand(const std::string_view exec) {
 
 // Adjusts the given command to be compatible with clangscandeps.
 void clangscandeps::AdjustCmd(std::vector<std::string>& cmd,
-                              const std::string filename) {
+                              const std::string filename,
+                              const std::set<std::string>& ignoredPlugins) {
   if (cmd.empty()) {
     return;
   }
@@ -53,6 +54,12 @@ void clangscandeps::AdjustCmd(std::vector<std::string>& cmd,
       hasMQ = true;
     } else if (arg == "-MD") {
       hasMD = true;
+    }
+    // Check for -Xclang -add-plugin -Xclang [ignored-plugin]
+    if (i + 3 < cmd.size() && arg == "-Xclang" && cmd[i + 1] == "-add-plugin" &&
+        cmd[i + 2] == "-Xclang" &&
+        ignoredPlugins.find(cmd[i + 3]) != ignoredPlugins.end()) {
+      cmd.erase(cmd.begin() + i, cmd.begin() + i + 4);
     }
   }
   bool isClangCl = IsClangClCommand(cmd[0]);

@@ -157,7 +157,7 @@ func TestNew_ConnectSuccess(t *testing.T) {
 	t.Cleanup(func() {
 		connect = oldConnect
 	})
-	depsScannerClient, err := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), nil, "", 0, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestNew_ConnectFailure(t *testing.T) {
 	t.Cleanup(func() {
 		connect = oldConnect
 	})
-	depsScannerClient, err := New(context.Background(), nil, "", 0, nil, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), nil, "", 0, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
@@ -207,7 +207,7 @@ func TestNew_StartSuccess(t *testing.T) {
 		connect = oldConnect
 	})
 	stubExecutor := &stubExecutor{}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestNew_StartFailure(t *testing.T) {
 	stubExecutor := &stubExecutor{
 		err: errors.New("File not found"),
 	}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
@@ -294,7 +294,7 @@ func TestNew_StartNoConnect(t *testing.T) {
 		connect = oldConnect
 	})
 	stubExecutor := &stubExecutor{}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
@@ -330,7 +330,7 @@ func TestNew_StartDelayedConnect(t *testing.T) {
 		connect = oldConnect
 	})
 	stubExecutor := &stubExecutor{}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, nil, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}

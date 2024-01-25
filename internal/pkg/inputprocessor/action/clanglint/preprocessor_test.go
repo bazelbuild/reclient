@@ -127,10 +127,6 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 	return s.res, false, s.err
 }
 
-func (s *stubCPPDepScanner) ShouldIgnorePlugin(_ string) bool {
-	return false
-}
-
 func (s *stubCPPDepScanner) Capabilities() *spb.CapabilitiesResponse {
 	return nil
 }

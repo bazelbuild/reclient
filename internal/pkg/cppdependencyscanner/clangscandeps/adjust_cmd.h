@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -19,7 +20,8 @@
 #define INTERNAL_PKG_CPPDEPENDENCYSCANNER_CLANGSCANNER_ADJUST_CMD_H_
 namespace clangscandeps {
 // Adjusts the given command to be compatible with clangscandeps.
-void AdjustCmd(std::vector<std::string>& cmd, std::string filename);
+void AdjustCmd(std::vector<std::string>& cmd, std::string filename,
+               const std::set<std::string>& ignoredPlugins);
 }  // namespace clangscandeps
 
 #endif  // INTERNAL_PKG_CPPDEPENDENCYSCANNER_CLANGSCANNER_ADJUST_CMD_H_

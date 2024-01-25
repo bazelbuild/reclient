@@ -6664,10 +6664,6 @@ func (s *stubCPPDependencyScanner) ProcessInputs(context.Context, string, []stri
 	return s.processInputsReturnValue, false, s.processInputsError
 }
 
-func (s *stubCPPDependencyScanner) ShouldIgnorePlugin(_ string) bool {
-	return false
-}
-
 func (s *stubCPPDependencyScanner) Capabilities() *spb.CapabilitiesResponse {
 	return s.capabilities
 }

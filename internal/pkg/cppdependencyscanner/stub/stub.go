@@ -39,7 +39,7 @@ const IsStub = true
 type StubClient struct{}
 
 // New exits with a fatal error as StubClient should never be created.
-func New(_ filemetadata.Cache, _, _ string, _ int, _ []string, _ bool, _ *logger.Logger) *StubClient {
+func New(_ filemetadata.Cache, _, _ string, _ int, _ bool, _ *logger.Logger) *StubClient {
 	log.Fatalf("Invalid call to New() for StubClient.")
 	return nil
 }
@@ -54,13 +54,6 @@ func (ds *StubClient) Close() {
 // It always returns an error.
 func (ds *StubClient) ProcessInputs(_ context.Context, _ string, _ []string, _, _ string, _ []string) ([]string, bool, error) {
 	return nil, false, fmt.Errorf("invalid call to StubClient.ProcessInputs()")
-}
-
-// ShouldIgnorePlugin implements DepsScanner.ShouldIgnorePlugin.
-// It always exits with a fatal error.
-func (ds *StubClient) ShouldIgnorePlugin(plugin string) bool {
-	log.Fatalf("Invalid call to StubClient.ShouldIgnorePlugin().")
-	return false
 }
 
 var capabilities = &spb.CapabilitiesResponse{

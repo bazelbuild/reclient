@@ -477,67 +477,23 @@ func TestComputeSpec_RemovesUnsupportedFlags(t *testing.T) {
 }
 
 func TestBuildCommandLine(t *testing.T) {
-	tests := []struct {
-		name           string
-		flags          []*flags.Flag
-		want           []string
-		ignoredPlugins map[string]bool
-	}{
-		{
-			name:           "verify, fallow-half-arguments-and-returns removed, and sysroot converted to absolute",
-			flags:          []*flags.Flag{{Key: "-c"}, {Key: "-Xclang", Value: "-verify"}, {Key: "-Xclang", Value: "-fallow-half-arguments-and-returns"}, {Key: "--sysroot=", Value: "a/b", Joined: true}},
-			want:           []string{filepath.Clean("/exec/root/foo/clang++"), "-c", "--sysroot=" + filepath.Clean("/exec/root/foo/a/b"), "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")},
-			ignoredPlugins: map[string]bool{},
-		},
-		{
-			name:           "plugin NOT in ingored list",
-			flags:          []*flags.Flag{{Key: "-Xclang", Value: "-add-plugin"}, {Key: "-Xclang", Value: "blinkg-gc-plugin"}, {Key: "-c"}, {Key: "-Xclang", Value: "-verify"}},
-			want:           []string{filepath.Clean("/exec/root/foo/clang++"), "-Xclang", "-add-plugin", "-Xclang", "blinkg-gc-plugin", "-c", "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")},
-			ignoredPlugins: map[string]bool{"find-bad-constructs": true},
-		},
-		{
-			name: "one of plugins in ingored list",
-			flags: []*flags.Flag{{Key: "-Xclang", Value: "-add-plugin"}, {Key: "-Xclang", Value: "find-bad-constructs"},
-				{Key: "-Xclang", Value: "-add-plugin"}, {Key: "-Xclang", Value: "blinkg-gc-plugin"},
-				{Key: "-c"}, {Key: "-Xclang", Value: "-verify"}},
-			want:           []string{filepath.Clean("/exec/root/foo/clang++"), "-Xclang", "-add-plugin", "-Xclang", "blinkg-gc-plugin", "-c", "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")},
-			ignoredPlugins: map[string]bool{"find-bad-constructs": true},
-		},
-		{
-			name:           "both plugins in ingored list",
-			flags:          []*flags.Flag{{Key: "-Xclang", Value: "-add-plugin"}, {Key: "-Xclang", Value: "find-bad-constructs"}, {Key: "-c"}, {Key: "-Xclang", Value: "-verify"}},
-			want:           []string{filepath.Clean("/exec/root/foo/clang++"), "-c", "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")},
-			ignoredPlugins: map[string]bool{"find-bad-constructs": true, "blinkg-gc-plugin": true},
-		},
-		{
-			name:           "plugin in ingored list, but preceded by incorrect flag",
-			flags:          []*flags.Flag{{Key: "-Xclang", Value: "-unrecognized-flag"}, {Key: "-Xclang", Value: "find-bad-constructs"}, {Key: "-c"}, {Key: "-Xclang", Value: "-verify"}},
-			want:           []string{filepath.Clean("/exec/root/foo/clang++"), "-Xclang", "-unrecognized-flag", "-Xclang", "find-bad-constructs", "-c", "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")},
-			ignoredPlugins: map[string]bool{"find-bad-constructs": true},
-		},
+	f := &flags.CommandFlags{
+		ExecutablePath:        "clang++",
+		Flags:                 []*flags.Flag{{Key: "-c"}, {Key: "-Xclang", Value: "-verify"}, {Key: "-Xclang", Value: "-fallow-half-arguments-and-returns"}, {Key: "--sysroot=", Value: "a/b", Joined: true}},
+		TargetFilePaths:       []string{"test.cpp"},
+		OutputFilePaths:       []string{"test.o", "test.d"},
+		EmittedDependencyFile: "test.d",
+		WorkingDirectory:      "foo",
+		ExecRoot:              "/exec/root",
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			f := &flags.CommandFlags{
-				ExecutablePath:        "clang++",
-				Flags:                 tc.flags,
-				TargetFilePaths:       []string{"test.cpp"},
-				OutputFilePaths:       []string{"test.o", "test.d"},
-				EmittedDependencyFile: "test.d",
-				WorkingDirectory:      "foo",
-				ExecRoot:              "/exec/root",
-			}
-			p := &Preprocessor{
-				BasePreprocessor: &inputprocessor.BasePreprocessor{Flags: f},
-				CPPDepScanner: &stubCPPDepScanner{
-					ignoredPluginsMap: tc.ignoredPlugins,
-				},
-			}
-			got := p.BuildCommandLine("-o", false, map[string]bool{"--sysroot=": true})
-			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("BuildCommandLine returned diff, (-want +got): %s", diff)
-			}
-		})
+	p := &Preprocessor{
+		BasePreprocessor: &inputprocessor.BasePreprocessor{Flags: f},
+		CPPDepScanner:    &stubCPPDepScanner{},
+	}
+	got := p.BuildCommandLine("-o", false, map[string]bool{"--sysroot=": true})
+	want := []string{filepath.Clean("/exec/root/foo/clang++"), "-c", "--sysroot=" + filepath.Clean("/exec/root/foo/a/b"), "-Qunused-arguments", "-o", "test.o", filepath.Clean("/exec/root/foo/test.cpp")}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("BuildCommandLine returned diff, (-want +got): %s", diff)
 	}
 }
 
@@ -731,8 +687,7 @@ type stubCPPDepScanner struct {
 	processCalls  int
 	minimizeCalls int
 
-	ignoredPluginsMap map[string]bool
-	capabilities      *spb.CapabilitiesResponse
+	capabilities *spb.CapabilitiesResponse
 
 	cacheInput bool
 }
@@ -748,11 +703,6 @@ func (s *stubCPPDepScanner) ProcessInputs(_ context.Context, _ string, command [
 
 func (s *stubCPPDepScanner) Capabilities() *spb.CapabilitiesResponse {
 	return s.capabilities
-}
-
-func (s *stubCPPDepScanner) ShouldIgnorePlugin(plugin string) bool {
-	_, present := s.ignoredPluginsMap[plugin]
-	return present
 }
 
 type stubExecutor struct {

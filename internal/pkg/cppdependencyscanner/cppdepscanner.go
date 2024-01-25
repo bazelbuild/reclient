@@ -41,7 +41,6 @@ type DepsScanner interface {
 	ProcessInputs(ctx context.Context, execID string, compileCommand []string, filename, directory string, cmdEnv []string) ([]string, bool, error)
 	Close()
 	Capabilities() *spb.CapabilitiesResponse
-	ShouldIgnorePlugin(plugin string) bool
 }
 
 // Executor can run commands and retrieve their outputs.
@@ -109,9 +108,9 @@ func Name() string {
 }
 
 // New creates new DepsScanner.
-func New(ctx context.Context, executor executor, fmc filemetadata.Cache, cacheDir, logDir string, cacheSizeMaxMb int, ignoredPlugins []string, useDepsCache bool, l *logger.Logger, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
+func New(ctx context.Context, executor executor, fmc filemetadata.Cache, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, l *logger.Logger, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
 	if depsScannerAddress == "" {
-		return includescanner.New(fmc, cacheDir, logDir, cacheSizeMaxMb, ignoredPlugins, useDepsCache, l), nil
+		return includescanner.New(fmc, cacheDir, logDir, cacheSizeMaxMb, useDepsCache, l), nil
 	}
-	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, ignoredPlugins, useDepsCache, logDir, depsScannerAddress, proxyServerAddress)
+	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress)
 }
