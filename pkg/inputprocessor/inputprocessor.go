@@ -139,37 +139,24 @@ func onceFunc(f func()) func() {
 // NewInputProcessor creates a new input processor.
 // Its resources are bound by the local resources manager.
 func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache, l *logger.Logger, opt *Options) (*InputProcessor, func(), error) {
-	depsCacheMode := getDepsCacheMode(opt.CacheDir, opt.EnableDepsCache)
+	useDepsCache := opt.CacheDir != "" && opt.EnableDepsCache
 	var ignoredPlugins []string
 	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
 		ignoredPlugins = opt.ClangDepsScanIgnoredPlugins
 	}
-	depScanner, err := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, ignoredPlugins, depsCacheMode == gomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
+	depScanner, err := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, ignoredPlugins, useDepsCache && !features.GetConfig().ExperimentalGomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
 	if err != nil {
 		return nil, func() {}, err
 	}
 	ip := newInputProcessor(depScanner, opt.IPTimeout, opt.CppLinkDeepScan, executor, resMgr, fmc, l)
 	cleanup := func() {}
-	if depsCacheMode == reproxyDepsCache {
+	if useDepsCache && (!depScanner.Capabilities().GetCaching() || features.GetConfig().ExperimentalGomaDepsCache) {
 		ip.depsCache, cleanup = newDepsCache(fmc, opt.CacheDir, l)
 	}
 	return ip, onceFunc(func() {
 		cleanup()
 		depScanner.Close()
 	}), nil
-}
-
-func getDepsCacheMode(depsCacheDir string, enableDepsCache bool) depsCacheMode {
-	if depsCacheDir == "" || !enableDepsCache {
-		return noDepsCache
-	}
-	if cppdependencyscanner.Type() == cppdependencyscanner.ClangScanDeps {
-		return reproxyDepsCache
-	}
-	if features.GetConfig().ExperimentalGomaDepsCache {
-		return reproxyDepsCache
-	}
-	return gomaDepsCache
 }
 
 // NewInputProcessorWithStubDependencyScanner creates a new input processor with given parallelism
