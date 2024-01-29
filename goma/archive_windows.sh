@@ -29,57 +29,29 @@ OUTDIR=${1//\\/\/}
 # generated headers should be written.
 INSTALLDIR=${2//\\/\/}
 
-# CLANG can be set to indicate goma has been built with clang and must output a .lib file
-# otherwise it will output a gcc compatible .a file.
-CLANG=$3
-
 shopt -s globstar
 
-if [ "x$CLANG" == "x" ]; then
-    # library archive needed for reproxy dependency scanner (built with mingw)
-    # The order in which the libs show up in the archive should be preserved.
-    echo rcsD $INSTALLDIR/lib/goma_input_processor.a > $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/client/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/glog/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/lib/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/base/base/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/abseil/abseil/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/abseil/abseil_internal/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/chromium_base/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/protobuf/protobuf_full/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/jsoncpp/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/boringssl/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/zlib/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/zlib_x86_simd/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/zlib_adler32_simd/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/zlib_inflate_chunk_simd/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/zlib_crc32_simd/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/breakpad/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/libyaml/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ls $OUTDIR/obj/third_party/minizip/**/*.o >> $INSTALLDIR/lib/lib.rsp
-    ar @$INSTALLDIR/lib/lib.rsp
-else
-    # library archive needed for dependency scanner service (built with clang)
-    # The order in which the libs show up in the archive should be preserved.
-    echo /out:$INSTALLDIR/lib/goma_input_processor.lib > $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/client/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/lib/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/base/base/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/abseil/abseil/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/abseil/abseil_internal/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/chromium_base/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/jsoncpp/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/boringssl/**/*.obj | grep -v bcm.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/zlib/**/*.obj >> $INSTALLDIR/lib/vslib.rsp 
-    ls $OUTDIR/obj/third_party/zlib_x86_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/zlib_adler32_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/zlib_inflate_chunk_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/zlib_crc32_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/breakpad/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/libyaml/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    ls $OUTDIR/obj/third_party/minizip/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-    lib.exe @$INSTALLDIR/lib/vslib.rsp >> /c/Windows/temp/archive.log 2> /c/Windows/temp/archive.err
-fi
+# library archive needed for dependency scanner service (built with clang)
+# The order in which the libs show up in the archive should be preserved.
+echo /out:$INSTALLDIR/lib/goma_input_processor.lib > $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/client/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/lib/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/base/base/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/abseil/abseil/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/abseil/abseil_internal/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/chromium_base/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/jsoncpp/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/boringssl/**/*.obj | grep -v bcm.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/zlib/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/zlib_x86_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/zlib_adler32_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/zlib_inflate_chunk_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/zlib_crc32_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/breakpad/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/libyaml/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/minizip/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+lib.exe @$INSTALLDIR/lib/vslib.rsp >> /c/Windows/temp/archive.log 2> /c/Windows/temp/archive.err
+
 
 
 (cd $OUTDIR/gen && cp -ar --parents **/*.h $INSTALLDIR/include)

@@ -30,20 +30,13 @@ OUTDIR=$1
 # generated headers should be written.
 INSTALLDIR=$2
 
-# If Goma is built for scandeps service, some objects are duplicated or otherwise unneccessary.
-GOMA_SERVICE=$3
-
 echo rcsD $INSTALLDIR/lib/goma_input_processor.a > $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/client/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/glog/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/lib/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/base/base/*.o >> $INSTALLDIR/lib/lib.rsp
 
-if [ "x$GOMA_SERVICE" != "xtrue" ]; then
-    ls $OUTDIR/obj/third_party/abseil/abseil/*.o >> $INSTALLDIR/lib/lib.rsp
-else
-    ls $OUTDIR/obj/third_party/abseil/abseil/*.o | grep -v "symbolize.o" >> $INSTALLDIR/lib/lib.rsp
-fi
+ls $OUTDIR/obj/third_party/abseil/abseil/*.o | grep -v "symbolize.o" >> $INSTALLDIR/lib/lib.rsp
 
 ls $OUTDIR/obj/third_party/abseil/abseil_internal/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/chromium_base/**/*.o >> $INSTALLDIR/lib/lib.rsp
@@ -59,10 +52,5 @@ ls $OUTDIR/obj/third_party/breakpad/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/libyaml/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/minizip/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ar @$INSTALLDIR/lib/lib.rsp
-
-if [ "x$GOMA_SERVICE" != "xtrue" ]; then
-    ar rcsD $INSTALLDIR/lib/libc++abi.a $OUTDIR/obj/buildtools/third_party/libc++abi/libc++abi/*.o
-    ar rcsD $INSTALLDIR/lib/libc++.a $OUTDIR/obj/buildtools/third_party/libc++/libc++/*.o
-fi
 
 cp -ar $OUTDIR/gen/* $INSTALLDIR/include

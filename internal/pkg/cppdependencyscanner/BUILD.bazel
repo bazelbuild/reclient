@@ -16,13 +16,10 @@ go_library(
         "@com_github_golang_glog//:go_default_library",
     ] + select({
         "//:goma_input_processor_config": [
-            "//internal/pkg/cppdependencyscanner/goma",
+            "//internal/pkg/cppdependencyscanner/stub",
         ],
         "//:clangscandeps_input_processor_config": [
             "//internal/pkg/cppdependencyscanner/clangscandeps",
-        ],
-        "//:goma_input_processor_service_config": [
-            "//internal/pkg/cppdependencyscanner/stub",
         ],
         "//:clangscandeps_input_processor_service_config": [
             "//internal/pkg/cppdependencyscanner/stub",
