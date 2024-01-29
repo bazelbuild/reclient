@@ -48,6 +48,7 @@ func parseFlags(ctx context.Context, command []string, workingDir, execRoot stri
 		},
 		Joined: []args.PrefixOption{
 			{"--system=", 0},
+			{"-Aroom.schemaLocation=", 0},
 		},
 	}
 	for s.HasNext() {
@@ -63,7 +64,7 @@ func parseFlags(ctx context.Context, command []string, workingDir, execRoot stri
 				res.Dependencies = append(res.Dependencies, d)
 			}
 			continue
-		case "--system=":
+		case "--system=", "-Aroom.schemaLocation=":
 			res.Dependencies = append(res.Dependencies, values[0])
 			continue
 		case "-d", "-s":

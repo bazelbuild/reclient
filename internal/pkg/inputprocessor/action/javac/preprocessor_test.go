@@ -32,11 +32,11 @@ var (
 )
 
 func TestJavacPreprocessor(t *testing.T) {
-	er, cleanup := execroot.Setup(t, []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "lib", "javac"})
+	er, cleanup := execroot.Setup(t, []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "lib", "javac"})
 	defer cleanup()
 	execroot.AddFileWithContent(t, filepath.Join(er, "test.rsp"), []byte("h i\nj"))
 	execroot.AddFileWithContent(t, filepath.Join(er, "javac_remote_toolchain_inputs"), []byte("lib"))
-	cmd := []string{"javac", "-J-Xmx2048M", "-bootclasspath", "a:b:c", "-classpath", "d:e:f", "-processorpath", "g", "--system=j", "-d", "out1/", "-s", "out2/", "@test.rsp"}
+	cmd := []string{"javac", "-J-Xmx2048M", "-bootclasspath", "a:b:c", "-classpath", "d:e:f", "-processorpath", "g", "--system=j", "-Aroom.schemaLocation=k", "-d", "out1/", "-s", "out2/", "@test.rsp"}
 	ctx := context.Background()
 	pp := &Preprocessor{
 		&inputprocessor.BasePreprocessor{
@@ -53,7 +53,7 @@ func TestJavacPreprocessor(t *testing.T) {
 	}
 	wantSpec := &inputprocessor.ActionSpec{
 		InputSpec: &command.InputSpec{
-			Inputs: []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "test.rsp", "lib", "javac"},
+			Inputs: []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "test.rsp", "lib", "javac"},
 			EnvironmentVariables: map[string]string{
 				"PATH": ".:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			},
