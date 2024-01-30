@@ -50,12 +50,18 @@ expand_template(
     out = "version.h",
     substitutions = select({
         "//:clangscandeps_input_processor_service_config": {
-            "{INPUT_PROCESSOR}": "ClangscandepsIP",
+            "{INPUT_PROCESSOR}": "ClangscandepsIPService",
             "{VERSION_MAJOR}": VERSION_MAJOR,
             "{VERSION_MINOR}": VERSION_MINOR,
             "{VERSION_PATCH}": VERSION_PATCH,
         },
         "//:goma_input_processor_service_config": {
+            "{INPUT_PROCESSOR}": "GomaIPService",
+            "{VERSION_MAJOR}": VERSION_MAJOR,
+            "{VERSION_MINOR}": VERSION_MINOR,
+            "{VERSION_PATCH}": VERSION_PATCH,
+        },
+        "//:goma_input_processor_config": {
             "{INPUT_PROCESSOR}": "GomaIP",
             "{VERSION_MAJOR}": VERSION_MAJOR,
             "{VERSION_MINOR}": VERSION_MINOR,
@@ -63,6 +69,7 @@ expand_template(
         },
     }),
     target_compatible_with = select({
+        "//:goma_input_processor_config": [],
         "//:clangscandeps_input_processor_service_config": [],
         "//:goma_input_processor_service_config": [],
         "//conditions:default": ["@platforms//:incompatible"],

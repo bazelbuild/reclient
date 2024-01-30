@@ -51,6 +51,7 @@
 #include "list_dir_cache.h"
 #include "mypath.h"
 #include "path.h"
+#include "pkg/version/version.h"
 #include "platform_thread.h"
 #include "scoped_fd.h"
 #include "util.h"
@@ -302,7 +303,7 @@ void IncludeProcessor::GetCompilerInfo(const string exec_id,
       return;
     }
   }
-  VLOG(1) << exec_id << ": Finished GetCompilerInfo";
+  VLOG(1) << exec_id << ": Finished GetCompilerInfo without cache hit";
   wm_->RunClosureInPool(
       FROM_HERE, compiler_info_pool_,
       NewCallback(this, &IncludeProcessor::GetCompilerInfoInternal, param,
@@ -358,6 +359,9 @@ void IncludeProcessor::GetCompilerInfoInternal(GetCompilerInfoParam* param,
 void Request::FillCompilerInfo() {
   std::vector<std::string> run_envs;
   VLOG(1) << exec_id_ << ": Started FillCompilerInfo";
+  // Append scandeps service version string as env variable in CompilerInfo, so
+  // that when we update scandeps version, scandeps cache will be invalidated.
+  run_envs.push_back(INPUT_PROCESSOR "=" RECLIENT_VERSION);
   // Used by nacl on Mac.
   GetAdditionalEnv(env_, "PATH", &run_envs);
 #ifdef _WIN32

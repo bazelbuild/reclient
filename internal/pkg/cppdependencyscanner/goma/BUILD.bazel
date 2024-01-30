@@ -1,3 +1,5 @@
+# gazelle:ignore
+# Disabling gazelle because it removes the "//pkg/version:version_cc" from the deps.
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 filegroup(
@@ -53,7 +55,7 @@ go_library(
             "@goma//:libc",
         ],
         "//conditions:default": [],
-    }),
+    }) + ["//pkg/version:version_cc"],
     cgo = True,
     clinkopts = select({
         "@io_bazel_rules_go//go/platform:android": [

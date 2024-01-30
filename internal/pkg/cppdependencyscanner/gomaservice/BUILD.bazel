@@ -65,5 +65,6 @@ cc_library(
     deps = [
         ":gomadeps",
         "//goma:goma_input_processor",
+        "//pkg/version:version_cc",
     ],
 )
