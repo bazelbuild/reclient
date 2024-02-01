@@ -4551,6 +4551,10 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
+	}
 }
 
 func TestRacingRemoteWins(t *testing.T) {
@@ -4665,6 +4669,10 @@ func TestRacingRemoteWins(t *testing.T) {
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
+	}
 }
 
 func TestRacingRemoteFailsLocalWins(t *testing.T) {
@@ -4722,7 +4730,7 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.NonZeroExitResultStatus, ExitCode: -1}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput)}, fakes.StdOut("Done"))
+	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput)}, fakes.StdOut(wantStdout))
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -4761,6 +4769,7 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 				ExecutedLocally: true,
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			},
+			RemoteMetadata: &lpb.RemoteMetadata{},
 		},
 	}
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
@@ -4768,6 +4777,10 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 	}
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
+	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
 	}
 }
 
@@ -4826,7 +4839,7 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.NonZeroExitResultStatus, ExitCode: -1}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput)}, fakes.StdOut("Done"))
+	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput)}, fakes.StdOut(wantStdout))
 	release, err := resMgr.Lock(context.Background(), math.MaxInt64, math.MaxInt64)
 	if err != nil {
 		t.Fatalf("Unable to lock all resources: %v", err)
@@ -4878,6 +4891,7 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 				ExecutedLocally: true,
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			},
+			RemoteMetadata: &lpb.RemoteMetadata{},
 		},
 	}
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
@@ -4885,6 +4899,10 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	}
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
+	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
 	}
 }
 
@@ -5303,6 +5321,10 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
+	}
 }
 
 func TestRacingLocalWinsIfStarted(t *testing.T) {
@@ -5402,6 +5424,7 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 				ExecutedLocally: true,
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			},
+			RemoteMetadata: &lpb.RemoteMetadata{},
 		},
 	}
 	if diff := cmp.Diff(wantRecs, recs, append(cmpLogRecordsOpts, protocmp.IgnoreFields(&lpb.LogRecord{}, "remote_metadata"))...); diff != "" {
@@ -5410,9 +5433,13 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
 	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
+	}
 }
 
-func TestRacingLocalWins(t *testing.T) {
+func TestRacingemoteWins(t *testing.T) {
 	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
@@ -5518,6 +5545,10 @@ func TestRacingLocalWins(t *testing.T) {
 	}
 	if _, ok := recs[0].GetLocalMetadata().GetEventTimes()[event.RacingFinalizationOverhead]; !ok {
 		t.Errorf("Server logs does not have stat for %v", event.RacingFinalizationOverhead)
+	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
 	}
 }
 
@@ -5628,6 +5659,10 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 	}
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
 	}
 }
 
@@ -5760,6 +5795,10 @@ func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
+	}
 }
 
 func TestRacingHoldoffQuickDownload(t *testing.T) {
@@ -5880,6 +5919,10 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
 	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
+	}
 }
 
 func TestRacingHoldoffLongDownload(t *testing.T) {
@@ -5993,10 +6036,15 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 				Labels:          map[string]string{"type": "tool"},
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			},
+			RemoteMetadata: &lpb.RemoteMetadata{},
 		},
 	}
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
 	}
 }
 
@@ -6102,10 +6150,15 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 				Labels:          map[string]string{"type": "tool"},
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 			},
+			RemoteMetadata: &lpb.RemoteMetadata{},
 		},
 	}
 	if diff := cmp.Diff(wantRecs, recs, cmpLogRecordsOpts...); diff != "" {
 		t.Errorf("Server logs returned diff in result: (-want +got)\n%s", diff)
+	}
+	rm := recs[0].GetRemoteMetadata()
+	if rm.GetActionDigest() == "" || rm.GetCommandDigest() == "" {
+		t.Errorf("ActionDigest and/or CommandDigest is empty in RemoteMetadata: %v", rm)
 	}
 }
 

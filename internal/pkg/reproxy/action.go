@@ -393,6 +393,15 @@ func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, 
 		return raceResult{t: canceled, res: command.NewLocalErrorResult(err)}
 	}
 	a.execContext.GetCachedResult()
+
+	// Always record command and action digests, regardless of race result.
+	if a.rec.RemoteMetadata == nil {
+		a.rec.RemoteMetadata = &lpb.RemoteMetadata{}
+	}
+	partialRemoteMetadata := logger.CommandRemoteMetadataToProto(a.execContext.Metadata)
+	a.rec.RemoteMetadata.ActionDigest = partialRemoteMetadata.GetActionDigest()
+	a.rec.RemoteMetadata.CommandDigest = partialRemoteMetadata.GetCommandDigest()
+
 	if a.execContext.Result == nil {
 		// If action is a cache miss, start remote execution and local execution.
 		log.V(2).Infof("%v: Cache miss, starting race", a.cmd.Identifiers.ExecutionID)
