@@ -14,7 +14,7 @@ index acffa72124d8..66fe263dcef1 100644
      srcs = glob(["lib/Tooling/DependencyScanning/**/*.cpp"]),
      hdrs = glob(["include/clang/Tooling/DependencyScanning/**/*.h"]),
 +    linkstatic = select({
-+        "@bazel_tools//src/conditions:windows": True,
++        "@bazel_tools//tools/cpp:mingw": True,
 +        "//conditions:default": False,
 +    }),
      deps = [

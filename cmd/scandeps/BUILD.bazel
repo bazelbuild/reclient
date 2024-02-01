@@ -35,7 +35,7 @@ cc_platform_binary(
         "//conditions:default": [],
     }),
     platform = select({
-        "//:goma_input_processor_config_windows": "//configs/windows/config:platform-clang-cl",
+        "@platforms//os:windows": "//configs/windows/config:platform-clang-cl",
         "//conditions:default": None,
     }),
     tags = [
