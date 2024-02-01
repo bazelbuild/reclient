@@ -26,6 +26,9 @@ message DepsDatabase {
 
   // List of dependencies.
   repeated Deps deps = 2;
+
+  // Reproxy version string.
+  string version = 3;
 }
 
 message FileInfo {

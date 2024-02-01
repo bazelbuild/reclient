@@ -26,6 +26,7 @@ import (
 	ppb "github.com/bazelbuild/reclient/api/proxy"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
+	"github.com/bazelbuild/reclient/pkg/version"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	log "github.com/golang/glog"
 	"google.golang.org/protobuf/proto"
@@ -93,6 +94,10 @@ func (c *Cache) LoadFromDir(dir string) {
 	db := &ppb.DepsDatabase{}
 	if err := proto.Unmarshal(in, db); err != nil {
 		log.Errorf("Failed to parse cache file: %v", err)
+		return
+	}
+	if db.GetVersion() != version.CurrentVersion() {
+		log.Infof("Deps cache is invalid as it was generated from reproxy version %v, current reproxy version is %v", db.GetVersion(), version.CurrentVersion())
 		return
 	}
 	c.filesCache.init(db.GetFiles())
@@ -239,7 +244,8 @@ func (c *Cache) WriteToDisk(outDir string) {
 	c.depsMu.Lock()
 	defer c.depsMu.Unlock()
 	db := &ppb.DepsDatabase{
-		Files: make([]*ppb.FileInfo, 0),
+		Files:   make([]*ppb.FileInfo, 0),
+		Version: version.CurrentVersion(),
 	}
 	keys := make([]Key, 0, len(c.depsCache))
 	for k := range c.depsCache {
