@@ -4,9 +4,7 @@ cc_library(
     hdrs = ["clangscandepsip.h"],
     tags = ["manual"],
     target_compatible_with = select({
-        "//:clangscandeps_input_processor_service_config_linux": [],
-        "//:clangscandeps_input_processor_service_config_mac": [],
-        "//:clangscandeps_input_processor_service_config_windows": [],
+        "//:clangscandeps_input_processor_config": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//:__subpackages__"],

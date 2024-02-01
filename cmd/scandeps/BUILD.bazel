@@ -22,8 +22,8 @@ cc_library(
 cc_platform_binary(
     name = "scandeps_server",
     cxxopt = select({
-        "//:clangscandeps_input_processor_service_config_windows": ["/std:c++17"],
-        "//:clangscandeps_input_processor_service_config": ["-std=c++17"],
+        "//:clangscandeps_input_processor_config_windows": ["/std:c++17"],
+        "//:clangscandeps_input_processor_config": ["-std=c++17"],
         "//:goma_input_processor_config_windows": ["/std:c++14"],
         "//:goma_input_processor_config": ["-std=c++14"],
         "//conditions:default": [],
@@ -42,9 +42,7 @@ cc_platform_binary(
         "local",
     ],
     target_compatible_with = select({
-        "//:clangscandeps_input_processor_service_config_linux": [],
-        "//:clangscandeps_input_processor_service_config_mac": [],
-        "//:clangscandeps_input_processor_service_config_windows": [],
+        "//:clangscandeps_input_processor_config": [],
         "//:goma_input_processor_config": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
@@ -53,7 +51,7 @@ cc_platform_binary(
     ],
     deps =
         select({
-            "//:clangscandeps_input_processor_service_config": [
+            "//:clangscandeps_input_processor_config": [
                 ":scandeps_lib",
                 #gazelle:ignore
                 "//internal/pkg/clangscandepsipservice",

@@ -16,8 +16,6 @@ load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 
 bazel_skylib_workspace()
 
-load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
-
 http_archive(
     name = "io_bazel_rules_go",
     # TODO(b/180953129): Required to build re-client with RBE on windows for now.
@@ -187,15 +185,6 @@ http_archive(
     build_file_content = "#empty",
     patch_args = ["-p1"],
     patches = [
-        # Windows GCC tries to canonize path imports paths if their canonization is
-        # form is shorter than the current shown form [1]. For imports of the type:
-        # "extralong\path\..\..", gcc isn't smart enough to just remove the redundant
-        # part of the path and instead makes them absolute. This patch removes all
-        # the ".." includes from the files we care about.
-        # We can also try patching GCC, but even if that's successful, we'd still
-        # need to wait for a release.
-        # 1: https://github.com/gcc-mirror/gcc/blob/16e2427f50c208dfe07d07f18009969502c25dc8/libcpp/files.c#L405
-        "//third_party/patches/llvm:llvm-long-path.patch",
         # For simplicity, we expose the tblgen rule for a binary we use.
         "//third_party/patches/llvm:llvm-bzl-tblgen.patch",
         # This patch picks the right version of assembly files to build libSupport
@@ -209,9 +198,6 @@ http_archive(
         # Instead of making them global options, we just stuck them on the necessary
         # targets to optimze compilation.
         "//third_party/patches/llvm:llvm-bzl-mingw.patch",
-        # https://github.com/bazelbuild/rules_go/issues/2848
-        # Not ideal, but can't compile binaries without this.
-        "//third_party/patches/llvm:llvm-bzl-static.patch",
         # Don't link version.lib.
         # The library is not part of gcc toolchain and require VS SDK to be installed.
         # It's not needed to build @llvm-project//clang:tooling_dependency_scanning
@@ -223,8 +209,6 @@ http_archive(
         # line `llvm_configure(name = "llvm-project")` below, in the bzl file,
         # @llvm//utils/bazel:configure.bzl, @llvm-raw is not pre-defined.
         "//third_party/patches/llvm:llvm-bzl-config.patch",
-        # Disable @llvm_zstd//:zstd on Windows build
-        "//third_party/patches/llvm:llvm-bzl-zstd.patch",
     ],
     sha256 = LLVM_SHA256,
     strip_prefix = "llvm-project-%s" % LLVM_COMMIT,

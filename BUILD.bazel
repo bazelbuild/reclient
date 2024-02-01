@@ -1,5 +1,4 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
-load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//:settings.bzl", "include_scanner_rule")
 
 # gazelle:prefix github.com/bazelbuild/reclient
@@ -64,26 +63,11 @@ config_setting(
 )
 
 config_setting(
-    name = "clangscandeps_input_processor_service_config",
-    flag_values = {":include_scanner": "clangscandeps-service"},
-)
-
-config_setting(
-    name = "clangscandeps_input_processor_service_config_linux",
-    constraint_values = ["@platforms//os:linux"],
-    flag_values = {":include_scanner": "clangscandeps-service"},
-)
-
-config_setting(
-    name = "clangscandeps_input_processor_service_config_windows",
+    name = "clangscandeps_input_processor_config_windows",
     constraint_values = ["@platforms//os:windows"],
-    flag_values = {":include_scanner": "clangscandeps-service"},
-)
-
-config_setting(
-    name = "clangscandeps_input_processor_service_config_mac",
-    constraint_values = ["@platforms//os:macos"],
-    flag_values = {":include_scanner": "clangscandeps-service"},
+    flag_values = {
+        ":include_scanner": "clangscandeps",
+    },
 )
 
 config_setting(

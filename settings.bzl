@@ -1,5 +1,5 @@
 ScannerProvider = provider(fields = ["scanner"])
-scanners = ["clangscandeps", "goma", "clangscandeps-service"]
+scanners = ["clangscandeps", "goma"]
 
 def _impl(ctx):
     scanner = ctx.build_setting_value

@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/auth"
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
@@ -192,7 +191,7 @@ func main() {
 		// There will be at most NumCPU actions at any given time; this gives us approximately
 		// two failures before aborting the build on the third.
 		reproxy.AllowedIPTimeouts += int64(runtime.NumCPU() * 2)
-	} else if cppdependencyscanner.IsStub() {
+	} else {
 		log.Fatalf("--depsscanner_address must be specified")
 	}
 	log.Flush()

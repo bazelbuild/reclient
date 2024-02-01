@@ -23,11 +23,8 @@ import (
 	"errors"
 
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/depsscannerclient"
-	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/includescanner"
-	"github.com/bazelbuild/reclient/internal/pkg/logger"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
 
 	spb "github.com/bazelbuild/reclient/api/scandeps"
@@ -54,18 +51,7 @@ var (
 	ErrDepsScanTimeout = errors.New("cpp dependency scanner timed out")
 )
 
-// IsStub reflects if the built-in deps scanner is a stub.
-// This function exists to allow cmd/reproxy/main.go to not depend directly on
-// internal/pkg/cppdependencyscanner/includescanner which simplifies the bazel
-// build rules.
-func IsStub() bool {
-	return includescanner.IsStub
-}
-
 // New creates new DepsScanner.
-func New(ctx context.Context, executor executor, fmc filemetadata.Cache, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, l *logger.Logger, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
-	if depsScannerAddress == "" {
-		return includescanner.New(fmc, cacheDir, logDir, cacheSizeMaxMb, useDepsCache, l), nil
-	}
+func New(ctx context.Context, executor executor, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
 	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress)
 }

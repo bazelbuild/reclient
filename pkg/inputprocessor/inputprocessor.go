@@ -139,7 +139,7 @@ func onceFunc(f func()) func() {
 // Its resources are bound by the local resources manager.
 func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localresources.Manager, fmc filemetadata.Cache, l *logger.Logger, opt *Options) (*InputProcessor, func(), error) {
 	useDepsCache := opt.CacheDir != "" && opt.EnableDepsCache
-	depScanner, err := cppdependencyscanner.New(ctx, executor, fmc, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, useDepsCache && !features.GetConfig().ExperimentalGomaDepsCache, l, opt.DepsScannerAddress, opt.ProxyServerAddress)
+	depScanner, err := cppdependencyscanner.New(ctx, executor, opt.CacheDir, opt.LogDir, opt.DepsCacheMaxMb, useDepsCache && !features.GetConfig().ExperimentalGomaDepsCache, opt.DepsScannerAddress, opt.ProxyServerAddress)
 	if err != nil {
 		return nil, func() {}, err
 	}

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 // Package depsscannerclient implements the cppdependencyscanner.DepsScanner with gRPC
-// to perform the same tasks on a remote service instead of internally with cgo.
 package depsscannerclient
 
 import (

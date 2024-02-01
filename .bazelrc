@@ -24,7 +24,8 @@ build:windows --action_env PATH="C:\\tools\\msys64\\usr\\bin;C:\\tools\\msys64\\
 # developer mode). Some non-trivial internet searching revealed you need this flag set so
 # real symlinks are used.
 build:windows --action_env MSYS="winsymlinks:nativestrict"
-build:windows --@io_bazel_rules_go//go/config:static
+build --@io_bazel_rules_go//go/config:static
+build --@io_bazel_rules_go//go/config:pure
 
 ### Required for LLVM
 # Prevent invalid caching if input files are modified during a build.
@@ -84,8 +85,8 @@ test:windows --test_env=APPDATA
 build:windows --features=static_link_msvcrt
 
 build:clangscandeps --//:include_scanner=clangscandeps
-build:clangscandeps --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
 
 build:goma --//:include_scanner=goma
 
-build:clangscandeps-service --//:include_scanner=clangscandeps-service
+build:racedetection --@io_bazel_rules_go//go/config:race --@io_bazel_rules_go//go/config:pure=false
+test:racedetection --@io_bazel_rules_go//go/config:race --@io_bazel_rules_go//go/config:pure=false
