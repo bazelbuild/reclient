@@ -23,7 +23,6 @@ cc_library(
     ],
     target_compatible_with = select({
         "//:clangscandeps_input_processor_config": [],
-        "//:clangscandeps_input_processor_config_windows": ["@bazel_tools//tools/cpp:clang-cl"],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//visibility:public"],

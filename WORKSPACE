@@ -191,18 +191,6 @@ http_archive(
         # on Windows. Refer to https://github.com/llvm/llvm-project/issues/54685
         # for the corresponding fix to CMake files.
         "//third_party/patches/llvm:llvm-bazel-libsupport.patch",
-        # This patch includes a few linking options required to make gcc on windows
-        # work. We tried upstreaming them but since msvc doesn't need them, the maintainers
-        # decided to make them .bazelrc config options instead. Trying to use bazel
-        # conditions to select on the compiler has been _very_ challenging.
-        # Instead of making them global options, we just stuck them on the necessary
-        # targets to optimze compilation.
-        "//third_party/patches/llvm:llvm-bzl-mingw.patch",
-        # Don't link version.lib.
-        # The library is not part of gcc toolchain and require VS SDK to be installed.
-        # It's not needed to build @llvm-project//clang:tooling_dependency_scanning
-        # that's used by clang dependency scanner
-        "//third_party/patches/llvm:llvm-project-overlay-driver.patch",
         # Replace @llvm-raw with @llvm so we can build llvm inside of re-client.
         # In the llvm-project checkout, @llvm-raw is defined the WORKSPACE file
         # and point to the root of llvm-project; However, when we invoke the
@@ -448,7 +436,6 @@ gclient_repository(
     name = "goma",
     base_dir = "client/client",
     build_file = "BUILD.goma",
-    gclient_vars_windows = "checkout_mingw=True",
     gn_args_linux = "is_debug=false agnostic_build=true use_custom_libcxx=false",
     gn_args_macos_arm64 = "is_debug=false agnostic_build=true target_cpu=\"arm64\"",
     gn_args_macos_x86 = "is_debug=false agnostic_build=true target_cpu=\"x64\"",

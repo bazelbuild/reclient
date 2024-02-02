@@ -1,16 +1,3 @@
-diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-index 66fe263dcef1..68d66a436bae 100644
---- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-+++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-@@ -1540,7 +1540,7 @@ cc_library(
-         "lib/Driver",
-     ],
-     linkopts = select({
--        "@platforms//os:windows": ["version.lib"],
-+        "@bazel_tools//tools/cpp:clang-cl": ["version.lib"],
-         "//conditions:default": [],
-     }),
-     textual_hdrs = glob([
 diff --git a/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl b/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl
 --- a/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl	(revision e2b7481ea712878b167920a5174d23071e8ff70b)
 +++ b/utils/bazel/llvm-project-overlay/llvm/tblgen.bzl	(date 1705732595364)

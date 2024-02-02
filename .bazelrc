@@ -30,7 +30,9 @@ build --@io_bazel_rules_go//go/config:pure
 ### Required for LLVM
 # Prevent invalid caching if input files are modified during a build.
 build --experimental_guard_against_concurrent_changes
-build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+build:linux --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+build:macos --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+build:windows --cxxopt=/std:c++17 --host_cxxopt=/std:c++17
 build --compilation_mode=opt
 # Enable retries for repositories downloads
 build --experimental_repository_downloader_retries=8
@@ -52,11 +54,13 @@ common --experimental_allow_tags_propagation
 # https://github.com/bazelbuild/rules_go/blob/master/windows.rst
 build:windows --incompatible_enable_cc_toolchain_resolution
 build:windows --cpu=x64_windows
-build:windows --compiler=mingw-gcc
-build:windows --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows_mingw
-build:windows --host_platform=//:x64_windows_mingw
-build:windows --platforms=//:x64_windows_mingw
-build:windows --cxxopt=-O3
+build:windows --compiler=clang-cl
+build:windows --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows-clang-cl
+build:windows --host_platform=//:x64_windows
+build:windows --platforms=//:x64_windows
+build:windows --cxxopt=/O2
+build:windows --features=static_link_msvcrt
+build:windows --action_env=CGO_ENABLED=0
 
 
 # Get the current workspace git commit SHA as a variable for use with versioning.

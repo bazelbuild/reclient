@@ -34,10 +34,6 @@ cc_platform_binary(
         ],
         "//conditions:default": [],
     }),
-    platform = select({
-        "@platforms//os:windows": "//configs/windows/config:platform-clang-cl",
-        "//conditions:default": None,
-    }),
     tags = [
         "local",
     ],
