@@ -12,26 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gomaip.h"
-
 #ifdef _WIN32
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif
+
+#include "gomaip.h"
+
 #include <glog/logging.h>
 
 #include <condition_variable>
 #include <cstdlib>
 
-#include "goma_init.h"
-
 #if defined(_WIN32)
 #include <winsock2.h>
 #define WSA_VERSION MAKEWORD(2, 2)  // using winsock 2.2
-#else
-#include "subprocess_controller.h"
 #endif
 
-#include "internal/pkg/cppdependencyscanner/goma/bridge.h"
+#include "include_processor.h"
 #include "pkg/version/version.h"
 
 using grpc::ServerContext;
@@ -42,29 +39,6 @@ using scandeps::CapabilitiesResponse;
 using scandeps::CPPProcessInputsRequest;
 using scandeps::CPPProcessInputsResponse;
 using scandeps::StatusResponse;
-
-struct GomaResult {
-  std::string directory;
-  std::string filename;
-
-  std::set<std::string> dependencies;
-  bool used_cache = false;
-  std::string error;
-  std::condition_variable result_condition;
-  std::mutex result_mutex;
-  bool result_complete = false;
-};
-
-void gComputeIncludesDone(uintptr_t req_ptr, std::set<std::string>& res,
-                          bool used_cache, std::string& err) {
-  GomaResult* goma_result = reinterpret_cast<GomaResult*>(req_ptr);
-  std::unique_lock<std::mutex> result_lock(goma_result->result_mutex);
-  goma_result->dependencies = res;
-  goma_result->used_cache = used_cache;
-  goma_result->error = err;
-  goma_result->result_complete = true;
-  goma_result->result_condition.notify_all();
-}
 
 // Implementation of newDepsScanner from scandeps.h
 // TODO (b/268656738): remove experimental_deadlock and experimental_segfault
@@ -96,16 +70,15 @@ GomaIPServiceImpl::GomaIPServiceImpl(std::function<void()> shutdown_server,
     : current_actions_(0),
       completed_actions_(0),
       shutdown_server_(shutdown_server),
-      process_name_(process_name),
-      experimental_deadlock_(experimental_deadlock),
-      experimental_segfault_(experimental_segfault),
       deps_scanner_cache_(nullptr),
+      process_name_(process_name),
       cache_dir_(cache_dir),
       log_dir_(log_dir),
       cache_file_max_mb_(cache_file_max_mb),
-      use_deps_cache_(use_deps_cache) {
+      use_deps_cache_(use_deps_cache),
+      experimental_deadlock_(experimental_deadlock),
+      experimental_segfault_(experimental_segfault) {
   started_ = std::time(0);
-
 #ifdef _WIN32
   WSADATA WSAData = {};
   if (WSAStartup(WSA_VERSION, &WSAData) != 0) {
@@ -120,7 +93,23 @@ GomaIPServiceImpl::GomaIPServiceImpl(std::function<void()> shutdown_server,
     wsa_initialized_ = true;
   }
 #endif
-  InitGoma();
+  std::unique_lock<std::mutex> exp_lock(init_mutex_);
+  if (deps_scanner_cache_ != nullptr) {
+    LOG(WARNING) << "Goma dependency scanner is already initialized and will "
+                    "not be reinitialized";
+  } else {
+    std::time_t start = std::time(0);
+    deps_scanner_cache_ = include_processor::NewDepsScanner(
+        process_name_, cache_dir_.c_str(), log_dir_.c_str(), cache_file_max_mb_,
+        use_deps_cache_);
+    std::time_t end = std::time(0);
+    if (!deps_scanner_cache_) {
+      LOG(FATAL) << "Unable to create new goma dependency scanner";
+    }
+    LOG(INFO) << "Initializing goma dependency scanner took " << end - start
+              << " seconds";
+  }
+  init_cv_.notify_all();
 }
 
 GomaIPServiceImpl::~GomaIPServiceImpl() {
@@ -129,27 +118,10 @@ GomaIPServiceImpl::~GomaIPServiceImpl() {
     WSACleanup();
   }
 #endif
-  Close(deps_scanner_cache_);
-}
-
-void GomaIPServiceImpl::InitGoma() {
-  std::unique_lock<std::mutex> exp_lock(init_mutex_);
   if (deps_scanner_cache_ != nullptr) {
-    LOG(WARNING) << "Goma dependency scanner is already initialized and will "
-                    "not be reinitialized";
-  } else {
-    std::time_t start = std::time(0);
-    deps_scanner_cache_ =
-        NewDepsScanner(process_name_, cache_dir_.c_str(), log_dir_.c_str(),
-                       cache_file_max_mb_, use_deps_cache_);
-    std::time_t end = std::time(0);
-    if (deps_scanner_cache_ == nullptr) {
-      LOG(FATAL) << "Unable to create new goma dependency scanner";
-    }
-    LOG(INFO) << "Initializing goma dependency scanner took " << end - start
-              << " seconds";
+    LOG(INFO) << "Shutting down input processor";
+    deps_scanner_cache_->Quit();
   }
-  init_cv_.notify_all();
 }
 
 Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
@@ -178,8 +150,7 @@ Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
         LOG(WARNING) << "Service will deadlock now.";
         google::FlushLogFiles(0);
         exp_lock.unlock();  // but we don't want to cause an actual deadlock
-        while (true)
-          ;
+        while (true);
       }
     }
   }
@@ -195,40 +166,31 @@ Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
     }
   }
 
-  std::vector<const char*> argv(request->command_size());
-  for (int i = 0; i < request->command_size(); ++i) {
-    argv[i] = request->command(i).c_str();
-  }
+  auto goma_result = std::make_shared<include_processor::GomaResult>();
+  goma_result->directory = request->directory();
+  goma_result->filename = request->filename();
+  std::unique_lock<std::mutex> result_lock(goma_result->result_mutex);
+  deps_scanner_cache_->ComputeIncludes(
+      request->exec_id(), request->directory(),
+      std::vector<std::string>(request->command().begin(),
+                               request->command().end()),
+      std::vector<std::string>(request->cmd_env().begin(),
+                               request->cmd_env().end()),
+      goma_result);
+  goma_result->result_condition.wait(
+      result_lock, [&goma_result]() { return goma_result->result_complete; });
 
-  std::vector<const char*> envp(request->cmd_env_size() +
-                                1);  // the envp list must be null terminated
-  for (size_t i = 0; i < request->cmd_env_size(); ++i) {
-    envp[i] = request->cmd_env(i).c_str();
-  }
-  envp[request->cmd_env_size()] = nullptr;
-
-  GomaResult goma_result;
-  goma_result.directory = request->directory();
-  goma_result.filename = request->filename();
-  std::unique_lock<std::mutex> result_lock(goma_result.result_mutex);
-  ScanDependencies(deps_scanner_cache_, request->exec_id().c_str(),
-                   request->command_size(), argv.data(), envp.data(),
-                   request->filename().c_str(), request->directory().c_str(),
-                   reinterpret_cast<uintptr_t>(&goma_result));
-  goma_result.result_condition.wait(
-      result_lock, [&goma_result]() { return goma_result.result_complete; });
-
-  if (goma_result.error.size() > 0) {
+  if (goma_result->error.size() > 0) {
     std::ostringstream command;
     std::copy(request->command().begin(), request->command().end(),
               std::ostream_iterator<std::string>(command, " "));
     LOG(ERROR)
         << "Goma encountered the following error processing a command: \""
-        << goma_result.error << "\"; Command: [" << command.str() << "]";
+        << goma_result->error << "\"; Command: [" << command.str() << "]";
   }
-  response->set_error(goma_result.error);
-  response->set_used_cache(goma_result.used_cache);
-  for (auto dependency : goma_result.dependencies) {
+  response->set_error(goma_result->error);
+  response->set_used_cache(goma_result->used_cache);
+  for (auto dependency : goma_result->dependencies) {
     response->add_dependencies(dependency);
   }
   response->add_dependencies(request->filename());

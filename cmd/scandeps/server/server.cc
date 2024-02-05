@@ -20,6 +20,8 @@
 #include <glog/logging.h>
 #include <grpcpp/grpcpp.h>
 
+#include <thread>
+
 #include "api/scandeps/cppscandeps.grpc.pb.h"
 #include "scandeps.h"
 

@@ -9,9 +9,64 @@ cc_library(
     }),
     visibility = ["//:__subpackages__"],
     deps = [
+        ":include_processor",
         "//api/scandeps:scandeps_cc",
-        "//internal/pkg/cppdependencyscanner/gomaservice:gomacpplib",
         "//pkg/version:version_cc",
         "@com_github_grpc_grpc//:grpc++",
     ],
+)
+
+cc_library(
+    name = "include_processor",
+    srcs = [
+        "include_processor.cc",
+    ],
+    hdrs = [
+        "include_processor.h",
+    ],
+    copts = select({
+        "@platforms//os:windows": [
+            "/O2",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-fPIC",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,--wrap=glob",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = [
+        "manual",
+    ],
+    target_compatible_with = select({
+        "//:goma_input_processor_config": [],
+        "//:goma_input_processor_config_windows": ["@bazel_tools//tools/cpp:clang-cl"],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@goma//:absl",
+        "@goma//:base",
+        "@goma//:chromium_base",
+        "@goma//:client",
+        "@goma//:gtest",
+        "@goma//:json",
+        "@goma//:lib",
+        "@goma//:protobuf",
+        "@goma//:root",
+        "@goma//:zlib",
+        "//goma:goma_input_processor",
+        "//pkg/version:version_cc",
+    ] + select({
+        "@platforms//os:windows": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//conditions:default": [
+            "@goma//:glog",
+        ],
+    }),
 )

@@ -63,7 +63,7 @@ cc_platform_binary(
                 ":scandeps_lib",
                 #gazelle:ignore
                 "//internal/pkg/gomaipservice",
-                "//internal/pkg/cppdependencyscanner/gomaservice:gomacpplib",
+                "//internal/pkg/gomaipservice:include_processor",
             ],
             "//conditions:default": [],
         }),

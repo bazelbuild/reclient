@@ -12,24 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "bridge.h"
+#ifdef _WIN32
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#endif
+
+#include "include_processor.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 
 #include <iostream>
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <thread>
-#include <type_traits>
 #include <vector>
-
-#ifdef _WIN32
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#endif
 
 #include "breakpad.h"
 #include "callback.h"
@@ -38,19 +35,17 @@
 #include "compiler_info_cache.h"
 #include "compiler_info_state.h"
 #include "compiler_type_specific_collection.h"
-#include "cxx/include_processor/cpp_include_processor.h"
 #include "cxx/include_processor/include_cache.h"
+#include "cxx/include_processor/include_file_finder.h"
 #include "deps_cache.h"
 #include "file_stat_cache.h"
 #include "get_compiler_info_param.h"
 #include "goma_init.h"
 #include "ioutil.h"
 #include "list_dir_cache.h"
-#include "mypath.h"
 #include "path.h"
 #include "pkg/version/version.h"
 #include "platform_thread.h"
-#include "scoped_fd.h"
 #include "util.h"
 #include "worker_thread.h"
 #include "worker_thread_manager.h"
@@ -97,7 +92,6 @@ int __wrap_glob(const char* pattern, int flags,
 
 #endif  // __linux__
 
-#include "subprocess.h"
 #include "subprocess_controller_client.h"
 #include "subprocess_task.h"
 // Exported by goma.go when reproxy is built, declare this when building the
@@ -132,20 +126,21 @@ class Request;
 // pools necessary to execute such requests. It provides common functionality
 // across requests like CompilerInfo querying. The code mostly comes from
 // https://chromium.googlesource.com/infra/goma/client/+/refs/heads/main/client/compile_service.cc
-class IncludeProcessor {
+class IncludeProcessorImpl final : public IncludeProcessor {
  public:
   unique_ptr<WorkerThreadManager> wm_;
   int include_processor_pool_;
-  int ComputeIncludes(const string& exec_id, const string& cwd,
-                      const vector<string>& args, const vector<string>& envs,
-                      uintptr_t req);
-  void ComputeIncludesDone(Request* request);
-
+  void ComputeIncludesDone(unique_ptr<Request> request);
+  void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
+                       const std::vector<std::string>& args,
+                       const std::vector<std::string>& envs,
+                       std::shared_ptr<GomaResult> req);
   void Quit();
-  IncludeProcessor(string tmpdir)
-      : compiler_type_specific_collection_(
-            make_unique<CompilerTypeSpecificCollection>()),
-        wm_(make_unique<WorkerThreadManager>()) {
+
+  IncludeProcessorImpl(string tmpdir)
+      : wm_(make_unique<WorkerThreadManager>()),
+        compiler_type_specific_collection_(
+            make_unique<CompilerTypeSpecificCollection>()) {
     wm_.get()->Start(FLAGS_COMPILER_PROXY_THREADS);
     compiler_info_pool_ =
         wm_->StartPool(FLAGS_COMPILER_INFO_POOL, "compiler_info");
@@ -202,32 +197,35 @@ class Request {
   bool depscache_used_ = false;
   set<string> required_files_;
   string err_;
-  // go_req_ is a pointer to a Go object representing the input processing
-  // request. The pointer is passed to the Go handler gComputeIncludesDone, and
-  // then gComputeIncludesDone sends the results on a channel in the request
-  // object.
-  uintptr_t go_req_;
+  shared_ptr<GomaResult> res_;
 
-  IncludeProcessor* processor_;
+  IncludeProcessorImpl* processor_;
   CompilerTypeSpecific* compiler_type_specific_;
   ScopedCompilerInfoState compiler_info_state_;
   std::unique_ptr<FileStatCache> input_file_stat_cache_;
   Request(const string exec_id, const string cwd, const vector<string>& args,
-          const vector<string>& env)
-      : exec_id_(exec_id), cwd_(cwd), args_(args), env_(env) {}
-  void StartInputProcessing();
-  void SaveToDepsCache();
+          const vector<string>& env, IncludeProcessorImpl* processor,
+          shared_ptr<GomaResult> res)
+      : exec_id_(exec_id),
+        cwd_(cwd),
+        args_(args),
+        env_(env),
+        res_(res),
+        processor_(processor) {}
 
  private:
-  void InputProcessingDone();
-  void FillCompilerInfo();
-  void FillCompilerInfoDone(std::unique_ptr<GetCompilerInfoParam> param);
-  void StartIncludeProcessor();
-  void RunIncludeProcessor(
-      std::unique_ptr<IncludeProcessorRequestParam> request_param);
-  void RunIncludeProcessorDone(
-      std::unique_ptr<IncludeProcessorResponseParam> response_param);
 };
+
+void FillCompilerInfo(unique_ptr<Request> request);
+void FillCompilerInfoDone(unique_ptr<Request> request,
+                          std::unique_ptr<GetCompilerInfoParam> param);
+void StartIncludeProcessor(unique_ptr<Request> request);
+void RunIncludeProcessor(
+    unique_ptr<Request> request,
+    std::unique_ptr<IncludeProcessorRequestParam> request_param);
+void RunIncludeProcessorDone(
+    unique_ptr<Request> request,
+    std::unique_ptr<IncludeProcessorResponseParam> response_param);
 
 void GetAdditionalEnv(const vector<string>& in_envs, const char* name,
                       vector<string>* envs) {
@@ -246,7 +244,7 @@ void GetAdditionalEnv(const vector<string>& in_envs, const char* name,
   }
 }
 
-void IncludeProcessor::Quit() {
+void IncludeProcessorImpl::Quit() {
   FlushLogFiles();
   SubProcessControllerClient::Get()->Quit();
   load_deps_cache_.reset();
@@ -264,9 +262,9 @@ void IncludeProcessor::Quit() {
   }
 }
 
-void IncludeProcessor::GetCompilerInfo(const string exec_id,
-                                       GetCompilerInfoParam* param,
-                                       OneshotClosure* callback) {
+void IncludeProcessorImpl::GetCompilerInfo(const string exec_id,
+                                           GetCompilerInfoParam* param,
+                                           OneshotClosure* callback) {
   VLOG(1) << exec_id << ": Started GetCompilerInfo";
   param->state.reset(CompilerInfoCache::instance()->Lookup(param->key));
   if (param->state.get() != nullptr) {
@@ -293,13 +291,13 @@ void IncludeProcessor::GetCompilerInfo(const string exec_id,
   VLOG(1) << exec_id << ": Finished GetCompilerInfo without cache hit";
   wm_->RunClosureInPool(
       FROM_HERE, compiler_info_pool_,
-      NewCallback(this, &IncludeProcessor::GetCompilerInfoInternal, param,
+      NewCallback(this, &IncludeProcessorImpl::GetCompilerInfoInternal, param,
                   callback),
       WorkerThread::PRIORITY_MED);
 }
 
-void IncludeProcessor::GetCompilerInfoInternal(GetCompilerInfoParam* param,
-                                               OneshotClosure* callback) {
+void IncludeProcessorImpl::GetCompilerInfoInternal(GetCompilerInfoParam* param,
+                                                   OneshotClosure* callback) {
   std::vector<std::string> env(param->run_envs);
   env.push_back("GOMA_WILL_FAIL_WITH_UKNOWN_FLAG=true");
   param->state.reset(CompilerInfoCache::instance()->Lookup(param->key));
@@ -343,214 +341,219 @@ void IncludeProcessor::GetCompilerInfoInternal(GetCompilerInfoParam* param,
   }
 }
 
-void Request::FillCompilerInfo() {
+void FillCompilerInfo(unique_ptr<Request> req) {
   std::vector<std::string> run_envs;
-  VLOG(1) << exec_id_ << ": Started FillCompilerInfo";
+  VLOG(1) << req->exec_id_ << ": Started FillCompilerInfo";
   // Append scandeps service version string as env variable in CompilerInfo, so
   // that when we update scandeps version, scandeps cache will be invalidated.
   run_envs.push_back(INPUT_PROCESSOR "=" RECLIENT_VERSION);
   // Used by nacl on Mac.
-  GetAdditionalEnv(env_, "PATH", &run_envs);
+  GetAdditionalEnv(req->env_, "PATH", &run_envs);
 #ifdef _WIN32
   // used by nacl on Win
-  GetAdditionalEnv(env_, "SystemRoot", &run_envs);
+  GetAdditionalEnv(req->env_, "SystemRoot", &run_envs);
 
   // used by vpython
-  GetAdditionalEnv(env_, "HOMEDRIVE", &run_envs);
-  GetAdditionalEnv(env_, "HOMEPATH", &run_envs);
-  GetAdditionalEnv(env_, "USERPROFILE", &run_envs);
+  GetAdditionalEnv(req->env_, "HOMEDRIVE", &run_envs);
+  GetAdditionalEnv(req->env_, "HOMEPATH", &run_envs);
+  GetAdditionalEnv(req->env_, "USERPROFILE", &run_envs);
   // used by (clang-)cl.exe
-  GetAdditionalEnv(env_, "INCLUDE", &run_envs);
-  GetAdditionalEnv(env_, "LIB", &run_envs);
+  GetAdditionalEnv(req->env_, "INCLUDE", &run_envs);
+  GetAdditionalEnv(req->env_, "LIB", &run_envs);
 #endif
 
   auto param = std::make_unique<GetCompilerInfoParam>();
-  param->thread_id = processor_->wm_->GetCurrentThreadId();
-  param->key =
-      CompilerInfoCache::CreateKey(*flags_, flags_->args()[0], run_envs);
-  VLOG(1) << exec_id_
+  param->thread_id = req->processor_->wm_->GetCurrentThreadId();
+  param->key = CompilerInfoCache::CreateKey(*req->flags_,
+                                            req->flags_->args()[0], run_envs);
+  VLOG(1) << req->exec_id_
           << ": local_compiler_path=" << param->key.local_compiler_path;
-  param->flags = flags_.get();
+  param->flags = req->flags_.get();
   param->run_envs = run_envs;
 
   GetCompilerInfoParam* param_pointer = param.get();
-  processor_->GetCompilerInfo(
-      exec_id_, param_pointer,
-      NewCallback(this, &Request::FillCompilerInfoDone, std::move(param)));
+  const auto processor = req->processor_;
+  const auto exec_id = req->exec_id_;
+  processor->GetCompilerInfo(
+      exec_id, param_pointer,
+      NewCallback(FillCompilerInfoDone, std::move(req), std::move(param)));
 }
 
-void Request::FillCompilerInfoDone(
-    std::unique_ptr<GetCompilerInfoParam> param) {
-  VLOG(1) << exec_id_ << ": Started FillCompilerInfoDone";
+void FillCompilerInfoDone(unique_ptr<Request> req,
+                          std::unique_ptr<GetCompilerInfoParam> param) {
+  VLOG(1) << req->exec_id_ << ": Started FillCompilerInfoDone";
   if (param->state.get() == nullptr) {
-    err_ = "something went wrong trying to get compiler info.";
-    processor_->ComputeIncludesDone(this);
+    req->err_ = "something went wrong trying to get compiler info.";
+    const auto processor = req->processor_;
+    processor->ComputeIncludesDone(std::move(req));
     return;
   }
-  compiler_info_state_ = std::move(param->state);
-  if (compiler_info_state_.get()->info().HasError()) {
+  req->compiler_info_state_ = std::move(param->state);
+  if (req->compiler_info_state_.get()->info().HasError()) {
     // In this case, it found local compiler, but failed to get necessary
     // information, such as system include paths.
     // It would happen when multiple -arch options are used.
-    err_ = compiler_info_state_.get()->info().error_message();
-    processor_->ComputeIncludesDone(this);
+    req->err_ = req->compiler_info_state_.get()->info().error_message();
+    auto processor = req->processor_;
+    processor->ComputeIncludesDone(std::move(req));
     return;
   }
-  StartIncludeProcessor();
+  StartIncludeProcessor(std::move(req));
 }
 
-void Request::StartIncludeProcessor() {
-  auto b = compiler_type_specific_->SupportsDepsCache(*flags_);
-  VLOG(1) << exec_id_ << ": Started StartIncludeProcessor";
-  if (DepsCache::IsEnabled() &&
-      compiler_type_specific_->SupportsDepsCache(*flags_) &&
-      flags_->input_filenames().size() == 1U) {
-    const std::string& input_filename = flags_->input_filenames()[0];
+void StartIncludeProcessor(unique_ptr<Request> req) {
+  auto b = req->compiler_type_specific_->SupportsDepsCache(*req->flags_);
+  VLOG(1) << req->exec_id_ << ": Started StartIncludeProcessor";
+  if (DepsCache::IsEnabled() && b &&
+      req->flags_->input_filenames().size() == 1U) {
+    const std::string& input_filename = req->flags_->input_filenames()[0];
     const std::string& abs_input_filename =
-        file::JoinPathRespectAbsolute(flags_->cwd(), input_filename);
+        file::JoinPathRespectAbsolute(req->flags_->cwd(), input_filename);
 
     DepsCache* dc = DepsCache::instance();
-    deps_identifier_ = DepsCache::MakeDepsIdentifier(
-        compiler_info_state_.get()->info(), *flags_);
-    if (deps_identifier_.has_value() &&
-        dc->GetDependencies(deps_identifier_, flags_->cwd(), abs_input_filename,
-                            &required_files_, input_file_stat_cache_.get())) {
-      VLOG(1) << exec_id_ << ": Used deps cache, found "
-              << required_files_.size() << " dependencies";
-      depscache_used_ = true;
-      processor_->ComputeIncludesDone(this);
+    req->deps_identifier_ = DepsCache::MakeDepsIdentifier(
+        req->compiler_info_state_.get()->info(), *req->flags_);
+    if (req->deps_identifier_.has_value() &&
+        dc->GetDependencies(req->deps_identifier_, req->flags_->cwd(),
+                            abs_input_filename, &req->required_files_,
+                            req->input_file_stat_cache_.get())) {
+      VLOG(1) << req->exec_id_ << ": Used deps cache, found "
+              << req->required_files_.size() << " dependencies";
+      req->depscache_used_ = true;
+      const auto processor = req->processor_;
+      processor->ComputeIncludesDone(std::move(req));
       return;
     }
   }
 
   auto request_param = absl::make_unique<IncludeProcessorRequestParam>();
 
-  input_file_stat_cache_->ReleaseOwner();
-  request_param->file_stat_cache = std::move(input_file_stat_cache_);
-
-  OneshotClosure* closure = NewCallback(this, &Request::RunIncludeProcessor,
-                                        std::move(request_param));
-  processor_->wm_->RunClosureInPool(FROM_HERE,
-                                    processor_->include_processor_pool_,
-                                    closure, WorkerThread::PRIORITY_LOW);
+  req->input_file_stat_cache_->ReleaseOwner();
+  request_param->file_stat_cache = std::move(req->input_file_stat_cache_);
+  const auto processor = req->processor_;
+  processor->wm_->RunClosureInPool(
+      FROM_HERE, processor->include_processor_pool_,
+      NewCallback(RunIncludeProcessor, std::move(req),
+                  std::move(request_param)),
+      WorkerThread::PRIORITY_LOW);
 }
 
-void Request::RunIncludeProcessor(
+void RunIncludeProcessor(
+    unique_ptr<Request> req,
     std::unique_ptr<IncludeProcessorRequestParam> request_param) {
-  VLOG(1) << exec_id_ << ": Started RunIncludeProcessor";
+  VLOG(1) << req->exec_id_ << ": Started RunIncludeProcessor";
 
   // Pass ownership temporary to IncludeProcessor thread.
   request_param->file_stat_cache->AcquireOwner();
   auto command_spec = CommandSpec();
-  command_spec.set_name(flags_->compiler_name());
-  VLOG(1) << exec_id_ << ": Got owner of file stat cache";
-  VLOG(1) << exec_id_ << ": checks " << (compiler_info_state_.get() != nullptr)
+  command_spec.set_name(req->flags_->compiler_name());
+  VLOG(1) << req->exec_id_ << ": Got owner of file stat cache";
+  VLOG(1) << req->exec_id_ << ": checks "
+          << (req->compiler_info_state_.get() != nullptr)
           << (request_param->file_stat_cache.get() != nullptr);
 
   CompilerTypeSpecific::IncludeProcessorResult result =
-      compiler_type_specific_->RunIncludeProcessor(
-          exec_id_, *flags_, compiler_info_state_.get()->info(), command_spec,
-          request_param->file_stat_cache.get());
-  VLOG(1) << exec_id_ << ": Got include processor result";
+      req->compiler_type_specific_->RunIncludeProcessor(
+          req->exec_id_, *req->flags_, req->compiler_info_state_.get()->info(),
+          command_spec, request_param->file_stat_cache.get());
+  VLOG(1) << req->exec_id_ << ": Got include processor result";
 
   auto response_param = absl::make_unique<IncludeProcessorResponseParam>();
   response_param->result = std::move(result);
   response_param->file_stat_cache = std::move(request_param->file_stat_cache);
   response_param->file_stat_cache->ReleaseOwner();
 
-  VLOG(1) << exec_id_ << ": Finished RunIncludeProcessor";
-  processor_->wm_->RunClosureInThread(
-      FROM_HERE, thread_id_,
-      NewCallback(this, &Request::RunIncludeProcessorDone,
+  VLOG(1) << req->exec_id_ << ": Finished RunIncludeProcessor";
+
+  const auto processor = req->processor_;
+  const auto thread_id = req->thread_id_;
+  processor->wm_->RunClosureInThread(
+      FROM_HERE, thread_id,
+      NewCallback(RunIncludeProcessorDone, std::move(req),
                   std::move(response_param)),
       WorkerThread::PRIORITY_LOW);
 }
 
-void Request::RunIncludeProcessorDone(
+void RunIncludeProcessorDone(
+    unique_ptr<Request> req,
     std::unique_ptr<IncludeProcessorResponseParam> response_param) {
-  VLOG(1) << exec_id_ << ": Started RunIncludeProcessorDone";
-  input_file_stat_cache_ = std::move(response_param->file_stat_cache);
-  input_file_stat_cache_->AcquireOwner();
-  required_files_ = std::move(response_param->result.required_files);
+  VLOG(1) << req->exec_id_ << ": Started RunIncludeProcessorDone";
+  req->input_file_stat_cache_ = std::move(response_param->file_stat_cache);
+  req->input_file_stat_cache_->AcquireOwner();
+  req->required_files_ = std::move(response_param->result.required_files);
   if (!response_param->result.ok) {
-    err_ = strdup(response_param->result.error_reason.c_str());
+    req->err_ = strdup(response_param->result.error_reason.c_str());
   }
-  processor_->ComputeIncludesDone(this);
+  const auto processor = req->processor_;
+  processor->ComputeIncludesDone(std::move(req));
 }
 
-void Request::SaveToDepsCache() {
-  VLOG(1) << exec_id_ << ": Started SaveToDepsCache";
+void SaveToDepsCache(unique_ptr<Request> req) {
+  VLOG(1) << req->exec_id_ << ": Started SaveToDepsCache";
   // When deps_identifier_.has_value() is true, the condition to use DepsCache
   // should be satisfied. However, several checks are done for the safe.
-  if (DepsCache::IsEnabled() && !depscache_used_ &&
-      compiler_type_specific_->SupportsDepsCache(*flags_) && err_ == "" &&
-      deps_identifier_.has_value() && flags_->input_filenames().size() == 1U) {
-    const std::string& input_filename = flags_->input_filenames()[0];
+  if (DepsCache::IsEnabled() && !req->depscache_used_ &&
+      req->compiler_type_specific_->SupportsDepsCache(*req->flags_) &&
+      req->err_ == "" && req->deps_identifier_.has_value() &&
+      req->flags_->input_filenames().size() == 1U) {
+    const std::string& input_filename = req->flags_->input_filenames()[0];
     const std::string& abs_input_filename =
-        file::JoinPathRespectAbsolute(flags_->cwd(), input_filename);
+        file::JoinPathRespectAbsolute(req->flags_->cwd(), input_filename);
     DepsCache* dc = DepsCache::instance();
-    if (!dc->SetDependencies(deps_identifier_, flags_->cwd(),
-                             abs_input_filename, required_files_,
-                             input_file_stat_cache_.get())) {
+    if (!dc->SetDependencies(req->deps_identifier_, req->flags_->cwd(),
+                             abs_input_filename, req->required_files_,
+                             req->input_file_stat_cache_.get())) {
       LOG(WARNING) << "Failed to save dependencies for action with input file "
                    << abs_input_filename;
     } else {
-      VLOG(1) << exec_id_ << ": Saved to deps cache";
+      VLOG(1) << req->exec_id_ << ": Saved to deps cache";
     }
   }
-  VLOG(1) << exec_id_ << ": Finished SaveToDepsCache";
+  VLOG(1) << req->exec_id_ << ": Finished SaveToDepsCache";
 }
 
-void Request::StartInputProcessing() {
-  VLOG(1) << exec_id_ << ": Starting input processing";
-  input_file_stat_cache_ = absl::make_unique<FileStatCache>();
-  flags_ = CompilerFlagsParser::MustNew(args_, cwd_);
-  compiler_type_specific_ =
-      processor_->compiler_type_specific_collection()->Get(flags_->type());
+void StartInputProcessing(unique_ptr<Request> req) {
+  VLOG(1) << req->exec_id_ << ": Starting input processing";
+  req->input_file_stat_cache_ = absl::make_unique<FileStatCache>();
+  req->flags_ = CompilerFlagsParser::MustNew(req->args_, req->cwd_);
+  req->compiler_type_specific_ =
+      req->processor_->compiler_type_specific_collection()->Get(
+          req->flags_->type());
   vector<string> compiler_info_envs;
-  thread_id_ = processor_->wm_->GetCurrentThreadId();
-  err_ = "";
+  req->thread_id_ = req->processor_->wm_->GetCurrentThreadId();
+  req->err_ = "";
 
-  VLOG(1) << exec_id_ << ": Input processing on thread " << thread_id_;
-  FillCompilerInfo();
+  VLOG(1) << req->exec_id_ << ": Input processing on thread "
+          << req->thread_id_;
+  FillCompilerInfo(std::move(req));
 }
 
-void IncludeProcessor::ComputeIncludesDone(Request* request) {
+void IncludeProcessorImpl::ComputeIncludesDone(unique_ptr<Request> request) {
   VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
-  gComputeIncludesDone(request->go_req_, request->required_files_,
-                       request->depscache_used_, request->err_);
-  request->SaveToDepsCache();
-  delete request;
+  std::unique_lock<std::mutex> result_lock(request->res_->result_mutex);
+  request->res_->dependencies = request->required_files_;
+  request->res_->used_cache = request->depscache_used_;
+  request->res_->error = request->err_;
+  request->res_->result_complete = true;
+  request->res_->result_condition.notify_all();
+  SaveToDepsCache(std::move(request));
 }
 
-int IncludeProcessor::ComputeIncludes(const string& exec_id, const string& cwd,
-                                      const vector<string>& args,
-                                      const vector<string>& envs,
-                                      uintptr_t req) {
-  // TODO(b/246553914): add logic to prevent a memory leak here.
-  auto request = new Request(exec_id, cwd, args, envs);
-  request->processor_ = this;
-  request->go_req_ = req;
-  wm_->RunClosureInPool(FROM_HERE, request_pool_,
-                        NewCallback(request, &Request::StartInputProcessing),
-                        WorkerThread::PRIORITY_MED);
-  return 0;
+void IncludeProcessorImpl::ComputeIncludes(const string& exec_id,
+                                           const string& cwd,
+                                           const vector<string>& args,
+                                           const vector<string>& envs,
+                                           shared_ptr<GomaResult> res) {
+  wm_->RunClosureInPool(
+      FROM_HERE, request_pool_,
+      NewCallback(StartInputProcessing,
+                  make_unique<Request>(exec_id, cwd, args, envs, this, res)),
+      WorkerThread::PRIORITY_MED);
 }
 
-}  // namespace include_processor
-
-// converts a vector of c++ std strings to an array of c strings
-unique_ptr<char*[]> toCStringsArray(const vector<string>& strings) {
-  auto cstrings = make_unique<char*[]>(strings.size());
-  for (int i = 0; i < strings.size(); i++) {
-    cstrings[i] = const_cast<char*>(strings[i].c_str());
-  }
-  return cstrings;
-}
-
-void* NewDepsScanner(const char* process_name, const char* cache_dir,
-                     const char* log_dir, int cache_file_max_mb,
-                     bool use_deps_cache) {
+unique_ptr<include_processor::IncludeProcessor> NewDepsScanner(
+    const char* process_name, const char* cache_dir, const char* log_dir,
+    int cache_file_max_mb, bool use_deps_cache) {
   auto argc = 1;
   char* argv[1];
   argv[0] = strdup(process_name);
@@ -645,27 +648,7 @@ void* NewDepsScanner(const char* process_name, const char* cache_dir,
       cache_dir, FLAGS_COMPILER_INFO_CACHE_FILE,
       FLAGS_COMPILER_INFO_CACHE_NUM_ENTRIES,
       absl::Seconds(FLAGS_COMPILER_INFO_CACHE_HOLDING_TIME_SEC));
-  return new include_processor::IncludeProcessor(tmpdir);
+  return make_unique<include_processor::IncludeProcessorImpl>(tmpdir);
 }
 
-int ScanDependencies(void* impl, const char* exec_id, int argc,
-                     const char** argv, const char** envp, const char* filename,
-                     const char* dir, uintptr_t req) {
-  include_processor::IncludeProcessor* scanner =
-      reinterpret_cast<include_processor::IncludeProcessor*>(impl);
-  vector<string> arguments(argv, argv + argc);
-  set<string> includes;
-  vector<string> env;
-  for (int i = 0; envp[i]; i++) {
-    env.push_back(envp[i]);
-  }
-  int result = scanner->ComputeIncludes(exec_id, dir, arguments, env, req);
-  return result;
-}
-
-void Close(void* impl) {
-  include_processor::IncludeProcessor* scanner =
-      reinterpret_cast<include_processor::IncludeProcessor*>(impl);
-  LOG(INFO) << "Shutting down input processor";
-  scanner->Quit();
-}
+}  // namespace include_processor

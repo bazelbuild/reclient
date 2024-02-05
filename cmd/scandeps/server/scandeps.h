@@ -18,6 +18,8 @@
 #ifndef CMD_SCANDEPS_SERVER_SCANDEPS_H_
 #define CMD_SCANDEPS_SERVER_SCANDEPS_H_
 
+#include "api/scandeps/cppscandeps.grpc.pb.h"
+
 // newDepsScanner is responsible for creating the implemented dependency
 // scanner.
 // TODO (b/268656738): remove experimental_deadlock and experimental_segfault

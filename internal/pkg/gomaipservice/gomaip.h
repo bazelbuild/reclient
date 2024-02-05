@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CMD_SCANDEPS_SKELETON_SKELETON_H_
-#define CMD_SCANDEPS_SKELETON_SKELETON_H_
+#ifndef CMD_SCANDEPS_GOMAIPSERVICE_GOMAIP_H_
+#define CMD_SCANDEPS_GOMAIPSERVICE_GOMAIP_H_
 
 #include <grpcpp/grpcpp.h>
 
@@ -23,6 +23,7 @@
 #include <thread>
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
+#include "include_processor.h"
 
 class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
  public:
@@ -43,8 +44,6 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
                             const google::protobuf::Empty*,
                             scandeps::CapabilitiesResponse*) override;
 
-  void InitGoma();
-
  private:
   std::thread init_thread_;
   std::mutex init_mutex_;
@@ -53,7 +52,7 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
   std::atomic<std::size_t> current_actions_;
   std::atomic<std::size_t> completed_actions_;
   std::function<void()> shutdown_server_;
-  void* deps_scanner_cache_;
+  std::unique_ptr<include_processor::IncludeProcessor> deps_scanner_cache_;
   const char* process_name_;
   std::string cache_dir_;
   std::string log_dir_;
@@ -71,4 +70,4 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
   void PopulateStatusResponse(scandeps::StatusResponse*);
 };
 
-#endif  // CMD_SCANDEPS_SKELETON_SKELETON_H_
+#endif  // CMD_SCANDEPS_GOMAIPSERVICE_GOMAIP_H_

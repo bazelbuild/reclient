@@ -19,13 +19,8 @@
 
 #include <condition_variable>
 #include <ctime>
-#include <iostream>
 #include <memory>
 #include <string>
-#include <thread>
-
-#include "api/scandeps/cppscandeps.grpc.pb.h"
-#include "scandeps.h"
 
 class ScandepsServer {
  public:
