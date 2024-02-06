@@ -12,7 +12,7 @@ cc_library(
         "//api/scandeps:scandeps_cc",
         "@com_github_grpc_grpc//:grpc++",
     ] + select({
-        "@platforms//os:windows": [
+        "@io_bazel_rules_go//go/platform:windows": [
             "@com_github_google_glog//:glog",
         ],
         "//conditions:default": [

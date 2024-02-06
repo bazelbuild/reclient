@@ -25,17 +25,6 @@ platform(
         "@platforms//os:windows",
         "@bazel_tools//tools/cpp:clang-cl",
     ],
-    visibility = ["//visibility:public"],
-)
-
-platform(
-    name = "x64_windows-msvc",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:windows",
-        "@bazel_tools//tools/cpp:msvc",
-    ],
-    visibility = ["//visibility:public"],
 )
 
 config_setting(
@@ -92,18 +81,39 @@ config_setting(
 )
 
 config_setting(
-    name = "goma_input_processor_config_windows",
-    constraint_values = ["@platforms//os:windows"],
+    name = "goma_input_processor_service_config",
+    flag_values = {":include_scanner": "goma-service"},
+)
+
+config_setting(
+    name = "goma_input_processor_service_config_linux",
+    constraint_values = ["@platforms//os:linux"],
     flag_values = {
-        ":include_scanner": "goma",
+        ":include_scanner": "goma-service",
     },
 )
 
 config_setting(
-    name = "goma_input_processor_config_windows_dbg",
+    name = "goma_input_processor_service_config_windows",
     constraint_values = ["@platforms//os:windows"],
     flag_values = {
-        ":include_scanner": "goma",
+        ":include_scanner": "goma-service",
+    },
+)
+
+config_setting(
+    name = "goma_input_processor_service_config_windows_dbg",
+    constraint_values = ["@platforms//os:windows"],
+    flag_values = {
+        ":include_scanner": "goma-service",
     },
     values = {"features": "dbg"},
+)
+
+config_setting(
+    name = "goma_input_processor_service_config_mac",
+    constraint_values = ["@platforms//os:macos"],
+    flag_values = {
+        ":include_scanner": "goma-service",
+    },
 )

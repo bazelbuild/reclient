@@ -24,8 +24,8 @@ cc_platform_binary(
     cxxopt = select({
         "//:clangscandeps_input_processor_service_config_windows": ["/std:c++17"],
         "//:clangscandeps_input_processor_service_config": ["-std=c++17"],
-        "//:goma_input_processor_config_windows": ["/std:c++14"],
-        "//:goma_input_processor_config": ["-std=c++14"],
+        "//:goma_input_processor_service_config_windows": ["/std:c++14"],
+        "//:goma_input_processor_service_config": ["-std=c++14"],
         "//conditions:default": [],
     }),
     linkopts = select({
@@ -35,7 +35,7 @@ cc_platform_binary(
         "//conditions:default": [],
     }),
     platform = select({
-        "//:goma_input_processor_config_windows": "//configs/windows/config:platform-clang-cl",
+        "//:goma_input_processor_service_config_windows": "//configs/windows/config:platform-clang-cl",
         "//conditions:default": None,
     }),
     tags = [
@@ -45,7 +45,9 @@ cc_platform_binary(
         "//:clangscandeps_input_processor_service_config_linux": [],
         "//:clangscandeps_input_processor_service_config_mac": [],
         "//:clangscandeps_input_processor_service_config_windows": [],
-        "//:goma_input_processor_config": [],
+        "//:goma_input_processor_service_config_linux": [],
+        "//:goma_input_processor_service_config_mac": [],
+        "//:goma_input_processor_service_config_windows": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = [
@@ -59,7 +61,7 @@ cc_platform_binary(
                 "//internal/pkg/clangscandepsipservice",
                 "//internal/pkg/cppdependencyscanner/clangscandepsservice:clangscandepscpplib",
             ],
-            "//:goma_input_processor_config": [
+            "//:goma_input_processor_service_config": [
                 ":scandeps_lib",
                 #gazelle:ignore
                 "//internal/pkg/gomaipservice",

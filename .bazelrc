@@ -87,5 +87,8 @@ build:clangscandeps --//:include_scanner=clangscandeps
 build:clangscandeps --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
 
 build:goma --//:include_scanner=goma
+build:goma --cxxopt=-std=c++14 --host_cxxopt=-std=c++14
 
 build:clangscandeps-service --//:include_scanner=clangscandeps-service
+
+build:goma-service --//:include_scanner=goma-service

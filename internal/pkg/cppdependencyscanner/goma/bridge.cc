@@ -19,11 +19,14 @@
 #include <signal.h>
 
 #include <iostream>
-#include <map>
 #include <memory>
+#include <thread>
+#ifndef GOMA_CPP_SERVICE
+#include <sys/file.h>
+#endif
+#include <map>
 #include <set>
 #include <string>
-#include <thread>
 #include <type_traits>
 #include <vector>
 
@@ -97,6 +100,9 @@ int __wrap_glob(const char* pattern, int flags,
 
 #endif  // __linux__
 
+#ifndef GOMA_CPP_SERVICE
+#include "_cgo_export.h"
+#else
 #include "subprocess.h"
 #include "subprocess_controller_client.h"
 #include "subprocess_task.h"
@@ -104,6 +110,7 @@ int __wrap_glob(const char* pattern, int flags,
 // depsscanner service.
 void gComputeIncludesDone(uintptr_t req_ptr, std::set<std::string>& res,
                           bool used_cache, std::string& err);
+#endif
 
 #define REPROXY_CACHE_FILE "reproxy-gomaip.cache"
 
@@ -154,7 +161,9 @@ class IncludeProcessor {
     include_processor_pool_ =
         wm_->StartPool(FLAGS_INCLUDE_PROCESSOR_THREADS, "include_processor");
 
+#ifdef GOMA_CPP_SERVICE
     SubProcessControllerClient::Initialize(wm_.get(), tmpdir);
+#endif
 
     load_deps_cache_ = make_unique<WorkerThreadRunner>(
         wm_.get(), FROM_HERE, NewCallback(DepsCache::LoadIfEnabled));
@@ -248,7 +257,9 @@ void GetAdditionalEnv(const vector<string>& in_envs, const char* name,
 
 void IncludeProcessor::Quit() {
   FlushLogFiles();
+#ifdef GOMA_CPP_SERVICE
   SubProcessControllerClient::Get()->Quit();
+#endif
   load_deps_cache_.reset();
   load_compiler_info_cache_.reset();
   devtools_goma::CompilerInfoCache::instance()->Save();
@@ -257,7 +268,9 @@ void IncludeProcessor::Quit() {
   IncludeCache::Quit();
   modulemap::Cache::Quit();
   ListDirCache::Quit();
+#ifdef GOMA_CPP_SERVICE
   SubProcessControllerClient::Get()->Shutdown();
+#endif
   wm_->Finish();
   if (FLAGS_ENABLE_GLOBAL_FILE_STAT_CACHE) {
     GlobalFileStatCache::Quit();
@@ -517,8 +530,19 @@ void Request::StartInputProcessing() {
 
 void IncludeProcessor::ComputeIncludesDone(Request* request) {
   VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
+#ifndef GOMA_CPP_SERVICE
+  string s;
+  for (const auto& piece : request->required_files_)
+    absl::StrAppend(&s, piece, ";");
+  VLOG(1) << request->exec_id_ << ": Started gComputeIncludesDone";
+  gComputeIncludesDone(request->go_req_, const_cast<char*>(s.c_str()),
+                       (int)request->depscache_used_,
+                       const_cast<char*>(request->err_.c_str()));
+  VLOG(1) << request->exec_id_ << ": Finished gComputeIncludesDone";
+#else
   gComputeIncludesDone(request->go_req_, request->required_files_,
                        request->depscache_used_, request->err_);
+#endif
   request->SaveToDepsCache();
   delete request;
 }
@@ -548,6 +572,18 @@ unique_ptr<char*[]> toCStringsArray(const vector<string>& strings) {
   return cstrings;
 }
 
+#ifndef GOMA_CPP_SERVICE
+// wraps Go function (with a C interface) with a C++ function expected by Goma
+string ReadCommandOutputWrapper(const string& prog, const vector<string>& argv,
+                                const vector<string>& envs, const string& cwd,
+                                CommandOutputOption option, int32_t* status) {
+  return gReadCommandOutput(const_cast<char*>(prog.c_str()),
+                            toCStringsArray(argv).get(), argv.size(),
+                            toCStringsArray(envs).get(), envs.size(),
+                            const_cast<char*>(cwd.c_str()), option, status);
+}
+#endif
+
 void* NewDepsScanner(const char* process_name, const char* cache_dir,
                      const char* log_dir, int cache_file_max_mb,
                      bool use_deps_cache) {
@@ -567,6 +603,7 @@ void* NewDepsScanner(const char* process_name, const char* cache_dir,
   FLAGS_log_dir = log_dir;
   Init(argc, argv, envp);
 
+#ifdef GOMA_CPP_SERVICE
   devtools_goma::SubProcessController::Options subproc_options;
   subproc_options.max_subprocs = FLAGS_MAX_SUBPROCS;
   subproc_options.max_subprocs_low_priority = FLAGS_MAX_SUBPROCS_LOW;
@@ -574,6 +611,7 @@ void* NewDepsScanner(const char* process_name, const char* cache_dir,
   subproc_options.dont_kill_subprocess = FLAGS_DONT_KILL_SUBPROCESS;
   devtools_goma::SubProcessController::Initialize(process_name,
                                                   subproc_options);
+#endif
 
 #ifndef _WIN32
   // On *nix-es, SubProcessController::Initialize uses fork to create a new
@@ -621,7 +659,11 @@ void* NewDepsScanner(const char* process_name, const char* cache_dir,
     LOG(INFO) << "breakpad is enabled in " << log_dir;
   }
 
+#ifndef GOMA_CPP_SERVICE
+  InstallReadCommandOutputFunc(ReadCommandOutputWrapper);
+#else  // GOMA_CPP_SERVICE
   InstallReadCommandOutputFunc(SubProcessTask::ReadCommandOutput);
+#endif
 
   IncludeFileFinder::Init(FLAGS_ENABLE_GCH_HACK);
   std::string cache_filename;
@@ -668,4 +710,7 @@ void Close(void* impl) {
       reinterpret_cast<include_processor::IncludeProcessor*>(impl);
   LOG(INFO) << "Shutting down input processor";
   scanner->Quit();
+#ifndef GOMA_CPP_SERVICE
+  google::ShutdownGoogleLogging();
+#endif
 }

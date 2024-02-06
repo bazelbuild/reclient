@@ -12,6 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * bridge between cgo (C) and goma (C++).
+ *
+ * when included in cgo, it is compiled as C,
+ * which doesn't understand `extern "C"`.
+ *
+ * when included in bridge.cc, it is compiled as C++,
+ * and use `extern "C"` to use C linkage.
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 // TODO: b/247818598
 // These must be removed when building the dependency scanner service on Windows
 #include <stdbool.h>
@@ -27,3 +40,7 @@ extern int ScanDependencies(void* impl, const char* exec_id, int argc,
                             const char** argv, const char** envp,
                             const char* filename, const char* dir,
                             uintptr_t req);
+
+#ifdef __cplusplus
+}
+#endif

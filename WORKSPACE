@@ -465,11 +465,11 @@ gclient_repository(
     base_dir = "client/client",
     build_file = "BUILD.goma",
     gclient_vars_windows = "checkout_mingw=True",
-    gn_args_linux = "is_debug=false agnostic_build=true use_custom_libcxx=false",
+    gn_args_linux = "is_debug=false agnostic_build=true",
     gn_args_macos_arm64 = "is_debug=false agnostic_build=true target_cpu=\"arm64\"",
     gn_args_macos_x86 = "is_debug=false agnostic_build=true target_cpu=\"x64\"",
-    gn_args_windows = "is_debug=false is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
-    gn_args_windows_dbg = "is_debug=true is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
+    gn_args_windows = "is_debug=false is_clang=false is_win_gcc=true agnostic_build=true",
+    gn_args_windows_dbg = "is_debug=true is_clang=false is_win_gcc=true agnostic_build=true",
     patches = [
         "//third_party/patches/goma:goma.patch",
         # It seems like on Mac, popen and pclose calls aren't thread safe, which is how we
@@ -479,6 +479,21 @@ gclient_repository(
         # that prevents multi-threaded popen and pclose calls.
         "//third_party/patches/goma:goma_subprocess.patch",
     ],
+    remote = "https://chromium.googlesource.com/infra/goma/client",
+    revision = GOMA_REV,
+)
+
+# This goma is built with clang on Windows and is used by the scandeps service ONLY
+gclient_repository(
+    name = "goma_clang",
+    base_dir = "client/client",
+    build_file = "BUILD.goma",
+    gclient_vars_windows = "checkout_mingw=False",
+    gn_args_linux = "is_debug=false agnostic_build=true",
+    gn_args_macos_arm64 = "is_debug=false agnostic_build=true target_cpu=\"arm64\"",
+    gn_args_macos_x86 = "is_debug=false agnostic_build=true target_cpu=\"x64\"",
+    gn_args_windows = "is_debug=false is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
+    gn_args_windows_dbg = "is_debug=true is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
     remote = "https://chromium.googlesource.com/infra/goma/client",
     revision = GOMA_REV,
 )
