@@ -55,14 +55,8 @@ expand_template(
             "{VERSION_MINOR}": VERSION_MINOR,
             "{VERSION_PATCH}": VERSION_PATCH,
         },
-        "//:goma_input_processor_service_config": {
-            "{INPUT_PROCESSOR}": "GomaIPService",
-            "{VERSION_MAJOR}": VERSION_MAJOR,
-            "{VERSION_MINOR}": VERSION_MINOR,
-            "{VERSION_PATCH}": VERSION_PATCH,
-        },
         "//:goma_input_processor_config": {
-            "{INPUT_PROCESSOR}": "GomaIP",
+            "{INPUT_PROCESSOR}": "GomaIPService",
             "{VERSION_MAJOR}": VERSION_MAJOR,
             "{VERSION_MINOR}": VERSION_MINOR,
             "{VERSION_PATCH}": VERSION_PATCH,
@@ -71,7 +65,6 @@ expand_template(
     target_compatible_with = select({
         "//:goma_input_processor_config": [],
         "//:clangscandeps_input_processor_service_config": [],
-        "//:goma_input_processor_service_config": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     template = "version.tmpl.h",

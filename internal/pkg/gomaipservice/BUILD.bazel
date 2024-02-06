@@ -4,9 +4,7 @@ cc_library(
     hdrs = ["gomaip.h"],
     tags = ["manual"],
     target_compatible_with = select({
-        "//:goma_input_processor_service_config_linux": [],
-        "//:goma_input_processor_service_config_mac": [],
-        "//:goma_input_processor_service_config_windows": [],
+        "//:goma_input_processor_config": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//:__subpackages__"],

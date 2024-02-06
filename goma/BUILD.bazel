@@ -1,49 +1,5 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "ninja")
 
-genrule(
-    name = "regenerate_ninja_files",
-    srcs = select({
-        "//:goma_input_processor_service_config_windows": [
-            "@goma_clang//:srcs",
-        ],
-        "//conditions:default": [
-            "@goma//:srcs",
-        ],
-    }),
-    outs = [
-        "regenerate_ninja_files.done",
-    ],
-    cmd = select({
-        "//:goma_input_processor_service_config_linux": " && ".join([
-            "cd external/goma/client/client/",
-            "../../../../external/depot_tools/gn gen out --args=\"is_debug=false agnostic_build=true use_custom_libcxx=false\"",
-            "cd ../../../../",
-            "touch $@",
-        ]),
-        "//:goma_input_processor_service_config_windows": " && ".join([
-            "cd external/goma_clang/client/client/",
-            "../../../../external/depot_tools/gn gen out --args=\"is_debug=false agnostic_build=true use_custom_libcxx=false\"",
-            "cd ../../../../",
-            "touch $@",
-        ]),
-        "//conditions:default": " && ".join([
-            "cd external/goma/client/client/",
-            "../../../../external/depot_tools/gn gen out --args=\"is_debug=false agnostic_build=true use_custom_libcxx=true\"",
-            "cd ../../../../",
-            "touch $@",
-        ]),
-    }),
-    tags = [
-        "local",
-        "manual",
-    ],
-    tools = [
-        "@depot_tools//:gn",
-        "@depot_tools//:gn.bat",
-        "@depot_tools//:gn.py",
-    ],
-)
-
 ninja(
     name = "goma_input_processor",
     args = [
@@ -52,7 +8,6 @@ ninja(
     ],
     data = select({
         "@platforms//os:linux": [
-            ":regenerate_ninja_files",
             "archive_linux.sh",
         ],
         "@platforms//os:windows": ["archive_windows.sh"],
@@ -61,43 +16,25 @@ ninja(
     }),
     directory = select({
         "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64",
-        "//:goma_input_processor_service_config_windows": "$$EXT_BUILD_ROOT$$/external/goma_clang/client/client/out",
-        "//:goma_input_processor_service_config_windows_dbg": "$$EXT_BUILD_ROOT$$/external/goma_clang/client/client/out_dbg",
+        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg",
         "//conditions:default": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out",
     }),
-    env = select({
-        "//:goma_input_processor_service_config_windows": {
-            "COMPILER_PROXY_REVISION_NUMBER_FILE": "$$EXT_BUILD_ROOT$$/external/goma_clang/version",
-        },
-        "//conditions:default": {
-            "COMPILER_PROXY_REVISION_NUMBER_FILE": "$$EXT_BUILD_ROOT$$/external/goma/version",
-        },
-    }),
-    lib_source = select({
-        "//:goma_input_processor_service_config_windows": "@goma_clang//:srcs",
-        "//conditions:default": "@goma//:srcs",
-    }),
+    env = {
+        "COMPILER_PROXY_REVISION_NUMBER_FILE": "$$EXT_BUILD_ROOT$$/external/goma/version",
+    },
+    lib_source = "@goma//:srcs",
     out_static_libs = select({
-        "//:goma_input_processor_service_config_windows": [
+        "@platforms//os:windows": [
             "goma_input_processor.lib",
         ],
         "//conditions:default": [
             "goma_input_processor.a",
         ],
-    }) + select({
-        "//:goma_input_processor_service_config_linux": [],
-        "@platforms//os:linux": [
-            "libc++.a",
-            "libc++abi.a",
-        ],
-        "//conditions:default": [],
     }),
     postfix_script = select({
-        "//:goma_input_processor_service_config_linux": "$$EXT_BUILD_ROOT$$/goma/archive_linux.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$ true",
-        "@platforms//os:linux": "$$EXT_BUILD_ROOT$$/goma/archive_linux.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$ false",
-        "//:goma_input_processor_service_config_windows": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma_clang/client/client/out $$INSTALLDIR$$ true",
-        "//:goma_input_processor_service_config_windows_dbg": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma_clang/client/client/out_dbg $$INSTALLDIR$$ true",
-        "@platforms//os:windows": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
+        "@platforms//os:linux": "$$EXT_BUILD_ROOT$$/goma/archive_linux.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
+        "//:goma_input_processor_config_windows": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
+        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg $$INSTALLDIR$$",
         "@io_bazel_rules_go//go/platform:darwin_amd64": "$$EXT_BUILD_ROOT$$/goma/archive_macosx.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
         "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/goma/archive_macosx.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64 $$INSTALLDIR$$",
         "//conditions:default": "",
