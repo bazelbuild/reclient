@@ -1,4 +1,4 @@
-:: Copyright 2017 The Bazel Authors. All rights reserved.
+:: Copyright 2019 The Bazel Authors. All rights reserved.
 ::
 :: Licensed under the Apache License, Version 2.0 (the "License");
 :: you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 @echo OFF
 
 echo. 1>&2
-echo The target you are compiling requires Visual C++ build tools. 1>&2
-echo Bazel couldn't find a valid Visual C++ build tools installation on your machine. 1>&2
+echo The target you are compiling requires the Clang compiler. 1>&2
+echo Bazel couldn't find a valid Clang installation on your machine. 1>&2
 
 echo Please check your installation following https://bazel.build/docs/windows#using 1>&2
 echo. 1>&2
