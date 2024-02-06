@@ -32,7 +32,7 @@ Edit the cc_toolchain_suite in //configs/linux/cc/BUILD.bazel to include
 
 3. Run it for Windows. You'll need a windows machine/cloudtop/GCE VM.
 
-$ set RECLIENT_BUILDER_V=v4
+$ set RECLIENT_BUILDER_V=v3
 $ set NEW_BAZEL_VERSION=6.3.2
 $ set PATH_TO_RECLIENT=%CD%
 $ rbe_configs_gen.exe^
@@ -41,11 +41,9 @@ $ rbe_configs_gen.exe^
     --exec_os=windows^
     --target_os=windows^
     --toolchain_container=gcr.io/reclient-releases/reclient-builder-win:%RECLIENT_BUILDER_V%^
+    --cpp_toolchain_target=cc-compiler-x64_windows_mingw^
     --bazel_version=%NEW_BAZEL_VERSION%^
     --generate_java_configs=false
 
 Edit the cc_toolchain_suite in //configs/windows/cc/BUILD.bazel to include
 `tags=["manual"]` so it isn't caught by `...` expansion.
-
-Revert all changes in //configs/windows/config/BUILD except for the docker sha256 update
-This is because we maintain both a mingw and msvc toolchain configuration

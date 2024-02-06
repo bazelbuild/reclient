@@ -18,32 +18,14 @@
 package(default_visibility = ["//visibility:public"])
 
 toolchain(
-    name = "cc-toolchain-clang-cl",
+    name = "cc-toolchain",
     exec_compatible_with = [
         "@platforms//os:windows",
         "@platforms//cpu:x86_64",
-        "@bazel_tools//tools/cpp:clang-cl",
     ],
     target_compatible_with = [
         "@platforms//os:windows",
         "@platforms//cpu:x86_64",
-        "@bazel_tools//tools/cpp:clang-cl",
-    ],
-    toolchain = "//configs/windows/cc:cc-compiler-x64_windows-clang-cl",
-    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
-)
-
-toolchain(
-    name = "cc-toolchain-mingw",
-    exec_compatible_with = [
-        "@platforms//os:windows",
-        "@platforms//cpu:x86_64",
-        "@bazel_tools//tools/cpp:mingw",
-    ],
-    target_compatible_with = [
-        "@platforms//os:windows",
-        "@platforms//cpu:x86_64",
-        "@bazel_tools//tools/cpp:mingw",
     ],
     toolchain = "//configs/windows/cc:cc-compiler-x64_windows_mingw",
     toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
@@ -56,24 +38,8 @@ platform(
         "@platforms//cpu:x86_64",
     ],
     exec_properties = {
-        "container-image": "docker://gcr.io/reclient-releases/reclient-builder-win@sha256:cbf269a5c88103d8aeef4fec0b1f11975847842ac1be70bb8b454ee1ff718192",
+        "container-image": "docker://gcr.io/reclient-releases/reclient-builder-win@sha256:29657f6e893cf5b2d56f0f06f7d66a4c476749658eb4d992f01598c2e50bb5c7",
         "OSFamily": "Windows",
     },
     parents = ["@local_config_platform//:host"],
-)
-
-platform(
-    name = "platform-clang-cl",
-    constraint_values = [
-        "@bazel_tools//tools/cpp:clang-cl",
-    ],
-    parents = [":platform"],
-)
-
-platform(
-    name = "platform-mingw",
-    constraint_values = [
-        "@bazel_tools//tools/cpp:mingw",
-    ],
-    parents = [":platform"],
 )

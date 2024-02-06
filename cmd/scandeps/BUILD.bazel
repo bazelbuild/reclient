@@ -1,5 +1,3 @@
-load("//transitions:defs.bzl", "cc_platform_binary")
-
 cc_library(
     name = "scandeps_lib",
     srcs = ["scandeps.cc"],
@@ -19,24 +17,13 @@ cc_library(
 )
 
 # TODO(b/243521521): Make this build with static-libstdc++.
-cc_platform_binary(
+cc_binary(
     name = "scandeps_server",
-    cxxopt = select({
-        "//:clangscandeps_input_processor_service_config_windows": ["/std:c++17"],
-        "//:clangscandeps_input_processor_service_config": ["-std=c++17"],
-        "//:goma_input_processor_service_config_windows": ["/std:c++14"],
-        "//:goma_input_processor_service_config": ["-std=c++14"],
-        "//conditions:default": [],
-    }),
     linkopts = select({
         "@platforms//os:linux": [
             "-Wl,--wrap=getentropy",
         ],
         "//conditions:default": [],
-    }),
-    platform = select({
-        "//:goma_input_processor_service_config_windows": "//configs/windows/config:platform-clang-cl",
-        "//conditions:default": None,
     }),
     tags = [
         "local",
