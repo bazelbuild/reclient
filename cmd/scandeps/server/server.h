@@ -30,16 +30,14 @@
 class ScandepsServer {
  public:
   ScandepsServer(const std::string &server_address,
-                 const std::string &cache_dir,
-                 const std::string &log_dir,
-                 int cache_size_max_mb,
-                 bool use_deps_cache,
+                 const std::string &cache_dir, const std::string &log_dir,
+                 int cache_size_max_mb, bool use_deps_cache,
                  uint32_t shutdown_delay_seconds,
                  uint32_t experimental_deadlock,
                  uint32_t experimental_segfault);
   ~ScandepsServer();
 
-  bool RunServer(const char* process_name);
+  bool RunServer(const char *process_name);
   void StopServer();
 
  private:

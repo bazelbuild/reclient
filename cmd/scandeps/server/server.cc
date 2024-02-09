@@ -15,7 +15,7 @@
 #include "server.h"
 
 #ifdef _WIN32
-# define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif
 #include <glog/logging.h>
 #include <grpcpp/grpcpp.h>
@@ -38,10 +38,11 @@ typedef struct ScandepsServerWrapper {
 } ScandepsServerWrapper;
 
 void *StartServer(void *server) {
-  ScandepsServerWrapper *tserver = (ScandepsServerWrapper*)(server);
+  ScandepsServerWrapper *tserver = (ScandepsServerWrapper *)(server);
   std::unique_lock<std::mutex> shutdown_lock(*(tserver->shutdown_mutex));
   *(tserver->running) = true;
-  tserver->shutdown_condition->wait(shutdown_lock, [tserver]() { return !(*(tserver->running)); });
+  tserver->shutdown_condition->wait(
+      shutdown_lock, [tserver]() { return !(*(tserver->running)); });
   LOG(INFO) << "Stopping server.";
   auto deadline = std::chrono::system_clock::now() +
                   std::chrono::seconds(*(tserver->shutdown_delay_seconds));
@@ -52,8 +53,7 @@ void *StartServer(void *server) {
 ScandepsServer::ScandepsServer(const std::string &server_address,
                                const std::string &cache_dir,
                                const std::string &log_dir,
-                               int cache_size_max_mb,
-                               bool use_deps_cache,
+                               int cache_size_max_mb, bool use_deps_cache,
                                uint32_t shutdown_delay_seconds,
                                uint32_t experimental_deadlock,
                                uint32_t experimental_segfault)
@@ -69,10 +69,11 @@ ScandepsServer::ScandepsServer(const std::string &server_address,
 
 ScandepsServer::~ScandepsServer() {}
 
-bool ScandepsServer::RunServer(const char* process_name) {
-  scandeps::CPPDepsScanner::Service *service =
-      newDepsScanner([&]() { this->StopServer(); }, process_name, cache_dir_.c_str(), log_dir_.c_str(),
-        cache_size_max_mb_, use_deps_cache_, experimental_deadlock_, experimental_segfault_);
+bool ScandepsServer::RunServer(const char *process_name) {
+  scandeps::CPPDepsScanner::Service *service = newDepsScanner(
+      [&]() { this->StopServer(); }, process_name, cache_dir_.c_str(),
+      log_dir_.c_str(), cache_size_max_mb_, use_deps_cache_,
+      experimental_deadlock_, experimental_segfault_);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
@@ -109,7 +110,7 @@ bool ScandepsServer::RunServer(const char* process_name) {
   tserver.shutdown_delay_seconds = &shutdown_delay_seconds_;
 
   pthread_t run_thread;
-  int tret = pthread_create(&run_thread, NULL, StartServer, (void*)&tserver);
+  int tret = pthread_create(&run_thread, NULL, StartServer, (void *)&tserver);
   if (tret != 0) {
     LOG(ERROR) << "Failed to start server thread; aborting.";
     grpc_server_->Shutdown();
