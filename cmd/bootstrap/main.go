@@ -87,7 +87,15 @@ func main() {
 	defer log.Flush()
 	flag.Var((*moreflag.StringListValue)(&proxyLogDir), "proxy_log_dir", "If provided, the directory path to a proxy log file of executed records.")
 	rbeflag.Parse()
+	rbeflag.LogAllFlags(0)
+	log.Flush()
 	version.PrintAndExitOnVersionFlag(true)
+
+	httpProxy := os.Getenv("RBE_HTTP_PROXY")
+	if httpProxy != "" {
+		os.Setenv("http_proxy", httpProxy)
+		os.Setenv("https_proxy", httpProxy)
+	}
 
 	if *logHTTPCalls {
 		loghttp.Register()
