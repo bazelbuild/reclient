@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "bridge.h"
+#include "include_processor.h"
+
+#include <glog/logging.h>
 
 #include <memory>
-#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -23,9 +24,8 @@
 #include "adjust_cmd.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/CompilationDatabase.h"
-#include "clang/Tooling/DependencyScanning/DependencyScanningService.h"
 #include "clang/Tooling/DependencyScanning/DependencyScanningTool.h"
-#include "clang/Tooling/DependencyScanning/DependencyScanningWorker.h"
+#include "pkg/version/version.h"
 
 // Some of reclient's use cases require ubuntu 16.04, which is only shipped
 // with GLIBC 2.23 at the latest, by default (or so is the ubuntu:16.04 docker
@@ -79,6 +79,55 @@ class SingleCommandCompilationDatabase
   clang::tooling::CompileCommand Command;
 };
 
+// deps format
+// <output>: <input> ...
+// <input> is space sparated
+// '\'+newline is space
+// '\'+space is an escaped space (not separater)
+std::set<std::string> ParseDeps(std::string depsStr) {
+  std::set<std::string> dependencies;
+
+  // Skip until ':'
+  size_t start = depsStr.find_first_of(":");
+  if (start < 0) {
+    return dependencies;
+  }
+  std::string deps = depsStr.substr(start + 1);
+
+  std::string dependency;
+  for (int i = 0; i < deps.length(); i++) {
+    char c = deps[i];
+
+    // Skip spaces and append dependency.
+    if (c == ' ' || c == '\t' || c == '\n') {
+      if (dependency.length() > 0) {
+        dependencies.insert(dependency);
+      }
+      dependency.clear();
+      continue;
+    }
+
+    // \\ followed by \n is a space. Skip this character.
+    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == '\n') {
+      continue;
+    }
+
+    // \\ followed by a ' ' is not an escape character. Only append ' '.
+    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == ' ') {
+      dependency += ' ';
+      i++;
+    } else {
+      dependency += c;
+    }
+  }
+
+  if (dependency.length() > 0) {
+    dependencies.insert(dependency);
+  }
+
+  return dependencies;
+}
+
 std::set<std::string> ParsePluginsToIgnore() {
   const char* envVal = std::getenv("RBE_clang_depscan_ignored_plugins");
   if (envVal == NULL || *envVal == '\0') {
@@ -94,7 +143,7 @@ std::set<std::string> ParsePluginsToIgnore() {
   return result;
 };
 
-class DependencyScanner {
+class DependencyScanner final : public include_processor::IncludeProcessor {
  public:
   DependencyScanner()
       : Service(clang::tooling::dependencies::DependencyScanningService(
@@ -104,15 +153,28 @@ class DependencyScanner {
             true)),
         PluginsToIgnore(ParsePluginsToIgnore()) {}
 
-  int getDependencies(int argc, const char** argv, const char* filename,
-                      const char* directory, char** deps, char** errp) {
-    std::vector<std::string> CommandLine;
-    for (int i = 0; i < argc; i++) {
-      CommandLine.push_back(std::string(argv[i]));
+  void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
+                       const std::vector<std::string>& args,
+                       const std::vector<std::string>& envs,
+                       std::shared_ptr<include_processor::Result> req) {
+    auto deps = computeIncludes(req->filename, req->directory, args);
+    if (deps) {
+      req->dependencies = deps.get();
+    } else {
+      std::string err;
+      llvm::handleAllErrors(deps.takeError(), [&err](llvm::StringError& Err) {
+        err += Err.getMessage();
+      });
+      req->error = err;
     }
-    std::string Filename(filename);
-    std::string Directory(directory);
+    req->result_complete = true;
+    req->result_condition.notify_all();
+  }
 
+ private:
+  llvm::Expected<std::set<std::string>> computeIncludes(
+      std::string Filename, std::string Directory,
+      std::vector<std::string> CommandLine) {
     clangscandeps::AdjustCmd(CommandLine, Filename, PluginsToIgnore);
 
     clang::tooling::CompileCommand command(Directory, Filename, CommandLine,
@@ -127,8 +189,9 @@ class DependencyScanner {
 
     auto cmds = AdjustingCompilations->getAllCompileCommands();
     if (cmds.size() < 1) {
-      *errp = strdup("unexpected number of cmds from AdjustingCompilation");
-      return 1;
+      return llvm::createStringError(
+          std::errc::argument_out_of_domain,
+          "unexpected number of cmds from AdjustingCompilation");
     }
 
     std::unique_ptr<clang::tooling::dependencies::DependencyScanningTool>
@@ -138,16 +201,9 @@ class DependencyScanner {
     auto DependencyScanningRes =
         WorkerTool->getDependencyFile(cmds[0].CommandLine, Directory);
     if (!DependencyScanningRes) {
-      std::string ErrorMessage = "";
-      llvm::handleAllErrors(DependencyScanningRes.takeError(),
-                            [&ErrorMessage](llvm::StringError& Err) {
-                              ErrorMessage += Err.getMessage();
-                            });
-      *errp = strdup(ErrorMessage.c_str());
-      return 1;
+      return DependencyScanningRes.takeError();
     }
-    *deps = strdup(DependencyScanningRes.get().c_str());
-    return 0;
+    return ParseDeps(DependencyScanningRes.get());
   }
 
  private:
@@ -155,15 +211,8 @@ class DependencyScanner {
   std::set<std::string> PluginsToIgnore;
 };
 
-void* NewDepsScanner() { return new (DependencyScanner); }
-
-void DeleteDepsScanner(void* impl) {
-  delete reinterpret_cast<DependencyScanner*>(impl);
+namespace include_processor {
+std::unique_ptr<include_processor::IncludeProcessor> NewDepsScanner() {
+  return std::make_unique<DependencyScanner>();
 }
-
-int ScanDependencies(void* impl, int argc, const char** argv,
-                     const char* filename, const char* dir, char** deps,
-                     char** errs) {
-  DependencyScanner* scanner = reinterpret_cast<DependencyScanner*>(impl);
-  return scanner->getDependencies(argc, argv, filename, dir, deps, errs);
-}
+}  // namespace include_processor

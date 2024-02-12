@@ -19,7 +19,7 @@
 #endif
 #include <glog/logging.h>
 
-#include "internal/pkg/cppdependencyscanner/clangscandeps/bridge.h"
+#include "include_processor.h"
 #include "pkg/version/version.h"
 
 using grpc::ServerContext;
@@ -66,21 +66,13 @@ ClangscandepsIPServiceImpl::ClangscandepsIPServiceImpl(
       deps_scanner_cache_(nullptr) {
   started_ = std::time(0);
   google::InitGoogleLogging(process_name);
-  InitClangscandeps();
-}
-
-ClangscandepsIPServiceImpl::~ClangscandepsIPServiceImpl() {
-  DeleteDepsScanner(deps_scanner_cache_);
-}
-
-void ClangscandepsIPServiceImpl::InitClangscandeps() {
   std::unique_lock<std::mutex> exp_lock(init_mutex_);
   if (deps_scanner_cache_ != nullptr) {
     LOG(WARNING) << "Clangscandeps dependency scanner is already initialized "
                     "and will not be reinitialized";
   } else {
     std::time_t start = std::time(0);
-    deps_scanner_cache_ = NewDepsScanner();
+    deps_scanner_cache_ = include_processor::NewDepsScanner();
     std::time_t end = std::time(0);
     if (deps_scanner_cache_ == nullptr) {
       LOG(FATAL) << "Unable to create new clangscandeps dependency scanner";
@@ -107,113 +99,38 @@ Status ClangscandepsIPServiceImpl::ProcessInputs(
       init_cv_.wait(init_lock, [&] { return deps_scanner_cache_ != nullptr; });
     }
   }
+  auto result = std::make_shared<include_processor::Result>();
+  result->directory = request->directory();
+  result->filename = request->filename();
+  std::unique_lock<std::mutex> result_lock(result->result_mutex);
+  deps_scanner_cache_->ComputeIncludes(
+      request->exec_id(), request->directory(),
+      std::vector<std::string>(request->command().begin(),
+                               request->command().end()),
+      std::vector<std::string>(request->cmd_env().begin(),
+                               request->cmd_env().end()),
+      result);
+  result->result_condition.wait(
+      result_lock, [&result]() { return result->result_complete; });
 
-  std::vector<const char*> argv(request->command_size());
-  for (int i = 0; i < request->command_size(); ++i) {
-    argv[i] = request->command(i).c_str();
-  }
-
-  ClangScanDepsResult clangscandeps_result;
-  char* depsStr = nullptr;
-  char* errStr = nullptr;
-  std::unique_lock<std::mutex> result_lock(clangscandeps_result.result_mutex);
-  ScanDependenciesResult(clangscandeps_result, deps_scanner_cache_,
-                         request->command_size(), argv.data(),
-                         request->filename().c_str(),
-                         request->directory().c_str(), &depsStr, &errStr);
-  clangscandeps_result.result_condition.wait(
-      result_lock, [&clangscandeps_result]() {
-        return clangscandeps_result.result_complete;
-      });
-
-  if (errStr != nullptr) {
-    std::string err(errStr);
-    response->set_error(err);
-
+  if (result->error.size() > 0) {
     std::ostringstream command;
     std::copy(request->command().begin(), request->command().end(),
               std::ostream_iterator<std::string>(command, " "));
-    LOG(ERROR) << "Clangscandeps encountered the following error processing a "
+    LOG(ERROR) << "ClangScanDeps encountered the following error processing a "
                   "command: \""
-               << errStr << "\"; Command: [" << command.str() << "]";
-    free(errStr);
+               << result->error << "\"; Command: [" << command.str() << "]";
+  }
+  response->set_error(result->error);
+  response->set_used_cache(result->used_cache);
+  for (auto dependency : result->dependencies) {
+    response->add_dependencies(dependency);
   }
 
-  if (depsStr != nullptr) {
-    std::string deps(depsStr);
-    std::vector<std::string> dependencies = Parse(deps);
-
-    // Set the dependencies in the response message
-    for (auto dependency : dependencies) {
-      response->add_dependencies(dependency);
-    }
-    free(depsStr);
-  }
-
-  // TODO b/268656738: refactor this to common service code
   // Count the action as complete
   --current_actions_;
   ++completed_actions_;
   return grpc::Status::OK;
-}
-
-void ClangscandepsIPServiceImpl::ScanDependenciesResult(
-    ClangScanDepsResult& clangscandeps_result, void* impl, int argc,
-    const char** argv, const char* filename, const char* dir, char** deps,
-    char** errs) {
-  ScanDependencies(impl, argc, argv, filename, dir, deps, errs);
-  clangscandeps_result.result_complete = true;
-  clangscandeps_result.result_condition.notify_all();
-}
-
-// deps format
-// <output>: <input> ...
-// <input> is space sparated
-// '\'+newline is space
-// '\'+space is an escaped space (not separater)
-std::vector<std::string> ClangscandepsIPServiceImpl::Parse(
-    std::string depsStr) {
-  std::vector<std::string> dependencies;
-
-  // Skip until ':'
-  size_t start = depsStr.find_first_of(":");
-  if (start < 0) {
-    return dependencies;
-  }
-  std::string deps = depsStr.substr(start + 1);
-
-  std::string dependency;
-  for (int i = 0; i < deps.length(); i++) {
-    char c = deps[i];
-
-    // Skip spaces and append dependency.
-    if (c == ' ' || c == '\t' || c == '\n') {
-      if (dependency.length() > 0) {
-        dependencies.push_back(dependency);
-      }
-      dependency.clear();
-      continue;
-    }
-
-    // \\ followed by \n is a space. Skip this character.
-    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == '\n') {
-      continue;
-    }
-
-    // \\ followed by a ' ' is not an escape character. Only append ' '.
-    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == ' ') {
-      dependency += ' ';
-      i++;
-    } else {
-      dependency += c;
-    }
-  }
-
-  if (dependency.length() > 0) {
-    dependencies.push_back(dependency);
-  }
-
-  return dependencies;
 }
 
 Status ClangscandepsIPServiceImpl::Status(

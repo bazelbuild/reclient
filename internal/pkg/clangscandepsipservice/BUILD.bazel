@@ -9,9 +9,78 @@ cc_library(
     }),
     visibility = ["//:__subpackages__"],
     deps = [
+        ":include_processor",
         "//api/scandeps:scandeps_cc",
-        "//internal/pkg/cppdependencyscanner/clangscandepsservice:clangscandepscpplib",
         "//pkg/version:version_cc",
         "@com_github_grpc_grpc//:grpc++",
+    ],
+)
+
+cc_library(
+    name = "adjust_cmd",
+    srcs = [
+        "adjust_cmd.cc",
+        "adjust_cmd.h",
+    ],
+    hdrs = [
+        "adjust_cmd.h",
+    ],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//internal/pkg/cppdependencyscanner/clangscandepsservice:__pkg__"],
+)
+
+cc_test(
+    name = "adjust_cmd_test",
+    size = "small",
+    srcs = ["adjust_cmd_test.cc"],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = [
+        ":adjust_cmd",
+        "@com_google_googletest//:gtest_main",
+        "@llvm-project//clang:tooling_dependency_scanning",
+    ],
+)
+
+cc_library(
+    name = "include_processor",
+    srcs = [
+        "include_processor.cc",
+    ],
+    hdrs = [
+        "include_processor.h",
+    ],
+    copts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-fPIC",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,--wrap=glob",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = [
+        "manual",
+    ],
+    target_compatible_with = select({
+        "//:clangscandeps_input_processor_config": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":adjust_cmd",
+        "//api/scandeps:scandeps_cc",
+        "//pkg/version:version_cc",
+        "@com_github_google_glog//:glog",
+        "@com_github_grpc_grpc//:grpc++",
+        "@llvm-project//clang:tooling_dependency_scanning",
     ],
 )

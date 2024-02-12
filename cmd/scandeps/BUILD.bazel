@@ -51,7 +51,7 @@ cc_platform_binary(
                 ":scandeps_lib",
                 #gazelle:ignore
                 "//internal/pkg/clangscandepsipservice",
-                "//internal/pkg/cppdependencyscanner/clangscandepsservice:clangscandepscpplib",
+                "//internal/pkg/clangscandepsipservice:include_processor",
             ],
             "//:goma_input_processor_config": [
                 ":scandeps_lib",

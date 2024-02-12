@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef INTERNAL_PKG_CLANGSCANDEPSIPSERVICE_CLANGSCANDEPSIP_H_
+#define INTERNAL_PKG_CLANGSCANDEPSIPSERVICE_CLANGSCANDEPSIP_H_
+
 #include <grpcpp/grpcpp.h>
 
 #include <atomic>
@@ -19,13 +22,13 @@
 #include <ctime>
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
+#include "include_processor.h"
 
 class ClangscandepsIPServiceImpl final
     : public scandeps::CPPDepsScanner::Service {
  public:
   ClangscandepsIPServiceImpl(const char* process_name,
                              std::function<void()> shutdown_server);
-  ~ClangscandepsIPServiceImpl();
   grpc::Status ProcessInputs(grpc::ServerContext*,
                              const scandeps::CPPProcessInputsRequest*,
                              scandeps::CPPProcessInputsResponse*) override;
@@ -36,7 +39,6 @@ class ClangscandepsIPServiceImpl final
   grpc::Status Capabilities(grpc::ServerContext*,
                             const google::protobuf::Empty*,
                             scandeps::CapabilitiesResponse*) override;
-  void InitClangscandeps();
 
  private:
   struct ClangScanDepsResult;
@@ -47,12 +49,9 @@ class ClangscandepsIPServiceImpl final
   std::function<void()> shutdown_server_;
   std::mutex init_mutex_;
   std::time_t started_;
-  void* deps_scanner_cache_;
+  std::unique_ptr<include_processor::IncludeProcessor> deps_scanner_cache_;
 
-  std::vector<std::string> Parse(std::string deps);
   void PopulateStatusResponse(scandeps::StatusResponse*);
-  void ScanDependenciesResult(ClangScanDepsResult& clangscandeps_result,
-                              void* impl, int argc, const char** argv,
-                              const char* filename, const char* dir,
-                              char** deps, char** errs);
 };
+
+#endif
