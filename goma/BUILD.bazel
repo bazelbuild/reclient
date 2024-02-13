@@ -41,7 +41,6 @@ ninja(
     }),
     tags = [
         "manual",
-        "no-remote-exec",
     ],
     targets = ["compiler_proxy_lib"],
     visibility = ["//visibility:public"],
