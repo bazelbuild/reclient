@@ -157,6 +157,13 @@ go_repository(
     version = "v0.0.0-20230122075934-ca0b05cb1adb",
 )
 
+go_repository(
+    name = "com_github_gosuri_uilive",
+    importpath = "github.com/gosuri/uilive",
+    sum = "h1:hUEBpQDj8D8jXgtCdBu7sWsy5sbW/5GhuO8KBwJ2jyY=",
+    version = "v0.0.4",
+)
+
 load("//:go_deps.bzl", "shirou_gopsutil_deps")
 
 # gazelle:repository_macro go_deps.bzl%shirou_gopsutil_deps

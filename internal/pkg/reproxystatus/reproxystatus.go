@@ -18,6 +18,7 @@ package reproxystatus
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ import (
 
 	lpb "github.com/bazelbuild/reclient/api/log"
 	ppb "github.com/bazelbuild/reclient/api/proxy"
+	"github.com/bazelbuild/reclient/internal/pkg/ipc"
 )
 
 // Summary describes the result of calling Status.GetStatusSummary on a reproxy instance at Addr.
@@ -37,21 +39,25 @@ type Summary struct {
 
 // HumanReadable formats Summary into a human-readable format.
 func (s *Summary) HumanReadable() string {
+	name := "Reproxy"
+	if s.Addr != "" {
+		name = fmt.Sprintf("Reproxy(%s)", s.Addr)
+	}
 	if s.Err != nil {
 		return fmt.Sprintf(
-			`Reproxy(%s) was not reachable
+			`%s was not reachable
 %s
 `,
-			s.Addr,
+			name,
 			color.RedString("%v", s.Err))
 	}
 	return fmt.Sprintf(
-		`Reproxy(%s) %s
+		`%s %s
 Actions completed: %s
 Actions in progress: %d
 QPS: %d
 `,
-		s.Addr, strings.Join(s.overallStatuses(), ", "),
+		name, strings.Join(s.overallStatuses(), ", "),
 		s.completedActions(),
 		s.Resp.GetRunningActions(),
 		s.Resp.GetQps(),
@@ -105,11 +111,64 @@ func CompletedActionsSummary(stats map[string]int32) string {
 	return strings.Join(totalsByStatus, ", ")
 }
 
+// ReproxyTracker manages connections to reproxy instances
+type ReproxyTracker interface {
+	FetchAllStatusSummaries(ctx context.Context) []*Summary
+}
+
+// SingleReproxyTracker manages a connection to a single reproxy instance listening on ServerAddress
+type SingleReproxyTracker struct {
+	ServerAddress string
+	client        ppb.StatusClient
+	mu            sync.RWMutex
+}
+
+// FetchAllStatusSummaries a Summary the reproxy instance at ServerAddress.
+func (rt *SingleReproxyTracker) FetchAllStatusSummaries(ctx context.Context) []*Summary {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	if rt.client == nil {
+		conn, err := ipc.DialContext(ctx, rt.ServerAddress)
+		if err != nil {
+			return []*Summary{
+				{
+					Addr: rt.ServerAddress,
+					Err:  fmt.Errorf("failed to dial reproxy: %w", err),
+				},
+			}
+		}
+		rt.client = ppb.NewStatusClient(conn)
+	}
+	resp, err := rt.client.GetStatusSummary(ctx, &ppb.GetStatusSummaryRequest{})
+	return []*Summary{
+		{
+			Addr: rt.ServerAddress,
+			Err:  err,
+			Resp: resp,
+		},
+	}
+}
+
+// SocketReproxyTracker manages connections to all reproxy instances listening on unix sockets or windows pipes.
+type SocketReproxyTracker struct {
+	clients    map[string]ppb.StatusClient
+	dialErrors map[string]error
+	mu         sync.RWMutex
+}
+
+var (
+	// Exists for unit test so that the logic can be tested without actual reproxy processes
+	testOnlyReproxySocketsKey []string
+)
+
 // FetchAllStatusSummaries returns a list of Summary for each client in statusClients sorted by key.
-func FetchAllStatusSummaries(ctx context.Context, statusClients map[string]ppb.StatusClient) []*Summary {
+func (rt *SocketReproxyTracker) FetchAllStatusSummaries(ctx context.Context) []*Summary {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	rt.updateClients(ctx)
 	var wg sync.WaitGroup
-	out := make(chan *Summary, len(statusClients))
-	for addr, statusClient := range statusClients {
+	out := make(chan *Summary, len(rt.clients))
+	for addr, statusClient := range rt.clients {
 		wg.Add(1)
 		go func(addr string, statusClient ppb.StatusClient) {
 			defer wg.Done()
@@ -127,14 +186,62 @@ func FetchAllStatusSummaries(ctx context.Context, statusClients map[string]ppb.S
 		close(out)
 	}()
 
-	summaries := make([]*Summary, 0, len(statusClients))
+	summaries := make([]*Summary, 0, len(rt.clients)+len(rt.dialErrors))
 	for summary := range out {
 		summaries = append(summaries, summary)
+	}
+	for addr, err := range rt.dialErrors {
+		summaries = append(summaries, &Summary{
+			Addr: addr,
+			Err:  err,
+		})
 	}
 
 	sort.Slice(summaries, func(i, j int) bool { return summaries[i].Addr < summaries[j].Addr })
 
 	return summaries
+}
+
+// updateClients discovers and connects to all reproxy instances listening on unix sockets or windows pipes.
+// These connections will be cached for future calls.
+func (rt *SocketReproxyTracker) updateClients(ctx context.Context) {
+	if rt.clients == nil {
+		rt.clients = map[string]ppb.StatusClient{}
+	}
+	var addrs []string
+	if testOnlyReproxySocketsKey != nil {
+		addrs = testOnlyReproxySocketsKey
+	} else {
+		var err error
+		addrs, err = ipc.GetAllReproxySockets(ctx)
+		if err != nil {
+			rt.dialErrors[""] = fmt.Errorf("error finding reproxy sockets: %w", err)
+			return
+		}
+	}
+	rt.dialErrors = map[string]error{}
+	oldClients := rt.clients
+	rt.clients = make(map[string]ppb.StatusClient, len(addrs))
+	for _, addr := range addrs {
+		if _, ok := oldClients[addr]; ok {
+			rt.clients[addr] = oldClients[addr]
+		} else if conn, err := ipc.DialContext(ctx, addr); err == nil {
+			rt.clients[addr] = ppb.NewStatusClient(conn)
+		} else {
+			rt.dialErrors[addr] = fmt.Errorf("failed to dial reproxy: %w", err)
+		}
+	}
+}
+
+// PrintSummaries calls updates the tracker then fetches and prints all summaries from the connected reproxy instances.
+func PrintSummaries(ctx context.Context, writer io.Writer, tracker ReproxyTracker) {
+	if sums := tracker.FetchAllStatusSummaries(ctx); len(sums) > 0 {
+		for _, s := range sums {
+			fmt.Fprintf(writer, "%s\n", s.HumanReadable())
+		}
+	} else {
+		fmt.Fprintf(writer, color.RedString("Reproxy is not running")+"\n")
+	}
 }
 
 func sortByOrdinal(stats map[string]int32) []string {

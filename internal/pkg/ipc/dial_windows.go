@@ -24,7 +24,6 @@ import (
 	"unsafe"
 
 	winio "github.com/Microsoft/go-winio"
-	log "github.com/golang/glog"
 	"google.golang.org/grpc"
 )
 
@@ -44,7 +43,7 @@ var (
 // if serverAddr is `pipe://<addr>`, it connects to named pipe (`\\.\\pipe\<addr>`).
 func DialContext(ctx context.Context, serverAddr string) (*grpc.ClientConn, error) {
 	if strings.HasPrefix(serverAddr, pipeProtocol) {
-		return dialPipe(ctx, strings.TrimPrefix(serverAddr, pipeProtocol))
+		return dialPipe(ctx, strings.TrimPrefix(serverAddr, pipeProtocol), grpc.WithInsecure(), grpc.WithMaxMsgSize(GrpcMaxMsgSize))
 	}
 	return grpc.DialContext(ctx, serverAddr, grpc.WithInsecure())
 }
@@ -56,41 +55,33 @@ func DialContext(ctx context.Context, serverAddr string) (*grpc.ClientConn, erro
 // if serverAddr is `pipe://<addr>`, it connects to named pipe (`\\.\\pipe\<addr>`).
 func DialContextWithBlock(ctx context.Context, serverAddr string) (*grpc.ClientConn, error) {
 	if strings.HasPrefix(serverAddr, pipeProtocol) {
-		return dialPipe(ctx, strings.TrimPrefix(serverAddr, pipeProtocol))
+		return dialPipe(ctx, strings.TrimPrefix(serverAddr, pipeProtocol), grpc.WithInsecure(), grpc.WithBlock(), grpc.WithMaxMsgSize(GrpcMaxMsgSize))
 	}
 	return grpc.DialContext(ctx, serverAddr, grpc.WithInsecure(), grpc.WithBlock())
 }
 
-func dialPipe(ctx context.Context, pipe string) (*grpc.ClientConn, error) {
+func dialPipe(ctx context.Context, pipe string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	addr := pipePrefix + pipe
-	return grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithMaxMsgSize(GrpcMaxMsgSize),
+	return grpc.DialContext(ctx, addr, append(opts,
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			return winio.DialPipeContext(ctx, addr)
-		}))
+		}))...)
 }
 
-// DialAllContexts searches for and connects to all reproxy.exe pipes
-func DialAllContexts(ctx context.Context) (map[string]*grpc.ClientConn, error) {
+// GetAllReproxySockets returns all windows pipes where an reproxy service is listening.
+func GetAllReproxySockets(ctx context.Context) ([]string, error) {
 	pidToName, err := getProcessNameMap()
 	if err != nil {
 		return nil, err
 	}
-	conns := make(map[string]*grpc.ClientConn)
-	for _, pipe := range filterReproxyPipes(allPipes(), pidToName) {
-		if conn, err := dialPipe(ctx, pipe); err != nil {
-			log.Warningf("Error connecting to %s%s: %s", pipePrefix, pipe, err)
-		} else {
-			conns[pipeProtocol+pipe] = conn
-		}
-	}
-	return conns, nil
+	return filterReproxyPipes(allPipes(), pidToName), nil
 }
 
 func filterReproxyPipes(pipes []string, pidToName map[uint32]string) []string {
 	var out []string
 	for _, pipe := range pipes {
 		if pid, err := getServerPIDForPipe(pipe); err == nil && pidToName[pid] == "reproxy.exe" {
-			out = append(out, pipe)
+			out = append(out, pipeProtocol+pipe)
 		}
 	}
 	return out

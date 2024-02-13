@@ -24,13 +24,12 @@ import (
 	"strings"
 	"time"
 
-	ppb "github.com/bazelbuild/reclient/api/proxy"
-	"github.com/bazelbuild/reclient/internal/pkg/ipc"
+	"github.com/fatih/color"
+	"github.com/gosuri/uilive"
+
 	"github.com/bazelbuild/reclient/internal/pkg/printer"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/reproxystatus"
-	"github.com/fatih/color"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -38,6 +37,7 @@ var (
 		"The server address in the format of host:port for network, or unix:///file for unix domain sockets. "+
 			"If empty (default) then all reproxy instances will be dialed")
 	colorize = flag.String("color", "auto", "Control the output color mode; one of (off, on, auto)")
+	watch    = flag.Duration("watch", 0, "If greater than 0, every interval the ternimal will be cleared and the output will be printed.")
 )
 
 var (
@@ -55,47 +55,30 @@ func main() {
 	default:
 		fmt.Fprintf(color.Error, "ERROR: invalid --color mode: %v", *colorize)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+	if *watch < 0 {
+		printer.Fatal("ERROR: --watch needs to be >= 0")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	clients, err := dialReproxy(ctx)
-	if err != nil {
-		printer.Fatal(fmt.Sprintf("Failed to dial reproxy: %v", err))
-	}
-
-	summaries := reproxystatus.FetchAllStatusSummaries(ctx, clients)
-	if len(summaries) == 0 {
-		if *serverAddr == "" {
-			fmt.Fprintf(color.Output, "Reproxy is not running\n")
-		} else {
-			fmt.Fprintf(color.Output, "Reproxy(%s) is not running\n", *serverAddr)
-		}
-		return
-	}
-
-	for _, s := range summaries {
-		fmt.Fprintln(color.Output, s.HumanReadable())
-	}
-}
-
-func dialReproxy(ctx context.Context) (map[string]ppb.StatusClient, error) {
-	var conns map[string]*grpc.ClientConn
-	var err error
-	if *serverAddr == "" {
-		conns, err = ipc.DialAllContexts(ctx)
+	var tracker reproxystatus.ReproxyTracker
+	if *serverAddr != "" {
+		tracker = &reproxystatus.SingleReproxyTracker{ServerAddress: *serverAddr}
 	} else {
-		var conn *grpc.ClientConn
-		conn, err = ipc.DialContext(ctx, *serverAddr)
-		conns = map[string]*grpc.ClientConn{
-			*serverAddr: conn,
+		tracker = &reproxystatus.SocketReproxyTracker{}
+	}
+	if *watch == 0 {
+		tctx, cancel := context.WithTimeout(ctx, dialTimeout)
+		defer cancel()
+		reproxystatus.PrintSummaries(tctx, color.Output, tracker)
+	} else {
+		writer := uilive.New()
+		writer.Out = color.Output
+		ticker := time.NewTicker(*watch)
+		for ; true; <-ticker.C {
+			tctx, cancel := context.WithTimeout(ctx, dialTimeout)
+			reproxystatus.PrintSummaries(tctx, writer, tracker)
+			cancel()
+			writer.Flush()
 		}
 	}
-	if err != nil {
-		return nil, err
-	}
-	clients := make(map[string]ppb.StatusClient, len(conns))
-	for name, conn := range conns {
-		clients[name] = ppb.NewStatusClient(conn)
-	}
-	return clients, nil
 }

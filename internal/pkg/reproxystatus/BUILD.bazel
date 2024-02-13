@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//api/log",
         "//api/proxy",
+        "//internal/pkg/ipc",
         "@com_github_fatih_color//:color",
     ],
 )
@@ -19,8 +20,9 @@ go_test(
     deps = [
         "//api/log",
         "//api/proxy",
+        "//internal/pkg/ipc",
         "@com_github_google_go_cmp//cmp",
+        "@com_github_google_uuid//:uuid",
         "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_protobuf//testing/protocmp",
     ],
 )

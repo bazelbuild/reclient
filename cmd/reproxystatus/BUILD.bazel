@@ -6,13 +6,11 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/cmd/reproxystatus",
     visibility = ["//visibility:private"],
     deps = [
-        "//api/proxy",
-        "//internal/pkg/ipc",
         "//internal/pkg/printer",
         "//internal/pkg/rbeflag",
         "//internal/pkg/reproxystatus",
         "@com_github_fatih_color//:color",
-        "@org_golang_google_grpc//:go_default_library",
+        "@com_github_gosuri_uilive//:uilive",
     ],
 )
 

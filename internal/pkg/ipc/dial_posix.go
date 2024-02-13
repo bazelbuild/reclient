@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"strings"
 
-	log "github.com/golang/glog"
 	"google.golang.org/grpc"
 )
 
@@ -41,33 +40,27 @@ func DialContextWithBlock(ctx context.Context, serverAddr string) (*grpc.ClientC
 	return grpc.DialContext(ctx, serverAddr, grpc.WithBlock(), grpc.WithInsecure(), grpc.WithMaxMsgSize(GrpcMaxMsgSize))
 }
 
-// DialAllContexts searches for and connects to all reproxy sockets
-func DialAllContexts(ctx context.Context) (map[string]*grpc.ClientConn, error) {
-	conns := make(map[string]*grpc.ClientConn)
+// GetAllReproxySockets returns all unix sockets where an reproxy service is listening.
+func GetAllReproxySockets(ctx context.Context) ([]string, error) {
 	lsofOutput, err := execLsof("-U", "-c", "reproxy", "-a", "-Fn")
 
 	if err != nil {
 		// Lsof completes with exit code 1 when there is no output
 		if err.(*exec.ExitError).ExitCode() == 1 {
-			return map[string]*grpc.ClientConn{}, nil
+			return nil, nil
 		}
 		return nil, err
 	}
-	for _, serverAddr := range parseSockets(lsofOutput) {
-		if conn, err := DialContext(ctx, serverAddr); err != nil {
-			log.Warningf("Error connecting to %s: %s", serverAddr, err)
-		} else {
-			conns[serverAddr] = conn
-		}
-	}
-	return conns, nil
+	return parseSockets(lsofOutput), nil
 }
 
 func parseSockets(lsofOutput string) []string {
 	var sockets []string
+	seenSockets := map[string]bool{}
 	for _, line := range strings.Split(lsofOutput, "\n") {
-		if socket := parseSocketLine(line); socket != "" {
+		if socket := parseSocketLine(line); socket != "" && !seenSockets[socket] {
 			sockets = append(sockets, "unix://"+socket)
+			seenSockets[socket] = true
 		}
 	}
 	return sockets
