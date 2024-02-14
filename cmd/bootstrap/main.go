@@ -79,8 +79,8 @@ var (
 	cacheDir                          = flag.String("cache_dir", "", "Directory from which to load the cache files at startup and update at shutdown.")
 	metricsUploader                   = flag.String("metrics_uploader", defaultMetricsUploader(), "Path to the metrics uploader binary.")
 	logHTTPCalls                      = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
-	experimentalCredentialsHelper     = flag.String("experimental_credentials_helper", "", "Path to the creds helper binary.")
-	experimentalCredentialsHelperArgs = flag.String("experimental_credentials_helper_args", "", "Arguments for the experimental credentials helper, separated by space.")
+	experimentalCredentialsHelper     = flag.String(auth.CredshelperPathFlag, "", "Path to the credentials helper binary. If given execrel://, looks for the `credshelper` binary in the same folder as bootstrap")
+	experimentalCredentialsHelperArgs = flag.String(auth.CredshelperArgsFlag, "", "Arguments for the experimental credentials helper, separated by space.")
 )
 
 func main() {

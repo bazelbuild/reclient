@@ -32,6 +32,7 @@ import (
 	"time"
 
 
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 
 	log "github.com/golang/glog"
@@ -101,6 +102,12 @@ func (m Mechanism) String() string {
 }
 
 const (
+
+	// CredshelperPathFlag is the path to the credentials helper binary.
+	CredshelperPathFlag = "experimental_credentials_helper"
+	// CredshelperArgsFlag is the flag used to pass in the arguments to the credentials helper binary.
+	CredshelperArgsFlag = "experimental_credentials_helper_args"
+
 	// TODO(b/261172745): define these flags in reproxy rather than in the SDK.
 
 	// UseAppDefaultCredsFlag is used to authenticate with application default credentials.
@@ -493,6 +500,13 @@ func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
 
 // NewExternalCredentials creates credentials obtained from a credshelper.
 func NewExternalCredentials(credshelper string, credshelperArgs []string, credsFile string) (*Credentials, error) {
+	if credshelper == "execrel://" {
+		credshelperPath, err := pathtranslator.BinaryRelToAbs("credshelper")
+		if err != nil {
+			log.Fatalf("Specified %s=execrel:// but `credshelper` was not found in the same directory as `bootstrap` or `reproxy`: %v", CredshelperPathFlag, err)
+		}
+		credshelper = credshelperPath
+	}
 	credsHelperCmd := exec.Command(credshelper, credshelperArgs...)
 	creds, err := LoadCredsFromDisk(credsFile, credsHelperCmd)
 	if err != nil {
