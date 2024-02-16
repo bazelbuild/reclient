@@ -16,6 +16,7 @@ package clangcl
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
@@ -40,8 +41,13 @@ func TestParseFlags(t *testing.T) {
 		want       *flags.CommandFlags
 	}{
 		{
-			name:       "chromium clang-cl",
+			name:       "chromium clang-cl with a simple rsp file",
 			workingDir: "out/Release",
+			files: map[string][]byte{
+				filepath.Join("out", "Release", "foo", "args.rsp"):  []byte("simple_input.txt\nmore_inputs.txt\n"),
+				filepath.Join("out", "Release", "simple_input.txt"): []byte("put filename in rsp file is a hacky way to upload a random file to RBE"),
+				filepath.Join("out", "Release", "more_inputs.txt"):  []byte("you can upload more than one file to RBE with rsp file"),
+			},
 			command: []string{
 				"../../third_party/llvm-build/Release+Asserts/bin/clang-cl.exe",
 				"/nologo",
@@ -82,9 +88,11 @@ func TestParseFlags(t *testing.T) {
 				`/TP`,
 				`/wd4577`,
 				`/GR-`,
+				"@foo/args.rsp",
 				`-I../../buildtools/third_party/libc++/trunk/include`,
 				`/c`,
-				`/clang:-MD`, `/clang:-MF`, `/clang:obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d`,
+				`/clang:-MD`,
+				`/clang:-MF`, `/clang:obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d`,
 				`../../base/third_party/double_conversion/double-conversion/fixed-dtoa.cc`,
 				`/Foobj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj`,
 				`/Fdobj/base/third_party/double_conversion/double_conversion_cc.pdb`,
@@ -92,7 +100,9 @@ func TestParseFlags(t *testing.T) {
 			want: &flags.CommandFlags{
 				ExecutablePath: "../../third_party/llvm-build/Release+Asserts/bin/clang-cl.exe",
 				TargetFilePaths: []string{
-					`../../base/third_party/double_conversion/double-conversion/fixed-dtoa.cc`,
+					"simple_input.txt",
+					"more_inputs.txt",
+					"../../base/third_party/double_conversion/double-conversion/fixed-dtoa.cc",
 				},
 				IncludeDirPaths: []string{
 					"../..",
@@ -101,7 +111,10 @@ func TestParseFlags(t *testing.T) {
 				WorkingDirectory:      "out/Release",
 				EmittedDependencyFile: "obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d",
 				ExecRoot:              er,
-				Dependencies:          []string{"prof.txt"},
+				Dependencies: []string{
+					"prof.txt",
+					"foo/args.rsp",
+				},
 				Flags: []*flags.Flag{
 					{Key: "-nologo"},
 					{Key: "-showIncludes:user"},
@@ -143,10 +156,75 @@ func TestParseFlags(t *testing.T) {
 					{Key: "-TP"},
 					{Key: "-wd", Value: "4577", Joined: true},
 					{Key: "-GR-"},
+					{Value: "@foo/args.rsp"},
 					{Key: "-I", Value: "../../buildtools/third_party/libc++/trunk/include", Joined: true},
 					{Key: "-c"},
 					{Key: "-clang:", Value: "-MD", Joined: true},
 					{Key: "-Fd", Value: "obj/base/third_party/double_conversion/double_conversion_cc.pdb", Joined: true},
+				},
+				OutputFilePaths: []string{
+					"obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d",
+					"obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj",
+				},
+			},
+		},
+		{
+			name:       "chromium clang-cl with dependency file defined by -MF in rsp file",
+			workingDir: "out/Release",
+			files: map[string][]byte{
+				filepath.Join("out", "Release", "foo", "args.rsp"): []byte(
+					"/c\n" +
+						"simple_input.cc\nother_inputs.txt\n" +
+						// -MD tells the compiler to generate a dependency file and includes it in the compiled output with self-described dependencies,
+						// -MF tells the compiler the dependency file's name and filepath.
+						// Generally, there is only one -MF option in a single clang command.
+						"/clang:-MD\n" +
+						"/clang:-MF\n/clang:obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d\n" +
+						"../../base/third_party/double_conversion/double-conversion/fixed-dtoa.cc\n" +
+						"/Foobj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj\n" +
+						"/Fdobj/base/third_party/double_conversion/double_conversion_cc.pdb"),
+				filepath.Join("out", "Release", "simple_input.cc"):  []byte("int main() {return 0;}"),
+				filepath.Join("out", "Release", "other_inputs.txt"): []byte("some another random text"),
+			},
+			command: []string{
+				"../../third_party/llvm-build/Release+Asserts/bin/clang-cl.exe",
+				"/nologo",
+				"/showIncludes:user",
+				`-imsvc..\..\third_party\depot_tools\win_toolchain\vs_files\a687d8e2e4114d9015eb550e1b156af21381faac\win_sdk\Include\10.0.19041.0\um`,
+				`-DCR_CLANG_REVISION="n358615-fb1aa286-3"`,
+				`-I../..`,
+				`-I../../buildtools/third_party/libc++/trunk/include`,
+				"@foo/args.rsp",
+			},
+			want: &flags.CommandFlags{
+				ExecutablePath: "../../third_party/llvm-build/Release+Asserts/bin/clang-cl.exe",
+				TargetFilePaths: []string{
+					"simple_input.cc",
+					"other_inputs.txt",
+					"../../base/third_party/double_conversion/double-conversion/fixed-dtoa.cc",
+				},
+				IncludeDirPaths: []string{
+					"../..",
+					"../../buildtools/third_party/libc++/trunk/include",
+				},
+				WorkingDirectory:      "out/Release",
+				EmittedDependencyFile: "obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d",
+				ExecRoot:              er,
+				Dependencies: []string{
+					"foo/args.rsp",
+				},
+				Flags: []*flags.Flag{
+					{Key: "-nologo"},
+					{Key: "-showIncludes:user"},
+					{
+						Key:    "-imsvc",
+						Value:  `..\..\third_party\depot_tools\win_toolchain\vs_files\a687d8e2e4114d9015eb550e1b156af21381faac\win_sdk\Include\10.0.19041.0\um`,
+						Joined: true,
+					},
+					{Key: "-D", Value: `CR_CLANG_REVISION="n358615-fb1aa286-3"`, Joined: true},
+					{Key: "-I", Value: "../..", Joined: true},
+					{Key: "-I", Value: "../../buildtools/third_party/libc++/trunk/include", Joined: true},
+					{Value: "@foo/args.rsp"},
 				},
 				OutputFilePaths: []string{
 					"obj/base/third_party/double_conversion/double_conversion/fixed-dtoa.obj.d",
@@ -166,7 +244,7 @@ func TestParseFlags(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(test.want, got, cmpopts.IgnoreUnexported(flags.Flag{})); diff != "" {
-				t.Errorf("Test %v, parseFlags(%v,%v,%v) returned diff, (-want +got): %s", test.name, test.command, test.workingDir, er, diff)
+				t.Errorf("Test %v, parseFlags(%v,%v,%v) \nreturned diff, (-want +got): %s", test.name, test.command, test.workingDir, er, diff)
 			}
 		})
 	}
