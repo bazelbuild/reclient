@@ -5353,12 +5353,12 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 	var wantOutput []byte
 	var wantStdout string
 	if runtime.GOOS == "windows" {
-		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("mkdir %s && echo hello>%s && echo Done", abPath, abOutPath)}
-		wantOutput = []byte("hello \r\n")
+		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("mkdir %s && echo %%FOO%%>%s && echo Done", abPath, abOutPath)}
+		wantOutput = []byte("foo \r\n")
 		wantStdout = "Done\r\n"
 	} else {
-		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprintf("mkdir -p %s && echo hello > %s && echo Done", abPath, abOutPath)}
-		wantOutput = []byte("hello\n")
+		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprintf("mkdir -p %s && echo $FOO > %s && echo Done", abPath, abOutPath)}
+		wantOutput = []byte("foo\n")
 		wantStdout = "Done\n"
 	}
 	ctx := context.Background()
@@ -5372,6 +5372,9 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 		},
 		Labels:           map[string]string{"type": "tool"},
 		ExecutionOptions: &ppb.ProxyExecutionOptions{ExecutionStrategy: ppb.ExecutionStrategy_RACING, ReclientTimeout: 3600},
+		Metadata: &ppb.Metadata{
+			Environment: []string{"FOO=foo"},
+		},
 	}
 	cmd := &command.Command{
 		Identifiers: &command.Identifiers{},
@@ -6123,7 +6126,7 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 		},
 	}
 	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
-		t.Errorf("RunCommand() returned diff in result: (-want +got)\n%s", diff)
+		t.Errorf("RunCommand() returned diff in result: (-want +got),\ngot: %+v\n%s", diff, got)
 	}
 	path := filepath.Join(env.ExecRoot, abOutPath)
 	contents, err := os.ReadFile(path)

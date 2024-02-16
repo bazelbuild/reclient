@@ -470,7 +470,17 @@ func (a *action) runLocalRace(ctx, cCtx context.Context, pool *LocalPool) raceRe
 	log.V(2).Infof("%v: Running local", a.cmd.Identifiers.ExecutionID)
 	lr := logger.NewLogRecord()
 	lOE := outerr.NewRecordingOutErr()
-	exitCode, err := pool.Run(ctx, cCtx, a.cmd, a.lbls, lOE, lr)
+
+	cmd := a.duplicateCmd(0)
+	if a.cmd.InputSpec != nil {
+		if len(a.cmdEnvironment) > 0 {
+			if cmd.InputSpec.EnvironmentVariables == nil {
+				cmd.InputSpec.EnvironmentVariables = make(map[string]string)
+			}
+			mergeMaps(cmd.InputSpec.EnvironmentVariables, sliceToMap(a.cmdEnvironment, "="))
+		}
+	}
+	exitCode, err := pool.Run(ctx, cCtx, cmd, a.lbls, lOE, lr)
 	if errors.Is(err, context.Canceled) {
 		// Local did not run due to intentional context cancelation.
 		return raceResult{t: canceled}
@@ -927,4 +937,10 @@ func (a *action) duplicateCmd(idx int) *command.Command {
 	tcmd.Identifiers = &id
 	tcmd.Identifiers.ExecutionID = fmt.Sprintf("%v-%v", tcmd.Identifiers.ExecutionID, idx)
 	return &tcmd
+}
+
+func mergeMaps(dst, src map[string]string) {
+	for k, v := range src {
+		dst[k] = v
+	}
 }
