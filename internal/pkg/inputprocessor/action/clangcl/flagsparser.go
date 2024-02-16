@@ -41,12 +41,12 @@ func parseFlags(ctx context.Context, command []string, workingDir, execRoot stri
 	}
 
 	var state clangCLState
-	var prev *args.NextResult
+	var prev *args.FlagResult
 	s := clangparser.New(command)
 	for s.HasNext() {
-		curr := s.NextResult()
+		prev = &s.PrevResult
+		curr := s.ReadNextFlag()
 		state.handleClangCLFlags(prev, curr, res)
-		prev = curr
 	}
 	state.Finalize(res)
 	return res, nil
@@ -56,20 +56,20 @@ type clangCLState struct {
 	clangparser.State
 }
 
-func (s *clangCLState) handleClangCLFlags(prev, curr *args.NextResult, f *flags.CommandFlags) error {
+func (s *clangCLState) handleClangCLFlags(prev, curr *args.FlagResult, cmdFlags *flags.CommandFlags) error {
 	if prev != nil && prev.NormalizedKey == clangOption {
 		if prev.Values[0] == "-MF" && curr.NormalizedKey == clangOption {
-			f.Flags = f.Flags[:len(f.Flags)-1] // pop the last flag because we handle it here
-			f.OutputFilePaths = append(f.OutputFilePaths, curr.Values[0])
-			f.EmittedDependencyFile = curr.Values[0]
+			cmdFlags.Flags = cmdFlags.Flags[:len(cmdFlags.Flags)-1] // pop the prev flag because we handle it here
+			cmdFlags.OutputFilePaths = append(cmdFlags.OutputFilePaths, curr.Values[0])
+			cmdFlags.EmittedDependencyFile = curr.Values[0]
 			return nil
 		}
 	}
 	nextRes := curr
 	switch nextRes.NormalizedKey {
 	case "-Fo":
-		f.OutputFilePaths = append(f.OutputFilePaths, nextRes.Values[0])
+		cmdFlags.OutputFilePaths = append(cmdFlags.OutputFilePaths, nextRes.Values[0])
 		return nil
 	}
-	return s.State.HandleClangFlags(nextRes, f, false)
+	return s.State.HandleClangFlags(nextRes, cmdFlags, false)
 }

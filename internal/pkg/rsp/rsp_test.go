@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/reclient/internal/pkg/inputprocessor/args"
-
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -110,8 +109,8 @@ func TestParseWithFunc(t *testing.T) {
 			}
 
 			sum := 0
-			sumHandler := func(nextArg *args.NextResult) error {
-				sum += len(nextArg.Args[0])
+			sumHandler := func(sc *args.Scanner) error {
+				sum += len(sc.CurResult.Args[0])
 				return nil
 			}
 
@@ -130,7 +129,7 @@ func TestParseWithFunc(t *testing.T) {
 // TestParseWithFunc checks to make sure that rsp files can be processed by
 // passing a function for handling the contents in a specific way along with
 // providing a scanner to parse the contents of the rsp into the flag, value,
-// args triples (args.NextResult).
+// args triples (args.FlagResult).
 func TestParseWithFuncWithClangesqueScanner(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -169,10 +168,11 @@ func TestParseWithFuncWithClangesqueScanner(t *testing.T) {
 
 			var gotflag string
 			var gotvalue, gotarg []string
-			fHandler := func(nextArg *args.NextResult) error {
-				gotflag = nextArg.NormalizedKey
-				gotarg = nextArg.Args
-				gotvalue = nextArg.Values
+			fHandler := func(sc *args.Scanner) error {
+				curr := sc.CurResult
+				gotflag = curr.NormalizedKey
+				gotarg = curr.Args
+				gotvalue = curr.Values
 				return nil
 			}
 

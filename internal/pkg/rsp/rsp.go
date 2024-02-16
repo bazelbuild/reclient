@@ -37,7 +37,7 @@ func Parse(path string) ([]string, error) {
 
 // ParseWithFunc parses the given rsp file, using the provided scanner as a template to parse the
 // flags and the argHandler function to process those flags.
-func ParseWithFunc(path string, scanTemplate args.Scanner, argHandler func(nextArg *args.NextResult) error) error {
+func ParseWithFunc(path string, scanTemplate args.Scanner, argHandler func(s *args.Scanner) error) error {
 	res, err := Parse(path)
 	if err != nil {
 		return err
@@ -53,8 +53,8 @@ func ParseWithFunc(path string, scanTemplate args.Scanner, argHandler func(nextA
 
 	// Pass each result to the provided handler.
 	for scanner.HasNext() {
-		err := argHandler(scanner.NextResult())
-		if err != nil {
+		scanner.ReadNextFlag()
+		if err := argHandler(scanner); err != nil {
 			return err
 		}
 	}

@@ -101,7 +101,7 @@ type State struct {
 }
 
 // HandleClangFlags updates the given CommandFlags with the passed flag given the current ClangState.
-func (s *State) HandleClangFlags(nextRes *args.NextResult, f *flags.CommandFlags, legacyBehavior bool) error {
+func (s *State) HandleClangFlags(nextRes *args.FlagResult, f *flags.CommandFlags, legacyBehavior bool) error {
 	normalizedKey, values := nextRes.NormalizedKey, nextRes.Values
 	switch normalizedKey {
 	case "-MD":

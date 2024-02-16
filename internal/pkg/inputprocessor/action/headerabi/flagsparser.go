@@ -59,7 +59,7 @@ func (h Parser) ParseFlags(ctx context.Context, command []string, workingDir, ex
 	}
 	defer state.Finalize(res)
 	for s.HasNext() {
-		nr := s.NextResult()
+		nr := s.ReadNextFlag()
 		if nr.NormalizedKey == "root-dir" || nr.OriginalKey == "--" {
 			continue
 		}

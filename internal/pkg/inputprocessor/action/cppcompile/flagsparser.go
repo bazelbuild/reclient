@@ -44,7 +44,7 @@ func (cp ClangParser) ParseFlags(ctx context.Context, command []string, workingD
 	s := clangparser.New(command)
 	defer state.Finalize(res)
 	for s.HasNext() {
-		if err := state.HandleClangFlags(s.NextResult(), res, false); err != nil {
+		if err := state.HandleClangFlags(s.ReadNextFlag(), res, false); err != nil {
 			return res, err
 		}
 	}

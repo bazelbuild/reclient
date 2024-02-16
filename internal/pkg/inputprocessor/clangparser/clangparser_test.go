@@ -48,7 +48,7 @@ func TestHandleClangFlags_FlagsWithDeps(t *testing.T) {
 
 	for _, key := range testCases {
 		t.Run("FlagsWithDeps"+key, func(t *testing.T) {
-			nextRes := &args.NextResult{
+			nextRes := &args.FlagResult{
 				NormalizedKey: key,
 				Values:        []string{"value.file"},
 			}

@@ -51,17 +51,23 @@ func TestScanner(t *testing.T) {
 		Values []string
 		Joined bool
 	}
-	var got []result
+	var gotPrev, gotCurr []result
 	for s.HasNext() {
-		flag, args, values, joined := s.Next()
-		got = append(got, result{
-			Flag:   flag,
-			Args:   args,
-			Values: values,
-			Joined: joined,
+		s.ReadNextFlag()
+		gotPrev = append(gotPrev, result{
+			Flag:   s.PrevResult.NormalizedKey,
+			Args:   s.PrevResult.Args,
+			Values: s.PrevResult.Values,
+			Joined: s.PrevResult.Joined,
+		})
+		gotCurr = append(gotCurr, result{
+			Flag:   s.CurResult.NormalizedKey,
+			Args:   s.CurResult.Args,
+			Values: s.CurResult.Values,
+			Joined: s.CurResult.Joined,
 		})
 	}
-	want := []result{
+	wantCurr := []result{
 		{
 			Flag:   "-I",
 			Args:   []string{"-I", "include-dir"},
@@ -108,9 +114,12 @@ func TestScanner(t *testing.T) {
 			Values: []string{"foo.cc"},
 		},
 	}
-
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("scan %q: -want +got %s", args, diff)
+	wantPrev := append([]result{{}}, wantCurr[:len(wantCurr)-1]...)
+	if diff := cmp.Diff(wantCurr, gotCurr); diff != "" {
+		t.Errorf("scan %q: \n-wantCurr +gotCurr %s", args, diff)
+	}
+	if diff := cmp.Diff(wantPrev, gotPrev); diff != "" {
+		t.Errorf("scan %q: \n-wantPrev +gotPrev %s", args, diff)
 	}
 }
 
@@ -155,17 +164,23 @@ func TestScannerAltPrefix(t *testing.T) {
 		Values []string
 		Joined bool
 	}
-	var got []result
+	var gotPrev, gotCurr []result
 	for s.HasNext() {
-		flag, args, values, joined := s.Next()
-		got = append(got, result{
-			Flag:   flag,
-			Args:   args,
-			Values: values,
-			Joined: joined,
+		s.ReadNextFlag()
+		gotPrev = append(gotPrev, result{
+			Flag:   s.PrevResult.NormalizedKey,
+			Args:   s.PrevResult.Args,
+			Values: s.PrevResult.Values,
+			Joined: s.PrevResult.Joined,
+		})
+		gotCurr = append(gotCurr, result{
+			Flag:   s.CurResult.NormalizedKey,
+			Args:   s.CurResult.Args,
+			Values: s.CurResult.Values,
+			Joined: s.CurResult.Joined,
 		})
 	}
-	want := []result{
+	wantCurr := []result{
 		{
 			Flag:   "-I",
 			Args:   []string{"/I", "include-dir"},
@@ -212,8 +227,11 @@ func TestScannerAltPrefix(t *testing.T) {
 			Values: []string{"/src/foo.cc"},
 		},
 	}
-
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("scan %q: -want +got %s", args, diff)
+	wantPrev := append([]result{{}}, wantCurr[:len(wantCurr)-1]...)
+	if diff := cmp.Diff(wantCurr, gotCurr); diff != "" {
+		t.Errorf("scan %q: \n-wantCurr +gotCurr %s", args, diff)
+	}
+	if diff := cmp.Diff(wantPrev, gotPrev); diff != "" {
+		t.Errorf("scan %q: \n-wantPrev +gotPrev %s", args, diff)
 	}
 }

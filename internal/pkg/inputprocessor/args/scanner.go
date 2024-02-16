@@ -54,10 +54,16 @@ type Scanner struct {
 
 	// flag normalization.
 	Normalized map[string]string
+
+	// PrevResult is the previous Flag Result that has been handled.
+	PrevResult FlagResult
+
+	// CurResult is the current Flag Result being processed.
+	CurResult FlagResult
 }
 
-// NextResult is a result of Scanner's Next operation
-type NextResult struct {
+// FlagResult is a result of Scanner's Next operation
+type FlagResult struct {
 	Args          []string
 	NormalizedKey string
 	OriginalKey   string
@@ -71,23 +77,26 @@ type PrefixOption struct {
 	NumArgs int
 }
 
-func newNextResult(normalizedKey, originalKey string, args, values []string, joined bool) *NextResult {
-	return &NextResult{NormalizedKey: normalizedKey, OriginalKey: originalKey, Args: args, Values: values, Joined: joined}
-}
-
 // HasNext returns true if there is more args to process.
 func (s *Scanner) HasNext() bool {
 	return len(s.Args) > 0
 }
 
-// NextResult returns next flag.
+// ReadNextFlag moves forward the current FlagResult, update the scanner's
+// PrevResult, and CurResult fields, and return the CurResult.
 // NormalizedKey is normalized flag,
 // or empty string if not started with "-".
 // OriginalKey is a key before the normalization
 // Args are consumed arguments.
 // Values are flag value if flag needs value (next arg in args) or
 // Joined (rest after prefix in the arg).
-func (s *Scanner) NextResult() *NextResult {
+func (s *Scanner) ReadNextFlag() *FlagResult {
+	updatedFlag := func(normalizedKey, originalKey string, args, values []string, joined bool) *FlagResult {
+		s.PrevResult = s.CurResult
+		s.CurResult = FlagResult{NormalizedKey: normalizedKey, OriginalKey: originalKey, Args: args, Values: values, Joined: joined}
+		return &s.CurResult
+	}
+
 	flag := s.Args[0]
 	normalizedFlag, values, args := s.normalizedFlag(s.Args[0]), []string{}, []string{}
 	numArgs, ok := s.Flags[normalizedFlag]
@@ -101,7 +110,7 @@ func (s *Scanner) NextResult() *NextResult {
 		if numArgs > 0 {
 			values = args[1:]
 		}
-		return newNextResult(normalizedFlag, flag, args, values, false)
+		return updatedFlag(normalizedFlag, flag, args, values, false)
 	}
 	for _, f := range s.Joined {
 		if strings.HasPrefix(flag, f.Prefix) {
@@ -116,7 +125,7 @@ func (s *Scanner) NextResult() *NextResult {
 			if len(args) > 0 {
 				values = append(values, args[1:]...)
 			}
-			return newNextResult(normalizedFlag, flag, args, values, true)
+			return updatedFlag(normalizedFlag, flag, args, values, true)
 		}
 	}
 	args, s.Args = s.Args[:1], s.Args[1:]
@@ -124,10 +133,10 @@ func (s *Scanner) NextResult() *NextResult {
 		if len(args) > 0 {
 			values = args[1:]
 		}
-		return newNextResult(flag, flag, args, values, false)
+		return updatedFlag(flag, flag, args, values, false)
 	}
 	values = args[:]
-	return newNextResult("", "", args, values, false)
+	return updatedFlag("", "", args, values, false)
 }
 
 // Next returns next flag.
@@ -137,7 +146,7 @@ func (s *Scanner) NextResult() *NextResult {
 // values are flag value if flag needs value (next arg in args) or
 // joined (rest after prefix in the arg).
 func (s *Scanner) Next() (string, []string, []string, bool) {
-	result := s.NextResult()
+	result := s.ReadNextFlag()
 	return result.NormalizedKey, result.Args, result.Values, result.Joined
 }
 
