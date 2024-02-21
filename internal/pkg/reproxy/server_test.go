@@ -6232,6 +6232,123 @@ func TestDupOutputs(t *testing.T) {
 	}
 }
 
+func TestRemoteRacingFinishInReasonableTimeDuration(t *testing.T) {
+	cmdArgs := []string{"/bin/bash", "-c", "sleep 2 && echo hello"}
+	if runtime.GOOS == "windows" {
+		cmdArgs = []string{"cmd", "/c", "sleep 2 && echo hello"}
+	}
+	tests := []struct {
+		name            string
+		cmdResultStatus command.ResultStatus
+		reqCmdArg       []string
+		maxExecTime     time.Duration
+		minExecTime     time.Duration
+	}{
+		// For error status actions, the local execution will start immediately,
+		// and fail right away. So we expect the action to be finished less than 2s.
+		{
+			name:            "error_state_actions_start_immediately",
+			cmdResultStatus: command.LocalErrorResultStatus,
+			reqCmdArg:       []string{string([]byte{0xff, 0xfa})},
+			maxExecTime:     2 * time.Second,
+			minExecTime:     1 * time.Microsecond,
+		},
+		// For cache hit action, before local execution, reproxy will first wait for
+		// p90 * racing bias * 2 = 20s * 0.1 * 2 = 4s to try to download result from
+		// remote, then locally execute the action of sleep 2 seconds, so total
+		// execution time should be no less than 4 + 2 = 6s, no more than 8s.
+		{
+			name:            "cache_hit_action_wait_for_download",
+			cmdResultStatus: command.CacheHitResultStatus,
+			reqCmdArg:       cmdArgs,
+			maxExecTime:     8 * time.Second,
+			minExecTime:     6 * time.Second,
+		},
+		// For cache miss action, the local execution will start immediately, which
+		// is sleep for 2 seconds. So, we expect this action to be finished no less
+		// than 2s, and no more than 4s.
+		{
+			name:            "cache_miss_action_start_immediately",
+			cmdResultStatus: command.SuccessResultStatus,
+			reqCmdArg:       cmdArgs,
+			maxExecTime:     4 * time.Second,
+			minExecTime:     2 * time.Second,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env, cleanup := fakes.NewTestEnv(t)
+			fmc := filemetadata.NewSingleFlightCache()
+			env.Client.FileMetadataCache = fmc
+			resMgr := localresources.NewDefaultManager()
+			t.Cleanup(cleanup)
+			server := &Server{
+				LocalPool:         NewLocalPool(&subprocess.SystemExecutor{}, resMgr),
+				FileMetadataStore: fmc,
+				Forecast:          &Forecast{minSizeForStats: 1},
+				MaxHoldoff:        100 * time.Second,
+				DownloadTmp:       t.TempDir(),
+				RacingBias:        0.1,
+			}
+			server.Init()
+			server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
+			server.SetREClient(env.Client, func() {})
+
+			// Update forecast with one datapoint taking 20s to download.
+			a := actionsWithLatencies(t, map[string]string{"type": "tool"}, []int{20000})
+			server.Forecast.RecordSample(a[0])
+			ctx := context.Background()
+			cCtx, cancel := context.WithCancel(ctx)
+			go server.Forecast.Run(cCtx)
+			time.Sleep(2 * time.Second)
+			wg := &sync.WaitGroup{}
+			wg.Add(1)
+			breCtx := context.WithValue(ctx, testOnlyBlockRemoteExecKey, func() {
+				wg.Done()
+				<-cCtx.Done()
+			})
+
+			req := &ppb.RunRequest{
+				Command: &cpb.Command{
+					Args:     tc.reqCmdArg,
+					ExecRoot: env.ExecRoot,
+					Output: &cpb.OutputSpec{
+						OutputFiles: []string{abOutPath},
+					},
+				},
+				Labels:           map[string]string{"type": "tool"},
+				ExecutionOptions: &ppb.ProxyExecutionOptions{ExecutionStrategy: ppb.ExecutionStrategy_RACING, ReclientTimeout: 3600},
+			}
+			// The fake output can be set as anything for this test, does not
+			// necessarily need to match the req above. As we are only asserting the
+			// execution time, not the return result.
+			cmd := &command.Command{
+				Identifiers: &command.Identifiers{},
+				Args:        cmdArgs,
+				ExecRoot:    env.ExecRoot,
+				InputSpec:   &command.InputSpec{},
+				OutputFiles: []string{abOutPath},
+			}
+			setPlatformOSFamily(cmd)
+			res := &command.Result{Status: tc.cmdResultStatus}
+			env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, ""})
+			startTime := time.Now()
+			server.RunCommand(breCtx, req)
+			elapsed := time.Now().Sub(startTime)
+
+			t.Cleanup(cancel)
+			if tc.cmdResultStatus == command.LocalErrorResultStatus {
+				wg.Done()
+			}
+			t.Cleanup(wg.Wait)
+			if elapsed < tc.minExecTime || elapsed > tc.maxExecTime {
+				t.Errorf("%v: RunCommand should be finished in (%v, %v) seconds, but waited for %v seconds", tc.name, tc.minExecTime.Seconds(), tc.maxExecTime.Seconds(), elapsed.Seconds())
+			}
+			server.DrainAndReleaseResources()
+		})
+	}
+}
+
 func TestRunCommandError(t *testing.T) {
 	ds := &stubCPPDependencyScanner{processInputsError: errors.New("cannot determine inputs")}
 	resMgr := localresources.NewDefaultManager()

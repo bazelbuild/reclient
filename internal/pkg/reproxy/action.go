@@ -414,7 +414,7 @@ func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, 
 			return raceResult{t: canceled}
 		default:
 		}
-	} else {
+	} else if a.execContext.Result.Status == command.CacheHitResultStatus {
 		// If action is a cache hit, wait for dl milliseconds, then start local execution.
 		go func() {
 			dl, err := a.forecast.PercentileDownloadLatency(a, downloadPercentileCutoff)
@@ -433,6 +433,13 @@ func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, 
 			log.V(2).Infof("%v: Hold off of %v done, will signal local execution", sl, a.cmd.Identifiers.ExecutionID)
 			close(lCh)
 		}()
+	} else {
+		// If a.execContext.GetCachedResult() must have returned a result, which is
+		// neither a cache hit nor a cache miss, then the result can either be a
+		// remote error or a local error (say, input processing fail). In this case,
+		// we start local execution immediately.
+		log.Warningf("%v: GetCachedResult() returned a result neither cache hit nor cache miss: %v", a.cmd.Identifiers.ExecutionID, a.execContext.Result)
+		close(lCh)
 	}
 	// Store action result before calling DownloadOutputs, which will overwrite the result in the
 	// exec context.
