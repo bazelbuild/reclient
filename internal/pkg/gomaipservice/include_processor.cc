@@ -35,6 +35,7 @@
 #include "compiler_info_cache.h"
 #include "compiler_info_state.h"
 #include "compiler_type_specific_collection.h"
+#include "cxx/cxx_compiler_info.h"
 #include "cxx/include_processor/include_cache.h"
 #include "cxx/include_processor/include_file_finder.h"
 #include "deps_cache.h"
@@ -532,6 +533,16 @@ void IncludeProcessorImpl::ComputeIncludesDone(unique_ptr<Request> request) {
   VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
   std::unique_lock<std::mutex> result_lock(request->res_->result_mutex);
   request->res_->dependencies = request->required_files_;
+
+  // Add resources to dependencies set, but only gcc install marker types
+  // (crtbegin.o)
+  for (auto r : request->compiler_info_state_.get()->info().resource()) {
+    if (r.IsValid() &&
+        r.type == CompilerInfoData::CLANG_GCC_INSTALLATION_MARKER) {
+      request->res_->dependencies.insert(r.name);
+    }
+  }
+
   request->res_->used_cache = request->depscache_used_;
   request->res_->error = request->err_;
   request->res_->result_complete = true;
