@@ -29,23 +29,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	lpb "github.com/bazelbuild/reclient/api/log"
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 	stpb "github.com/bazelbuild/reclient/api/stat"
+	spb "github.com/bazelbuild/reclient/api/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/auxiliary"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources/usage"
 	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
+	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
+	log "github.com/golang/glog"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
-
-	lpb "github.com/bazelbuild/reclient/api/log"
-	ppb "github.com/bazelbuild/reclient/api/proxy"
-	spb "github.com/bazelbuild/reclient/api/stats"
-
-	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
-	log "github.com/golang/glog"
 )
 
 // Format specifies how the Logger serializes its records.
@@ -674,6 +673,10 @@ func CommandRemoteMetadataToProto(r *command.Metadata) *lpb.RemoteMetadata {
 	res.EventTimes = make(map[string]*cpb.TimeInterval)
 	for name, t := range r.EventTimes {
 		res.EventTimes[name] = command.TimeIntervalToProto(t)
+	}
+
+	if auxiliary.AuxMsgDescriptor != nil {
+		res.AuxiliaryMetadata = auxiliary.FlatRawMsg(r.AuxiliaryMetadata[0].GetValue())
 	}
 	res.OutputFileDigests = make(map[string]string)
 	for path, d := range r.OutputFileDigests {

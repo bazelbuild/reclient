@@ -10,6 +10,7 @@ go_library(
         "//api/proxy",
         "//api/stat",
         "//api/stats",
+        "//internal/pkg/auxiliary",
         "//internal/pkg/ignoremismatch",
         "//internal/pkg/localresources/usage",
         "//internal/pkg/monitoring",

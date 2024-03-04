@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package backend_RBE_specific_api;
+
+message WorkerResourceUsage {
+
+  double cpu_pct_average = 1;
+
+  double cpu_peak_usage = 2;
+
+  double mem_pct_average = 3;
+
+  double mem_peak_usage = 4;
+}
+
+message WorkerAuxiliaryMetadata {
+  string platform = 1;
+
+  string version = 2;
+
+  WorkerResourceUsage worker_usg = 3;
+
+  string region = 4;
+}

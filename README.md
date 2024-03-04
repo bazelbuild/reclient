@@ -403,6 +403,50 @@ If your RE Server uses RPC authentication then use one of the following flags:
     flag or by setting environment variables before starting the bootstrap
     ([example](https://source.chromium.org/chromium/chromium/tools/build/+/main:recipes/recipe_modules/reclient/api.py;l=378-396;drc=f3b7708f2a5728408a74ccbb6cba6eb9cb161aae)).
 
+#### Auxiliary Metadata flag
+
+If you want to collect backend workers' auxiliary metadata (cpu, memory usage per action), you can
+generate a .pb (or .proto.bin) file contains the descriptor information that will be used by reproxy at runtime to
+decode the auxiliary metadata, which is a [proto message](http://shortn/_3m8oS5NBur) in the type of `google.protobuf.Any`.
+
+Once you have customized `auxiliary_metadata.proto` file per your backend worker's
+specification, compile it as a `.pb` or `.proto.bin` file with `protoc`, and pass
+the file path to reproxy via `--auxiliary_metadata_path` flag, or environment
+variable `RBE_auxiliary_metadata_path`. Then, at runtime, reporxy will use this file to parse
+your backend worker's auxiliary metadata and log the data into reporxy logs.
+
+```bash
+cd api/auxiliary_metadata # or where you have the cusotmized `.proto` file
+
+protoc \
+--proto_path=. \
+--descriptor_set_out=auxiliary_metadata.pb \
+auxiliary_metadata.proto
+
+export RBE_auxiliary_metadata_path=~/Workspace/re-client/api/auxiliary_metadata/auxiliary_metadata.pb
+
+# then continue with your regular build with reproxy
+```
+
+or
+
+```bash
+cd api/auxiliary_metadata # or where you have the cusotmized `.proto` file
+
+protoc \
+--proto_path=. \
+--descriptor_set_out=auxiliary_metadata.proto.bin \
+auxiliary_metadata.proto
+
+export RBE_auxiliary_metadata_path=~/Workspace/re-client/api/auxiliary_metadata/auxiliary_metadata.proto.bin
+
+# then continue with your regular build with reproxy
+```
+
+It's worth noting that the backend can give this proto message any arbitrary name;
+however, the client side proto message should strictly use `AuxiliaryMetadata` to receive it.
+For example, in the unit test, the backend send the proto msg out with name `WorkerAuxiliaryMetadata`, and client receives it as `AuxiliaryMetadata`.
+
 ## Integration with the build system
 
 To execute your build actions remotely through Reclient, the build command

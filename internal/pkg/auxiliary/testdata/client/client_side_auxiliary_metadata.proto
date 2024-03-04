@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package client_RBE_specific_api;
+
+message Usage {
+
+  double cpu_pct = 1;
+
+  double cpu_peak = 2;
+
+  double mem_pct = 3;
+
+  double mem_peak = 4;
+}
+
+message AuxiliaryMetadata {
+  reserved 1;
+
+  reserved 2;
+
+  Usage usage = 3;
+
+  reserved 4;
+}

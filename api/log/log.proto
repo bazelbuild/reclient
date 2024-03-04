@@ -189,6 +189,9 @@ message RemoteMetadata {
   // The digest of the RE stdout, in canonical format <hash>/<size>.
   string stdout_digest = 21;
 
+  // The auxiliary metadata returned by the remote execution service.
+  map<string, string> auxiliary_metadata = 22;
+
   reserved 12;
 }
 

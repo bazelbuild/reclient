@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/auth"
+	"github.com/bazelbuild/reclient/internal/pkg/auxiliary"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
@@ -128,9 +129,10 @@ var (
 
 	depsScannerAddress = flag.String("depsscanner_address", "execrel://", "If set, connects to the given address for C++ dependency scanning; a path with the prefix 'exec://' will start the target executable and connect to it. Defaults to execrel:// which looks for the `scandeps_server` binary in the same folder as reproxy. When set to \"\", the internal dependency scanner will be used.")
 
-	credsFile          = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
-	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
-	logHTTPCalls       = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
+	credsFile             = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
+	waitForShutdownRPC    = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
+	logHTTPCalls          = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
+	auxiliaryMetadataPath = flag.String("auxiliary_metadata_path", "", "Path to file where auxiliary_metadata.pb file is stored. Should be a absolute path or a relative path to reproxy.")
 
 	maxListenSizeKb = flag.Int("max_listen_size_kb", 8*1024, "Maximum grpc listen size in kilobytes for messages from rewrapper")
 )
@@ -477,6 +479,14 @@ func mustBuildCredentials() *auth.Credentials {
 
 func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter) (*logger.Logger, error) {
 	u := usage.New()
+	if *auxiliaryMetadataPath != "" {
+		if err := auxiliary.SetMessageDescriptor(*auxiliaryMetadataPath); err != nil {
+			log.Errorf("Failed to set message descriptor for auxiliary metadata: %q", err)
+		}
+	} else {
+		log.Warningf("Path for auxiliary metadata message descriptor file is empty." +
+			"\nIf you want to collect backend workers' cpu/mem usage information into reproxy log, please set the --auxiliary_metadata_path flag (see instruction in api/auxiliary_metadata/readme.md).")
+	}
 	if len(proxyLogDir) > 0 {
 		format, err := logger.ParseFormat(*logFormat)
 		if err != nil {

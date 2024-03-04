@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "auxiliary",
+    srcs = ["auxiliary.go"],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/auxiliary",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@com_github_golang_glog//:glog",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protodesc",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/descriptorpb",
+        "@org_golang_google_protobuf//types/dynamicpb",
+    ],
+)
+
+go_test(
+    name = "auxiliary_test",
+    srcs = ["auxiliary_test.go"],
+    data = [
+        "//internal/pkg/auxiliary/testdata/backend:backend_RBE_specific_api_proto",
+        "//internal/pkg/auxiliary/testdata/client:client_RBE_specific_api_proto",
+    ],
+    embed = [":auxiliary"],
+    deps = [
+        "@com_github_google_go_cmp//cmp",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//types/dynamicpb",
+    ],
+)

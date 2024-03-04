@@ -1,0 +1,23 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "client_RBE_specific_api_proto",
+    srcs = ["client_side_auxiliary_metadata.proto"],
+    visibility = ["//internal/pkg/auxiliary:__subpackages__"],
+)
+
+go_proto_library(
+    name = "client_RBE_specific_api_go_proto",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/auxiliary/testdata/client",
+    proto = ":client_RBE_specific_api_proto",
+    visibility = ["//internal/pkg/auxiliary:__subpackages__"],
+)
+
+go_library(
+    name = "client",
+    embed = [":client_RBE_specific_api_go_proto"],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/auxiliary/testdata/client",
+    visibility = ["//:__subpackages__"],
+)

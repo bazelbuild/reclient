@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//api/proxy",
         "//internal/pkg/auth",
+        "//internal/pkg/auxiliary",
         "//internal/pkg/ignoremismatch",
         "//internal/pkg/interceptors",
         "//internal/pkg/ipc",
