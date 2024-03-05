@@ -203,7 +203,6 @@ func boolFlagVal(flagName string) (bool, error) {
 	return false, nil
 }
 
-
 // NewCredentials initializes a credentials object.
 func NewCredentials(m Mechanism, credsFile string, channelInitTimeout time.Duration) (*Credentials, error) {
 	return newCredentials(m, credsFile, googleTokenInfoURL, channelInitTimeout)
