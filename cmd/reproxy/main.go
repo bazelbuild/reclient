@@ -474,6 +474,7 @@ func mustBuildCredentials() *auth.Credentials {
 	return c
 }
 
+
 func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e logger.ExportActionMetricsFunc) (*logger.Logger, error) {
 	u := usage.New()
 	if len(proxyLogDir) > 0 {

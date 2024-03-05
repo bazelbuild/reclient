@@ -360,6 +360,7 @@ func newCreds(cf string) *auth.Credentials {
 	return c
 }
 
+
 func parseLogs() ([]*lpb.LogRecord, []*lpb.ProxyInfo) {
 	var recs []*lpb.LogRecord
 	var pInfos []*lpb.ProxyInfo
