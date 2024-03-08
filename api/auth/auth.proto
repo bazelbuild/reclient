@@ -24,19 +24,16 @@ message AuthMechanism {
   enum Value {
     // Invalid value, should always specify a value.
     UNSPECIFIED = 0;
-    // Reserved.
-    reserved 1;
+    reserved 1, 3;
     // Application default credentials.
     ADC = 2;
-    // Reserved.
-    reserved 3;
     // GCE based authentication.
     GCE = 4;
-    // A credential file with service account credentials
+    // A credential file with service account credentials.
     CREDENTIAL_FILE = 5;
-    // No authentication is used
+    // No authentication is used.
     NONE = 6;
-    // External credentials helper is used
+    // External credentials helper is used.
     CREDENTIALSHELPER = 7;
   }
 }

@@ -31,7 +31,6 @@ import (
 	"strings"
 	"time"
 
-
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 
