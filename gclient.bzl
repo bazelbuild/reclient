@@ -1,14 +1,27 @@
 def _gclient_repository_rule(ctx):
-    ctx.report_progress("Configuring Gclient...")
-    _config(ctx)
-    ctx.report_progress("Cloning {}...".format(ctx.attr.remote))
-    _clone(ctx)
-    ctx.report_progress("Checking out {}...".format(ctx.attr.revision))
-    _checkout(ctx)
-    ctx.report_progress("Syncing to {}...".format(ctx.attr.revision))
-    _sync(ctx)
-    ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
-    _patch(ctx)
+    if ctx.attr.local_path == "" and ctx.attr.remote == "":
+        fail("either local_path / remote args should be specified")
+
+    if ctx.attr.remote != "" and ctx.attr.revision == "":
+        fail("revision is required when remote is specified")
+
+    if ctx.attr.local_path == "":
+        ctx.report_progress("Configuring Gclient...")
+        _config(ctx)
+        ctx.report_progress("Cloning {}...".format(ctx.attr.remote))
+        _clone(ctx)
+        ctx.report_progress("Checking out {}...".format(ctx.attr.revision))
+        _checkout(ctx)
+        ctx.report_progress("Syncing to {}...".format(ctx.attr.revision))
+        _sync(ctx)
+        ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
+        _patch(ctx)
+    else:
+        ctx.report_progress("Copying from source folder...")
+        _copy(ctx)
+        ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
+        _patch(ctx)
+
     ctx.report_progress("Saving version...")
     _version(ctx)
     ctx.report_progress("Optionally stripping...")
@@ -37,6 +50,9 @@ def _checkout(ctx):
 
 def _sync(ctx):
     __execute(ctx, __prefix(ctx, "gclient") + ["sync", "-r", ctx.attr.revision, "--shallow"])
+
+def _copy(ctx):
+    __execute(ctx, __prefix(ctx, "cp") + ["-rf", ctx.attr.local_path, "."])
 
 def _patch(ctx):
     for arg in ctx.attr.patch_args:
@@ -167,11 +183,12 @@ gclient_repository = repository_rule(
     implementation = _gclient_repository_rule,
     attrs = {
         "remote": attr.string(
-            mandatory = True,
             doc = "The URI of the remote repository.",
         ),
+        "local_path": attr.string(
+            doc = "Local path to repository.",
+        ),
         "revision": attr.string(
-            mandatory = True,
             doc = "Specific revision to be checked out.",
         ),
         "strip_prefix": attr.string(

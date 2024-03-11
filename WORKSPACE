@@ -466,6 +466,10 @@ gclient_repository(
     ],
     remote = "https://chromium.googlesource.com/infra/goma/client",
     revision = GOMA_REV,
+
+    # If you would like to build goma with a locally checked out version of source,
+    # comment remote / revision args and specify a local path as below.
+    # local_path = "/usr/local/google/home/kousikk/foundry-x/goma-client/client",
 )
 
 http_archive(
