@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -84,6 +85,7 @@ type action struct {
 	cancelFunc             func(error)
 	racingBias             float64
 	windowsCross           bool
+	downloadRegex          string
 	downloadTmp            string
 	atomicDownloads        bool
 
@@ -137,7 +139,6 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 	}
 	opts := execOptionsFromProto(a.rOpt)
 	excludeUnchanged := opts.DownloadOutputs && opts.PreserveUnchangedOutputMtime
-	noDl := !opts.DownloadOutputs
 	// TODO b/299953609: Move atomic download logic to the remote_apis_sdks.
 	opts.DownloadOutputs = false
 	cmd := a.cmd
@@ -166,16 +167,14 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 	if !res.IsOk() {
 		return
 	}
-	if noDl {
+	outs, err := ec.GetFlattenedOutputs()
+	if err != nil {
+		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v",
+			a.cmd.Identifiers.ExecutionID, err)
 		return
 	}
+	outs = a.excludeOutputsViaFilter(outs)
 	if excludeUnchanged {
-		outs, err := ec.GetFlattenedOutputs()
-		if err != nil {
-			log.Errorf("%v: Unable to get flattened outputs from Action Result: %v",
-				a.cmd.Identifiers.ExecutionID, err)
-			return
-		}
 		outs = a.excludeUnchangedOutputs(outs, a.cmd.ExecRoot)
 		ec.DownloadSpecifiedOutputs(outs, outDir)
 		res, meta = ec.Result, ec.Metadata
@@ -183,7 +182,7 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 			return
 		}
 	} else {
-		ec.DownloadOutputs(outDir)
+		ec.DownloadSpecifiedOutputs(outs, outDir)
 		res, meta = ec.Result, ec.Metadata
 		if ec.Result.Err != nil {
 			return
@@ -343,16 +342,14 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 	from := time.Now()
 	if winner.t == remote {
 		log.V(2).Infof("%v: Using remote result", a.cmd.Identifiers.ExecutionID)
-		if opts.DownloadOutputs {
-			if err := a.moveOutputsFromTemp(tmpDir); err != nil {
-				a.res = command.NewLocalErrorResult(err)
-				return
-			}
-			if opts.PreserveUnchangedOutputMtime {
-				if err = a.restoreUnchangedOutputMtimes(preExecOuts); err != nil {
-					log.Errorf("%v: Was unable to restore mtimes for unchanged outputs: %v",
-						a.cmd.Identifiers.ExecutionID, err)
-				}
+		if err := a.moveOutputsFromTemp(tmpDir); err != nil {
+			a.res = command.NewLocalErrorResult(err)
+			return
+		}
+		if opts.PreserveUnchangedOutputMtime {
+			if err = a.restoreUnchangedOutputMtimes(preExecOuts); err != nil {
+				log.Errorf("%v: Was unable to restore mtimes for unchanged outputs: %v",
+					a.cmd.Identifiers.ExecutionID, err)
 			}
 		}
 		a.rec.RemoteMetadata = logger.CommandRemoteMetadataToProto(a.execContext.Metadata)
@@ -374,7 +371,6 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 // execution when remote execution is expected to take time.
 func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, lCh chan<- bool, tmpDir string, maxHoldoff time.Duration) raceResult {
 	opts := execOptionsFromProto(a.rOpt)
-	downloadOutputs := opts.DownloadOutputs
 	opts.DownloadOutputs = false // We want to download them to tmpDir instead of execRoot.
 	rcmd := a.cmd
 	// TODO: refactor this so its commonly used in runRemote.
@@ -449,19 +445,23 @@ func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, 
 		log.Warningf("%v: stdout: %s\n stderr: %s", a.cmd.Identifiers.ExecutionID, rOE.Stdout(), rOE.Stderr())
 		return raceResult{t: canceled, res: res}
 	}
-	if downloadOutputs {
-		log.V(2).Infof("Downloading action outputs to temp dir: %v", tmpDir)
+	log.V(2).Infof("Downloading action outputs to temp dir: %v", tmpDir)
+	outs, err := a.execContext.GetFlattenedOutputs()
+	if err != nil {
+		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v", a.cmd.Identifiers.ExecutionID, err)
 		a.execContext.DownloadOutputs(tmpDir)
-		select {
-		case <-cCtx.Done():
-			// If local has already completed, no need to download outputs.
-			return raceResult{t: canceled}
-		default:
-		}
-		if !a.execContext.Result.IsOk() {
-			// Download failed.
-			return raceResult{t: canceled, res: a.execContext.Result, oe: rOE}
-		}
+	} else {
+		a.execContext.DownloadSpecifiedOutputs(a.excludeOutputsViaFilter(outs), tmpDir)
+	}
+	select {
+	case <-cCtx.Done():
+		// If local has already completed, no need to download outputs.
+		return raceResult{t: canceled}
+	default:
+	}
+	if !a.execContext.Result.IsOk() {
+		// Download failed.
+		return raceResult{t: canceled, res: a.execContext.Result, oe: rOE}
 	}
 	if v := ctx.Value(testOnlyBlockRemoteExecKey); v != nil {
 		v.(func())()
@@ -611,6 +611,43 @@ func (a *action) moveOutputsFromTemp(tmpDir string) error {
 		}
 	}
 	return nil
+}
+
+// excludeOutputsViaFilter pipes the TreeOutput map through a regex filter, and
+// return the filtered map. If the first char in the regex is "-", it is a
+// negative filter (-); otherwise, it is a positive filter (+).
+// a positive filter means only the files matches the filter will be downloaded;
+// a negative filter means the files matches the filter will not be downloaded.
+func (a *action) excludeOutputsViaFilter(outs map[string]*client.TreeOutput) map[string]*client.TreeOutput {
+	filteredOuts := map[string]*client.TreeOutput{}
+	noDl := !execOptionsFromProto(a.rOpt).DownloadOutputs
+	positiveFilter := true
+	downloadRegex := a.downloadRegex
+	if downloadRegex == "" || downloadRegex == "-" {
+		if noDl {
+			return filteredOuts
+		}
+		return outs
+	}
+	if downloadRegex[0] == '-' {
+		positiveFilter = false
+		downloadRegex = downloadRegex[1:]
+	}
+	re, err := regexp.Compile(downloadRegex)
+	if err != nil {
+		log.Warningf("%v: Failed to compile the regular expression: %v provided by download_regex, falling back to download_outputs=%v.", a.cmd.Identifiers.ExecutionID, a.downloadRegex, !noDl)
+		if noDl {
+			return filteredOuts
+		}
+		return outs
+	}
+	// TODO(b/330899662): Record which files got downloaded.
+	for path, node := range outs {
+		if positiveFilter && re.MatchString(path) || !positiveFilter && !re.MatchString(path) {
+			filteredOuts[path] = node
+		}
+	}
+	return filteredOuts
 }
 
 func (a *action) excludeUnchangedOutputs(outs map[string]*client.TreeOutput, outDir string) map[string]*client.TreeOutput {

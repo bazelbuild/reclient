@@ -46,8 +46,9 @@ go_library(
 
 go_test(
     name = "reproxy_test",
-    size = "small",
+    size = "medium",
     srcs = [
+        "action_test.go",
         "forecast_test.go",
         "localexec_test.go",
         "server_test.go",

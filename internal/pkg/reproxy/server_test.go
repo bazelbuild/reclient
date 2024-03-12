@@ -77,7 +77,6 @@ var (
 )
 
 func TestRemoteStrategyWithLocalError(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	t.Cleanup(cleanup)
 
@@ -120,7 +119,6 @@ func TestRemoteStrategyWithLocalError(t *testing.T) {
 }
 
 func TestRemote(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -250,7 +248,6 @@ func TestRemote(t *testing.T) {
 }
 
 func TestRemote_CanonicalWorkingDir(t *testing.T) {
-	t.Parallel()
 	// Setup exec root and working directory
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
@@ -414,7 +411,6 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip()
 	}
-	t.Parallel()
 	// Setup exec root and working directory
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
@@ -581,7 +577,6 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 }
 
 func TestRemoteWithReclientTimeout(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -874,7 +869,6 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 
 // Test that response contains a LogRecord when IncludeActionLog is requested.
 func TestRemoteWithSingleActionLog(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -976,7 +970,6 @@ func TestRemoteWithSingleActionLog(t *testing.T) {
 }
 
 func TestNoRemoteOnInputFail(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1034,7 +1027,6 @@ func TestNoRemoteOnInputFail(t *testing.T) {
 }
 
 func TestLERCNoDeps(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1178,7 +1170,6 @@ func TestLERCNoDeps(t *testing.T) {
 }
 
 func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1340,7 +1331,6 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 }
 
 func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1527,7 +1517,6 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 }
 
 func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1687,7 +1676,6 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 }
 
 func TestLERCLocalFailure(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1798,7 +1786,6 @@ func TestLERCLocalFailure(t *testing.T) {
 }
 
 func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -1970,7 +1957,6 @@ func getDepsFileContents(t *testing.T, execRoot string, fmc filemetadata.Cache, 
 }
 
 func TestLERCNonShallowValidCacheHit(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("windows doesn't have clang++")
 		return
@@ -2098,7 +2084,6 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 }
 
 func TestLERCInputAsOutput_UploadsUpdatedOutputAsCacheResult(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -2192,7 +2177,6 @@ func TestLERCInputAsOutput_UploadsUpdatedOutputAsCacheResult(t *testing.T) {
 }
 
 func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -2285,7 +2269,6 @@ func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
 }
 
 func TestLERCDepsValidCacheHit(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("windows doesn't have clang++")
 		return
@@ -2416,7 +2399,6 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 }
 
 func TestLERCDepsInvalidCacheHit(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("windows doesn't have clang++")
 		return
@@ -2602,7 +2584,6 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 }
 
 func TestLERCMismatches(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("windows doesn't have clang++")
 		return
@@ -2778,7 +2759,6 @@ func TestLERCMismatches(t *testing.T) {
 }
 
 func TestCompareStashRestore(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -2880,7 +2860,6 @@ func TestCompareStashRestore(t *testing.T) {
 }
 
 func TestNumRetriesIfMismatched(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -3118,7 +3097,6 @@ func TestNumRetriesIfMismatched(t *testing.T) {
 }
 
 func TestCompareWithRerunsNoMismatches(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -3278,7 +3256,6 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 }
 
 func TestCompareWithReruns(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -3534,7 +3511,6 @@ func TestCompareWithReruns(t *testing.T) {
 }
 
 func TestNoRerunWhenNoCompareMode(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -3665,7 +3641,6 @@ func TestNoRerunWhenNoCompareMode(t *testing.T) {
 }
 
 func TestRemoteLocalFallback(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -3775,7 +3750,6 @@ func TestRemoteLocalFallback(t *testing.T) {
 }
 
 func TestForwardErrorLog(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	t.Cleanup(cleanup)
 	fmc := filemetadata.NewSingleFlightCache()
@@ -3835,7 +3809,6 @@ func TestForwardErrorLog(t *testing.T) {
 }
 
 func TestFailEarlyOnIpTimeouts(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -3912,7 +3885,6 @@ func TestFailEarlyOnIpTimeouts(t *testing.T) {
 }
 
 func TestFailEarly(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4084,7 +4056,6 @@ func TestFailEarly(t *testing.T) {
 }
 
 func TestRunCommand_LabelDigestAddedToCommandID(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4156,7 +4127,6 @@ func TestRunCommand_LabelDigestAddedToCommandID(t *testing.T) {
 }
 
 func TestRunCommand_InvalidUTF8InStdout(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4223,7 +4193,6 @@ func TestRunCommand_InvalidUTF8InStdout(t *testing.T) {
 }
 
 func TestLocalFallback(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4318,7 +4287,6 @@ func TestLocalFallback(t *testing.T) {
 }
 
 func TestLocalFallback_EnvVariables(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4558,7 +4526,6 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 }
 
 func TestRacingRemoteWins(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4676,7 +4643,6 @@ func TestRacingRemoteWins(t *testing.T) {
 }
 
 func TestRacingRemoteFailsLocalWins(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -4785,7 +4751,6 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 }
 
 func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5201,7 +5166,6 @@ func TestRacingRemoteWins_PreserveUnchangedOutputMtime(t *testing.T) {
 }
 
 func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5328,7 +5292,6 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 }
 
 func TestRacingLocalWinsIfStarted(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5443,7 +5406,6 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 }
 
 func TestRacingemoteWins(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5556,7 +5518,6 @@ func TestRacingemoteWins(t *testing.T) {
 }
 
 func TestRacingHoldoffCacheWins(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5670,7 +5631,6 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 }
 
 func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5805,7 +5765,6 @@ func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
 }
 
 func TestRacingHoldoffQuickDownload(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -5929,7 +5888,6 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 }
 
 func TestRacingHoldoffLongDownload(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6052,7 +6010,6 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 }
 
 func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6166,7 +6123,6 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 }
 
 func TestDupOutputs(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	t.Cleanup(cleanup)
 	fmc := filemetadata.NewSingleFlightCache()
@@ -6456,7 +6412,6 @@ func TestRunCommandError(t *testing.T) {
 }
 
 func TestCacheSilo(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6557,7 +6512,6 @@ func TestCacheSilo(t *testing.T) {
 }
 
 func TestRemoteDisabled(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6656,7 +6610,6 @@ func TestRemoteDisabled(t *testing.T) {
 }
 
 func TestProxyInfoUptime(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6706,7 +6659,6 @@ func TestProxyInfoUptime(t *testing.T) {
 }
 
 func TestCleanIncludePaths(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("not worth to fix it for windows. http://b/157442013")
 		return
@@ -6725,7 +6677,6 @@ func TestCleanIncludePaths(t *testing.T) {
 }
 
 func TestDrainAndReleaseResourcesDoesNotBlockOnInputProcessor(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6769,7 +6720,6 @@ func TestDrainAndReleaseResourcesDoesNotBlockOnInputProcessor(t *testing.T) {
 }
 
 func TestDrainAndReleaseResourcesDoesNotBlockOnREClient(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	fmc := filemetadata.NewSingleFlightCache()
 	env.Client.FileMetadataCache = fmc
@@ -6884,7 +6834,6 @@ func TestSetPlatformOSfamily(t *testing.T) {
 	} {
 		tc := tc // rebind tc into this lexical scope
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			cmd := &command.Command{
 				Platform: tc.platform,
 				Identifiers: &command.Identifiers{
@@ -6900,7 +6849,6 @@ func TestSetPlatformOSfamily(t *testing.T) {
 }
 
 func TestDeleteOldLogFiles(t *testing.T) {
-	t.Parallel()
 	env, cleanup := fakes.NewTestEnv(t)
 	t.Cleanup(cleanup)
 
@@ -6965,7 +6913,6 @@ func TestDeleteOldLogFiles(t *testing.T) {
 }
 
 func TestWindowedCountNoWindow(t *testing.T) {
-	t.Parallel()
 	wc := &windowedCount{}
 	wc.Add(1)
 	time.Sleep(100 * time.Millisecond)
@@ -6979,7 +6926,6 @@ func TestWindowedCountNoWindow(t *testing.T) {
 }
 
 func TestWindowedCountWithWindow(t *testing.T) {
-	t.Parallel()
 	wc := &windowedCount{window: 400 * time.Millisecond}
 	wc.Add(1)
 	time.Sleep(100 * time.Millisecond)

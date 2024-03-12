@@ -497,6 +497,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		cmdEnvironment:  cmdEnv,
 		cancelFunc:      cancel,
 		racingBias:      s.RacingBias,
+		downloadRegex:   req.GetExecutionOptions().GetDownloadRegex(),
 		downloadTmp:     s.DownloadTmp,
 		atomicDownloads: req.GetExecutionOptions().GetEnableAtomicDownloads(),
 	}
