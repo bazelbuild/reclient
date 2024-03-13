@@ -22,8 +22,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -38,10 +36,6 @@ import (
 	"golang.org/x/oauth2"
 	googleOauth "golang.org/x/oauth2/google"
 	grpcOauth "google.golang.org/grpc/credentials/oauth"
-)
-
-const (
-	googleTokenInfoURL = "https://oauth2.googleapis.com"
 )
 
 // Exit codes to indicate various causes of authentication failure.
@@ -203,24 +197,20 @@ func boolFlagVal(flagName string) (bool, error) {
 }
 
 // NewCredentials initializes a credentials object.
-func NewCredentials(m Mechanism, credsFile string, channelInitTimeout time.Duration) (*Credentials, error) {
-	return newCredentials(m, credsFile, googleTokenInfoURL, channelInitTimeout)
-}
-
-func newCredentials(m Mechanism, credsFile, tokenInfoURL string, channelInitTimeout time.Duration) (*Credentials, error) {
+func NewCredentials(m Mechanism, credsFile string) (*Credentials, error) {
 	cc, err := loadFromDisk(credsFile)
 	if err != nil {
 		log.Warningf("Failed to load credentials cache file from %v: %v", credsFile, err)
-		return buildCredentials(cachedCredentials{m: m}, credsFile, tokenInfoURL, channelInitTimeout)
+		return buildCredentials(cachedCredentials{m: m}, credsFile)
 	}
 	if cc.m != m {
 		log.Warningf("Cached mechanism (%v) is not the same as requested mechanism (%v). Will attempt to authenticate using the requested mechanism.", cc.m, m)
-		return buildCredentials(cachedCredentials{m: m}, credsFile, tokenInfoURL, channelInitTimeout)
+		return buildCredentials(cachedCredentials{m: m}, credsFile)
 	}
-	return buildCredentials(cc, credsFile, tokenInfoURL, channelInitTimeout)
+	return buildCredentials(cc, credsFile)
 }
 
-func buildCredentials(baseCreds cachedCredentials, credsFile, tokenInfoURL string, channelInitTimeout time.Duration) (*Credentials, error) {
+func buildCredentials(baseCreds cachedCredentials, credsFile string) (*Credentials, error) {
 	if baseCreds.m == Unknown {
 		return nil, errors.New("cannot initialize credentials with unknown mechanism")
 	}
@@ -320,11 +310,7 @@ func (c *Credentials) RemoveFromDisk() {
 
 // UpdateStatus updates the refresh expiry time if it is expired
 func (c *Credentials) UpdateStatus() (int, error) {
-	if nowFn().Before(c.refreshExp) {
-		return 0, nil
-	}
-	switch c.m {
-	case ADC:
+	if !nowFn().Before(c.refreshExp) && c.m == ADC {
 		exp, err := checkADCStatus()
 		if err != nil {
 			return ExitCodeAppDefCredsAuth, fmt.Errorf("application default credentials were invalid: %v", err)
@@ -421,60 +407,6 @@ func checkADCStatus() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
 	}
 	return token.Expiry, nil
-}
-
-type gcpTokenProvider interface {
-	String() string
-	Token() (string, error)
-}
-
-// gcpTokenSource uses a gcpTokenProvider to obtain gcp oauth tokens.
-// This should be wrapped in a "golang.org/x/oauth2".ReuseTokenSource
-// to avoid obtaining new tokens each time.
-type gcpTokenSource struct {
-	p            gcpTokenProvider
-	tokenInfoURL string
-}
-
-// Token retrieves a token from the underlying provider and check the expiration
-// via the google HTTP endpoint.
-func (ts *gcpTokenSource) Token() (*oauth2.Token, error) {
-	t, err := ts.p.Token()
-	if err != nil {
-		return nil, err
-	}
-	expiry, err := getExpiry(ts.tokenInfoURL, t)
-	if err != nil {
-		return nil, err
-	}
-	log.Infof("%s credentials refreshed at %v, expires at %v", ts.p.String(), time.Now(), expiry)
-	return &oauth2.Token{
-		AccessToken: t,
-		Expiry:      expiry,
-	}, nil
-}
-
-func getExpiry(baseURL, token string) (time.Time, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/tokeninfo?access_token=%s", baseURL, token))
-	if err != nil {
-		return time.Time{}, fmt.Errorf("unable to verify token: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return time.Time{}, fmt.Errorf("Error reading response body: %w", err)
-		}
-		return time.Time{}, fmt.Errorf("tokeninfo call failed with status: %d and body: %s", resp.StatusCode, body)
-	}
-	var ti struct {
-		Exp int64 `json:"exp,string"`
-	}
-	json.NewDecoder(resp.Body).Decode(&ti)
-	if ti.Exp == 0 {
-		return time.Time{}, fmt.Errorf("tokeninfo did not return an expiry time")
-	}
-	return time.Unix(ti.Exp, 0), nil
 }
 
 // externaltokenSource uses a credentialsHelper to obtain gcp oauth tokens.

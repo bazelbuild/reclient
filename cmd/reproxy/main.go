@@ -463,7 +463,7 @@ func mustBuildCredentials() *auth.Credentials {
 		log.Errorf("Failed to determine auth mechanism: %v", err)
 		os.Exit(auth.ExitCodeNoAuth)
 	}
-	c, err := auth.NewCredentials(m, *credsFile, 0)
+	c, err := auth.NewCredentials(m, *credsFile)
 	if err != nil {
 		log.Errorf("Failed to initialize credentials: %v", err)
 		if aerr, ok := err.(*auth.Error); ok {

@@ -353,7 +353,7 @@ func newCreds(cf string) *auth.Credentials {
 		log.Errorf("Failed to determine auth mechanism: %v", err)
 		os.Exit(auth.ExitCodeNoAuth)
 	}
-	c, err := auth.NewCredentials(m, cf, 0)
+	c, err := auth.NewCredentials(m, cf)
 	if err != nil {
 		log.Exitf("Failed to initialize credentials: %v", err)
 	}
