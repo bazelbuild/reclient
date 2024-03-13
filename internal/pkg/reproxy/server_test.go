@@ -6980,7 +6980,7 @@ func TestWindowedCountNoWindow(t *testing.T) {
 
 func TestWindowedCountWithWindow(t *testing.T) {
 	t.Parallel()
-	wc := &windowedCount{window: 350 * time.Millisecond}
+	wc := &windowedCount{window: 400 * time.Millisecond}
 	wc.Add(1)
 	time.Sleep(100 * time.Millisecond)
 	wc.Add(3)
