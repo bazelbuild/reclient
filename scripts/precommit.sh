@@ -24,6 +24,9 @@ if command -v go &>/dev/null; then
     export PATH="$PATH:$(go env GOPATH)/bin"
 fi
 
+# Run go_mod_tidy for api package
+bazelisk run //api:go_mod_tidy
+
 GAZELLEPASS=true
 echo Running Gazelle...
 if ! bazelisk run --ui_event_filters=-info,-stderr --noshow_progress //:gazelle; then
