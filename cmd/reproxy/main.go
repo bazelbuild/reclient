@@ -250,6 +250,7 @@ func main() {
 	truncateInterceptor := interceptors.NewTruncInterceptor(ipc.GrpcMaxMsgSize, logDir)
 	opts = append(
 		opts,
+		grpc.MaxRecvMsgSize(ipc.GrpcMaxMsgSize),
 		grpc.ChainUnaryInterceptor(interceptors.UnaryServerInterceptor, truncateInterceptor),
 		grpc.StreamInterceptor(interceptors.StreamServerInterceptor),
 	)
