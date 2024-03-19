@@ -546,3 +546,14 @@ http_archive(
     strip_prefix = "googletest-7c07a863693b0c831f80473f7c6905d7e458682c",
     urls = ["https://github.com/google/googletest/archive/7c07a863693b0c831f80473f7c6905d7e458682c.zip"],
 )
+
+load("//third_party/android_toolchain:android_toolchain_repo.bzl", "android_toolchain_repostitory")
+
+
+android_toolchain_repostitory(
+    name = "linux_android1404",
+    clang_url = "https://mirror.bazel.build/android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r498229b.tar.gz",
+    clang_sha256 = "6aaac5be8a1907f644a89c54ec93357e987e63093db4d03e1ad0ea4305e403a6",
+    glibc_url = "https://mirror.bazel.build/android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/+archive/refs/heads/main.tar.gz",
+    glibc_sha256 = "61ef531c49ec308daa2b128c64a40e822664401acd8e7418d300f5769435e7df",
+)

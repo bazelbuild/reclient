@@ -1,4 +1,6 @@
 """Provides cc_platform_binary"""
+_PLATFORMS = "//command_line_option:platforms"
+_EXEC_PLATFORMS = "//command_line_option:extra_execution_platforms"
 _CXXOPT = "//command_line_option:cxxopt"
 _HOST_CXXOPT = "//command_line_option:host_cxxopt"
 
@@ -7,16 +9,21 @@ def _set_platform_impl(settings, attr):
 
     This transition
         - Appends all cxxopts provided to "attr.cxxopt" to --cxxopt and --host_cxxopt
+        - If "attr.platform" is provided then --platforms and
+            --extra_execution_platforms are overwritten to be this platform
     '''
-    return {
-        _CXXOPT: settings.get(_CXXOPT, []) + attr.cxxopt,
-        _HOST_CXXOPT: settings.get(_CXXOPT, []) + attr.cxxopt
-    }
+    output = dict(settings)
+    output[_CXXOPT] += attr.cxxopt
+    output[_HOST_CXXOPT] += attr.cxxopt
+    if attr.platform:
+        output[_PLATFORMS] = str(attr.platform)
+        output[_EXEC_PLATFORMS] = [str(attr.platform)]
+    return output
 
 _platform_transition = transition(
     implementation = _set_platform_impl,
-    inputs = [_CXXOPT, _HOST_CXXOPT],
-    outputs = [_CXXOPT, _HOST_CXXOPT],
+    inputs = [_PLATFORMS, _EXEC_PLATFORMS, _CXXOPT, _HOST_CXXOPT],
+    outputs = [_PLATFORMS, _EXEC_PLATFORMS, _CXXOPT, _HOST_CXXOPT],
 )
 
 def _cc_platform_binary_impl(ctx):
@@ -42,6 +49,11 @@ def _cc_platform_binary_impl(ctx):
         outputs = [outfile],
         command = "cp %s %s" % (cc_binary_outfile.path, outfile.path),
         mnemonic = "Copy",
+        # Sensible defaults copied from https://github.com/bazelbuild/bazel-skylib/blob/main/rules/private/copy_common.bzl
+        execution_requirements = {
+            "no-remote": "1",
+            "no-cache": "1",
+        },
     )
 
     files = [outfile]
@@ -59,6 +71,11 @@ def _cc_platform_binary_impl(ctx):
             outputs = [pdbfile],
             command = "cp %s %s" % (cc_binary_pdbfile.path, pdbfile.path),
             mnemonic = "Copy",
+            # Sensible defaults copied from https://github.com/bazelbuild/bazel-skylib/blob/main/rules/private/copy_common.bzl
+            execution_requirements = {
+                "no-remote": "1",
+                "no-cache": "1",
+            },
         )
 
     # The following ensures that when a cc_platform_binary is included as a data
@@ -85,6 +102,8 @@ _cc_platform_binary = rule(
 
     This applies the following flag changes when building actual_binary
         - Appends all cxxopts provided to "cxxopt" to --cxxopt and --host_cxxopt
+        - If "platform" is provided then --platforms and
+            --extra_execution_platforms are overwritten to be this platform
 
     This rule is otherwise a dropin replacement for cc_binary.
     """,
@@ -98,6 +117,12 @@ _cc_platform_binary = rule(
             default = [],
             doc = "If specified, actual_binary and its dependencies will be built with the given cxxopts.",
         ),
+        "platform": attr.label(
+            default = None,
+            doc = "If specified, actual_binary and its dependencies will be built for the given platform.",
+            mandatory = False,
+            providers = [platform_common.PlatformInfo],
+        ),
         # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://bazel.build/extending/config#user-defined-transitions
@@ -109,14 +134,19 @@ _cc_platform_binary = rule(
     executable = True,
 )
 
-def cc_platform_binary(name, cxxopt = None, visibility = None, tags = None, **kwargs):
+def cc_platform_binary(name, platform = None, cxxopt = None, visibility = None, tags = None, **kwargs):
     """This macro is a dropin replacement for cc_binary.
 
-    This appends all cxxopts provided to "cxxopt" to --cxxopt and --host_cxxopt.
-    This is different from setting "copt" on a cc_binary target as this will also apply to all dependencies.
+    This applies the following flag changes when building the binary
+        - Appends all cxxopts provided to "cxxopt" to --cxxopt and --host_cxxopt
+            This is different from setting "copts" on a cc_binary target as this
+            will also apply to all dependencies.
+        - If "platform" is provided then --platforms and
+            --extra_execution_platforms are overwritten to be this platform
 
     Args:
         name: The name of this target.
+        platform: Optional. A plaform target to use when building this target.
         cxxopt: Optional. A list of cxxopts to pass to the compiler when building this target.
         visibility: Optional. The visibility of the target.
         tags: Optional. Tags to pass to the native cc_binary rule
@@ -125,6 +155,7 @@ def cc_platform_binary(name, cxxopt = None, visibility = None, tags = None, **kw
     native_binary_name = name + "_native"
     _cc_platform_binary(
         name = name,
+        platform = platform,
         cxxopt = cxxopt,
         actual_binary = native_binary_name,
         visibility = visibility,

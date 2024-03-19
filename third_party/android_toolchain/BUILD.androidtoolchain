@@ -1,0 +1,177 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//:cc_toolchain_config.bzl", "cc_toolchain_config")
+load("@rules_cc//cc:defs.bzl", "cc_toolchain")
+
+filegroup(
+    name = "empty",
+    srcs = [],
+)
+
+filegroup(
+    name = "compiler_deps",
+    srcs = glob(
+        ["{clang_dir}/**", "{glibc_dir}/**"],
+        allow_empty = True,
+    ),
+)
+
+constraint_setting(
+    name = "type",
+    default_constraint_value = ":default",
+)
+
+constraint_value(
+    name = "default",
+    constraint_setting = ":type",
+)
+
+constraint_value(
+    name = "android_toolchain",
+    constraint_setting = ":type",
+)
+
+toolchain(
+    name = "cc-toolchain",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "@bazel_tools//tools/cpp:clang",
+        ":android_toolchain",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        ":android_toolchain",
+    ],
+    toolchain = "@linux_android1404//:cc-compiler-k8-1404",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+
+platform(
+    name = "platform",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+        "@bazel_tools//tools/cpp:clang",
+        ":android_toolchain",
+    ],
+    parents = ["@local_config_platform//:host"],
+    visibility = ["//visibility:public"],
+)
+
+cc_toolchain(
+    name = "cc-compiler-k8-1404",
+    all_files = ":compiler_deps",
+    ar_files = ":compiler_deps",
+    as_files = ":compiler_deps",
+    compiler_files = ":compiler_deps",
+    dwp_files = ":empty",
+    linker_files = ":compiler_deps",
+    module_map = None,
+    objcopy_files = ":empty",
+    strip_files = ":empty",
+    supports_param_files = 1,
+    toolchain_config = ":linux_gnu_x86-1404",
+    toolchain_identifier = "linux_gnu_x86-1404",
+)
+
+cc_toolchain_config(
+    name = "linux_gnu_x86-1404",
+    abi_libc_version = "glibc_2.19",
+    abi_version = "clang",
+    compile_flags = [
+        "-fstack-protector",
+        "-Wall",
+        "-Wthread-safety",
+        "-Wself-assign",
+        "-fcolor-diagnostics",
+        "-fno-omit-frame-pointer",
+    ],
+    compiler = "clang",
+    coverage_compile_flags = ["--coverage"],
+    coverage_link_flags = ["--coverage"],
+    cpu = "k8",
+    cxx_builtin_include_directories = [
+        "{glibc_dir}/sysroot/usr/include/x86_64-linux-gnu",
+        "{glibc_dir}/sysroot/usr/include",
+        "{clang_dir}/lib/clang/{clang_short_version}/include",
+        "{clang_dir}/include/c++/v1",
+        "{clang_dir}/include/x86_64-unknown-linux-gnu/c++/v1",
+    ],
+    cxx_flags = ["-std=c++0x"],
+    dbg_compile_flags = ["-g"],
+    host_system_name = "i686-unknown-linux-gnu",
+    link_flags = [
+        "-Wl,-no-as-needed",
+        "-Wl,-z,relro,-z,now",
+        "-B/usr/local/bin",
+        "-B/usr/bin",
+        "-Bexternal/{repo_name}/{glibc_dir}/lib/gcc/x86_64-linux/4.8.3",
+        "-Lexternal/{repo_name}/{glibc_dir}/lib/gcc/x86_64-linux/4.8.3",
+        "--sysroot=external/{repo_name}/{glibc_dir}/sysroot",
+        "-Bexternal/{repo_name}/{glibc_dir}/x86_64-linux/lib64",
+        "-Lexternal/{repo_name}/{glibc_dir}/x86_64-linux/lib64",
+        "-Wl,-Bstatic",
+        "-Wl,-Lexternal/{repo_name}/{clang_dir}/lib/x86_64-unknown-linux-gnu",
+        "-stdlib=libc++",
+        "-lc++",
+        "-Wl,-Bdynamic",
+    ],
+    link_libs = [
+        "-lm",
+    ],
+    opt_compile_flags = [
+        "-g0",
+        "-O2",
+        "-D_FORTIFY_SOURCE=1",
+        "-DNDEBUG",
+        "-ffunction-sections",
+        "-fdata-sections",
+    ],
+    opt_link_flags = ["-Wl,--gc-sections"],
+    supports_start_end_lib = False,
+    target_libc = "glibc_2.19",
+    target_system_name = "x86_64-unknown-linux-gnu",
+    tool_paths = {
+        "ar": "{clang_dir}/bin/llvm-ar",
+        "ld": "{clang_dir}/bin/ld.lld",
+        "llvm-cov": "{clang_dir}/bin/llvm-cov",
+        "llvm-profdata": "{clang_dir}/bin/llvm-profdata",
+        "cpp": "/usr/bin/cpp",
+        "gcc": "{clang_dir}/bin/clang",
+        "dwp": "{clang_dir}/bin/llvm-dwp",
+        "gcov": "/dev/null",
+        "nm": "{clang_dir}/bin/llvm-nm",
+        "objcopy": "{clang_dir}/bin/llvm-objcopy",
+        "objdump": "{clang_dir}/bin/llvm-objdump",
+        "strip": "{clang_dir}/bin/llvm-strip",
+    },
+    toolchain_identifier = "linux_gnu_x86-1404",
+    unfiltered_compile_flags = [
+        "-no-canonical-prefixes",
+        "-Wno-builtin-macro-redefined",
+        "-D__DATE__=\"redacted\"",
+        "-D__TIMESTAMP__=\"redacted\"",
+        "-D__TIME__=\"redacted\"",
+        "-Wno-deprecated-builtins",
+        "-Wno-unused-but-set-variable",
+        "-Wno-unused-command-line-argument",
+        "-Wno-gnu-offsetof-extensions",
+        "-stdlib=libc++",
+        "--sysroot=external/{repo_name}/{glibc_dir}/sysroot",
+    ],
+)

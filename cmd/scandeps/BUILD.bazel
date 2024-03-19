@@ -36,6 +36,10 @@ cc_platform_binary(
         ],
         "//conditions:default": [],
     }),
+    platform = select({
+        "//:use_android_glibc_true": "@linux_android1404//:platform",
+        "//conditions:default": None,
+    }),
     target_compatible_with = select({
         "//:clangscandeps_input_processor_config": [],
         "//:goma_input_processor_config": [],
