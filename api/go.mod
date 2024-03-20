@@ -5,9 +5,9 @@ go 1.19
 
 require (
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v0.0.0-20190119112626-026f9fcdf705
-	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240313174854-ae0c0768e6a6
+	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240320184638-7cc54f45bdce
 	google.golang.org/grpc v1.58.0-dev.0.20230804151048-7aceafcc52f9
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
