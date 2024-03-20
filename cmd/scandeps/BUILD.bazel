@@ -1,4 +1,6 @@
-load("//transitions:defs.bzl", "cc_platform_binary")
+load("//transitions:defs.bzl", "cc_platform_binary", "dbg_target")
+load("@bazel_skylib//rules:select_file.bzl", "select_file")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 
 cc_library(
     name = "scandeps_lib",
@@ -34,9 +36,6 @@ cc_platform_binary(
         ],
         "//conditions:default": [],
     }),
-    tags = [
-        "local",
-    ],
     target_compatible_with = select({
         "//:clangscandeps_input_processor_config": [],
         "//:goma_input_processor_config": [],
@@ -61,4 +60,55 @@ cc_platform_binary(
             ],
             "//conditions:default": [],
         }),
+)
+
+dbg_target(
+    name = "scandeps_server_dbg",
+    src = ":scandeps_server",
+    tags = ["manual"],
+)
+
+genrule(
+    name = "scandeps_server_sym_gen",
+    srcs = [":scandeps_server_dbg"] + select({
+        "@platforms//os:windows": ["@goma//:dump_syms_exe"],
+        "//conditions:default": ["//goma:dump_syms"],
+    }),
+    outs = ["scandeps_server.sym"],
+    cmd_bash = "$(location //goma:dump_syms) $(location :scandeps_server_dbg) > $(location scandeps_server.sym)",
+    # Some additonal work is requred to get the path of scandeps_server.pdb
+    # as :scandeps_server_dbg has 2 default outputs (the exe and the pdb) on windows
+    cmd_ps = """
+    $$pdb_dir=Split-Path -Parent ("$(locations :scandeps_server_dbg)" -split ' ')[0]
+    $$env:PATH="$${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\2019\\BuildTools\\DIA SDK\\bin\\;$$env:PATH";
+    $(location @goma//:dump_syms_exe) $$pdb_dir\\scandeps_server.pdb > $(location scandeps_server.sym)""",
+    tags = ["manual"],
+)
+
+select_file(
+    name = "scandeps_server_dbg_pdb",
+    srcs = ":scandeps_server_dbg",
+    subpath = "scandeps_server.pdb",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+# Copying is required as :scandeps_server_dbg_pdb will be under the dbg execroot
+# due to the transition applied by dbg_target
+copy_file(
+    name = "scandeps_server_pdb",
+    src = ":scandeps_server_dbg_pdb",
+    out = "scandeps_server.pdb",
+    tags = ["manual"],
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+# Always provide the .pdb file with the .sym file on windows as it is required
+# when symbolizing stack traces.
+filegroup(
+    name = "scandeps_server_sym",
+    srcs = [":scandeps_server_sym_gen"] + select({
+        "@platforms//os:windows": [":scandeps_server_pdb"],
+        "//conditions:default": [],
+    }),
 )

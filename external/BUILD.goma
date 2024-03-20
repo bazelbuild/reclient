@@ -4,6 +4,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "dump_syms_exe",
+    srcs = ["client/third_party/breakpad/breakpad/src/tools/windows/binaries/dump_syms.exe"],
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "client",
     hdrs = glob([

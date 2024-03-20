@@ -1,4 +1,5 @@
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "ninja")
+load("@bazel_skylib//rules:select_file.bzl", "select_file")
 
 ninja(
     name = "goma_input_processor",
@@ -43,5 +44,36 @@ ninja(
         "manual",
     ],
     targets = ["compiler_proxy_lib"],
+    visibility = ["//visibility:public"],
+)
+
+ninja(
+    name = "dump_syms_build",
+    args = [
+        "-j",
+        "14",
+    ],
+    directory = select({
+        "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64",
+        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg",
+        "//conditions:default": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out",
+    }),
+    lib_source = "@goma//:srcs",
+    out_binaries = ["dump_syms"],
+    postfix_script = select({
+        "@io_bazel_rules_go//go/platform:darwin_arm64": "cp $$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64/dump_syms $$INSTALLDIR$$/bin/dump_syms",
+        "//:goma_input_processor_config_windows_dbg": "cp $$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg/dump_syms $$INSTALLDIR$$/bin/dump_syms",
+        "//conditions:default": "cp $$EXT_BUILD_ROOT$$/external/goma/client/client/out/dump_syms $$INSTALLDIR$$/bin/dump_syms",
+    }),
+    tags = [
+        "manual",
+    ],
+    targets = ["dump_syms"],
+)
+
+select_file(
+    name = "dump_syms",
+    srcs = ":dump_syms_build",
+    subpath = "bin/dump_syms",
     visibility = ["//visibility:public"],
 )

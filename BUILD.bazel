@@ -71,3 +71,9 @@ config_setting(
     },
     values = {"features": "dbg"},
 )
+
+config_setting(
+    name = "config_windows_dbg",
+    constraint_values = ["@platforms//os:windows"],
+    values = {"features": "dbg"},
+)

@@ -137,3 +137,46 @@ def cc_platform_binary(name, cxxopt = None, visibility = None, tags = None, **kw
         tags = tags + ["manual"],
         **kwargs
     )
+
+
+_FEATURES = "//command_line_option:features"
+def _dbg_transition_impl(settings, _attr):
+    ''' The implementation if the _dbg_transition transition.
+
+    This transition
+        - Appends 'dbg' to the --features flag
+    '''
+    return {
+        _FEATURES: settings.get(_FEATURES, []) + ["dbg"],
+    }
+
+
+_dbg_transition = transition(
+    implementation = _dbg_transition_impl,
+    inputs = [_FEATURES],
+    outputs = [_FEATURES],
+)
+
+
+def _dbg_target_impl(ctx):
+    return [
+        DefaultInfo(files = ctx.attr.src[0].files),
+        ctx.attr.src[0][OutputGroupInfo],
+    ]
+
+
+dbg_target = rule(
+    doc = '''
+    Passes through the files of the given src target with the 'dbg' feature enabled.
+    ''',
+    implementation = _dbg_target_impl,
+    attrs = {
+        "src": attr.label(cfg = _dbg_transition),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://bazel.build/extending/config#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
+    },
+)

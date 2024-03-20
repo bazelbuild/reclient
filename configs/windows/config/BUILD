@@ -38,7 +38,7 @@ platform(
         "@platforms//cpu:x86_64",
     ],
     exec_properties = {
-        "container-image": "docker://gcr.io/reclient-releases/reclient-builder-win@sha256:cbf269a5c88103d8aeef4fec0b1f11975847842ac1be70bb8b454ee1ff718192",
+        "container-image": "docker://gcr.io/reclient-releases/reclient-builder-win@sha256:35ddcec70c6685fd5f5ddcc29418f13c57a28b7ee5d55cb2fd44461831d6bbe1",
         "OSFamily": "Windows",
     },
     parents = ["@local_config_platform//:host"],
