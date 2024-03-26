@@ -17,10 +17,6 @@
 GLIBC_DIR = "android_prebuilts/glibc"
 CLANG_DIR = "android_prebuilts/clang-latest"
 
-def _get_clang_major_version(ctx):
-    contents = ctx.read(CLANG_DIR + "/AndroidVersion.txt")
-    return contents.splitlines()[0].split(".")[0]
-
 def _android_prebuilts_repostitory_rule(ctx):
     ctx.download_and_extract(url = ctx.attr.glibc_url, sha256 = ctx.attr.glibc_sha256, output = GLIBC_DIR)
     ctx.download_and_extract(url = ctx.attr.clang_url, sha256 = ctx.attr.clang_sha256, output = CLANG_DIR)
@@ -42,10 +38,9 @@ def _android_toolchain_repostitory_rule(ctx):
     # We cannot just pass in @...//:android_prebuilts as a label as that doesnt get correctly detected as a directory
     # https://github.com/bazelbuild/bazel/issues/3901
     ctx.symlink(ctx.path(ctx.attr.prebuilts_repo).dirname.get_child("android_prebuilts"), "android_prebuilts")
-    ctx.symlink(Label("//configs/linux/cc:cc_toolchain_config.bzl"), "cc_toolchain_config.bzl")
-    ctx.template("BUILD.bazel", Label("//third_party/android_toolchain:BUILD.androidtoolchain"), {
+    ctx.symlink(Label("@//configs/linux/cc:cc_toolchain_config.bzl"), "cc_toolchain_config.bzl")
+    ctx.template("BUILD.bazel", Label("@//third_party/android_toolchain:BUILD.androidtoolchain"), {
         "{repo_name}": ctx.name,
-        "{clang_short_version}": _get_clang_major_version(ctx),
         "{glibc_dir}": GLIBC_DIR,
         "{clang_dir}": CLANG_DIR,
         "{parent_platform}": ctx.attr.parent_platform,
@@ -70,7 +65,7 @@ def android_toolchain_repostitory(name, clang_url, clang_sha256, glibc_url, glib
     )
     _android_toolchain_repostitory(
         name = name,
-        prebuilts_repo = "@" + name + "_android_prebuilts//:BUILD.bazel",
+        prebuilts_repo = "@@" + name + "_android_prebuilts//:BUILD.bazel",
         parent_platform = parent_platform,
     )
 

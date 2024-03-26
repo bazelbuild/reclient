@@ -12,16 +12,21 @@ def _gclient_repository_rule(ctx):
         _clone(ctx)
         ctx.report_progress("Checking out {}...".format(ctx.attr.revision))
         _checkout(ctx)
-        ctx.report_progress("Syncing to {}...".format(ctx.attr.revision))
+        ctx.report_progress("Applying required patches: {}...".format(ctx.attr.presync_patches))
+        _patch(ctx, ctx.attr.presync_patches)
+        ctx.report_progress("Syncing...")
         _sync(ctx)
         ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
-        _patch(ctx)
+        _patch(ctx, ctx.attr.patches)
     else:
         ctx.report_progress("Copying from source folder...")
         _copy(ctx)
+        ctx.report_progress("Applying required patches: {}...".format(ctx.attr.presync_patches))
+        _patch(ctx, ctx.attr.presync_patches)
+        ctx.report_progress("Syncing...")
+        _sync(ctx)
         ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
-        _patch(ctx)
-
+        _patch(ctx, ctx.attr.patches)
     ctx.report_progress("Saving version...")
     _version(ctx)
     ctx.report_progress("Optionally stripping...")
@@ -38,9 +43,9 @@ def _gclient_repository_rule(ctx):
 
 def _config(ctx):
     if __is_windows(ctx) and len(ctx.attr.gclient_vars_windows) > 0:
-        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--custom-var=" + ctx.attr.gclient_vars_windows])
+        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--custom-var=" + ctx.attr.gclient_vars_windows, "--unmanaged"])
     else:
-        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote])
+        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--unmanaged"])
 
 def _clone(ctx):
     __execute(ctx, __prefix(ctx, "git") + ["clone", ctx.attr.remote])
@@ -49,26 +54,18 @@ def _checkout(ctx):
     __execute(ctx, __prefix(ctx, "git") + ["checkout", ctx.attr.revision], wd = ctx.attr.base_dir)
 
 def _sync(ctx):
-    __execute(ctx, __prefix(ctx, "gclient") + ["sync", "-r", ctx.attr.revision, "--shallow"])
+    __execute(ctx, __prefix(ctx, "gclient") + ["sync"])
 
 def _copy(ctx):
     __execute(ctx, __prefix(ctx, "cp") + ["-rf", ctx.attr.local_path, "."])
 
-def _patch(ctx):
+def _patch(ctx, patches):
     for arg in ctx.attr.patch_args:
         if not arg.startswith("-p"):
-            return False
+            return
 
-    for patchfile in ctx.attr.patches:
+    for patchfile in patches:
         ctx.patch(patchfile, int(ctx.attr.patch_args[-1][2:]))
-
-    # gclient sync will complain otherwise
-    # this method misses added files, which must be added with `git add .`, but we
-    # can add them when we need them.
-    if ctx.attr.patches:
-        __execute(ctx, __prefix(ctx, "git") + ["config", "user.email", "foundry-x@google.com"], wd = ctx.attr.base_dir)
-        __execute(ctx, __prefix(ctx, "git") + ["config", "user.name", "Foundry X CI"], wd = ctx.attr.base_dir)
-        __execute(ctx, __prefix(ctx, "git") + ["commit", "-am."], wd = ctx.attr.base_dir)
 
 def _version(ctx):
     command = __prefix(ctx, "git") + ["log", "-1", "--pretty=format:%H@%ct"]
@@ -230,6 +227,12 @@ gclient_repository = repository_rule(
                 "A list of files that are to be applied as patches after" +
                 "extracting the archive. **ONLY** supports Bazel-native patch" +
                 "implementation.",
+        ),
+        "presync_patches": attr.label_list(
+            default = [],
+            doc =
+                "A list of files that are to be applied as patches after" +
+                "extracting the archive but before gclient sync.",
         ),
         "patch_args": attr.string_list(
             default = ["-p0"],

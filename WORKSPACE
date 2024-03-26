@@ -17,16 +17,26 @@ load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 bazel_skylib_workspace()
 
 http_archive(
+    name = "build_bazel_rules_apple",
+    sha256 = "34c41bfb59cdaea29ac2df5a2fa79e5add609c71bb303b2ebb10985f93fa20e7",
+    url = "https://github.com/bazelbuild/rules_apple/releases/download/3.1.1/rules_apple.3.1.1.tar.gz",
+)
+
+load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
+
+apple_rules_dependencies()
+
+http_archive(
     name = "io_bazel_rules_go",
     # TODO(b/180953129): Required to build re-client with RBE on windows for now.
     # Wait until https://github.com/bazelbuild/remote-apis/issues/187 is fixed on
     # RE side, and https://github.com/bazelbuild/bazel/issues/11636 on bazel side.
     patch_args = ["-p1"],
     patches = ["//third_party/patches/bazel:rules_go.patch"],
-    sha256 = "bfc5ce70b9d1634ae54f4e7b495657a18a04e0d596785f672d35d5f505ab491a",
+    integrity = "sha256-UdxTKTr+MX0mltTWQzpMM/7tt3SKnjUgcuLsPA2v0sY=",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.40.0/rules_go-v0.40.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.40.0/rules_go-v0.40.0.zip",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.40.1/rules_go-v0.40.1.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.40.1/rules_go-v0.40.1.zip",
     ],
 )
 
@@ -276,10 +286,7 @@ grpc_deps()
 
 # Extra dependencies extracted from grpc_extra_deps.bzl to remove duplication and conflicts
 load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")
-load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
-
-apple_rules_dependencies()
 
 apple_support_dependencies()
 
@@ -462,6 +469,7 @@ gclient_repository(
     gn_args_macos_x86 = "is_debug=false agnostic_build=true target_cpu=\"x64\"",
     gn_args_windows = "is_debug=false is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
     gn_args_windows_dbg = "is_debug=true is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
+    presync_patches = ["//third_party/patches/goma:protobuf.patch"],
     patches = [
         # It seems like on Mac, popen and pclose calls aren't thread safe, which is how we
         # invoke it with scandeps_server. According to

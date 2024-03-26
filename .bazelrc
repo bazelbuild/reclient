@@ -41,12 +41,9 @@ build --experimental_repository_downloader_retries=8
 # Remove clang's warnings from our output.
 build:linux --cxxopt=-Wcomment --host_cxxopt=-Wcomment
 build:linux --cxxopt=-Wuninitialized --host_cxxopt=-Wuninitialized
-
-# to propagete tags to execution_requirements
-# https://github.com/bazelbuild/bazel/issues/8830
-# Needs to be applied as common to prevent wiping of analysis cache between
-# bazel query and bazel build
-common --experimental_allow_tags_propagation
+# The protobuf cc library version we use has warnings on some versions of xcode
+# We can probably remove this once we update our proto version
+build:macos --cxxopt=-Wno-unknown-warning-option --cxxopt=-Wno-deprecated-builtins --host_cxxopt=-Wno-unknown-warning-option --host_cxxopt=-Wno-deprecated-builtins
 
 
 ## use BAZEL_LLVM on windows
@@ -55,8 +52,6 @@ common --experimental_allow_tags_propagation
 # use MingW on windows (for rules_go)
 # https://github.com/bazelbuild/rules_go/blob/master/windows.rst
 build:windows --incompatible_enable_cc_toolchain_resolution
-build:windows --cpu=x64_windows
-build:windows --compiler=clang-cl
 build:windows --extra_toolchains=@local_config_cc//:cc-toolchain-x64_windows-clang-cl
 build:windows --host_platform=//:x64_windows
 build:windows --platforms=//:x64_windows
@@ -99,6 +94,7 @@ test:windows --test_env=APPDATA
 build:windows --features=static_link_msvcrt
 
 build:clangscandeps --//:include_scanner=clangscandeps
+build:clangscandeps --@llvm_zlib//:llvm_enable_zlib=false
 
 build:goma --//:include_scanner=goma
 

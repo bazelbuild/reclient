@@ -38,3 +38,6 @@ codelabs/**/out.txt
 
 # Ignore Android Prebuilts
 configs/linux_android1404/cc/android_prebuilts
+
+# This file is currently not stable as per https://github.com/bazelbuild/bazel/issues/20369
+MODULE.bazel.lock

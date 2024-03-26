@@ -20,6 +20,24 @@ load(":armeabi_cc_toolchain_config.bzl", "armeabi_cc_toolchain_config")
 
 package(default_visibility = ["//visibility:public"])
 
+cc_library(name = "empty_lib")
+
+# Label flag for extra libraries to be linked into every binary.
+# TODO(bazel-team): Support passing flag multiple times to build a list.
+label_flag(
+    name = "link_extra_libs",
+    build_setting_default = ":empty_lib",
+)
+
+# The final extra library to be linked into every binary target. This collects
+# the above flag, but may also include more libraries depending on config.
+cc_library(
+    name = "link_extra_lib",
+    deps = [
+        ":link_extra_libs",
+    ],
+)
+
 cc_library(
     name = "malloc",
 )
@@ -212,6 +230,7 @@ cc_toolchain_config(
     cpu = "x64_windows",
     cxx_builtin_include_directories = [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include",
+        "C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um",
@@ -223,13 +242,14 @@ cc_toolchain_config(
     fastbuild_mode_debug_flag = "/DEBUG:FASTLINK",
     host_system_name = "local",
     msvc_cl_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x64/cl.exe",
-    msvc_env_include = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\winrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\cppwinrt",
-    msvc_env_lib = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\ucrt\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\um\\x64",
-    msvc_env_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.20348.0\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;;C:\\Windows\\system32",
+    msvc_env_include = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include;C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\winrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\cppwinrt",
+    msvc_env_lib = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64;C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\ucrt\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\um\\x64",
+    msvc_env_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v10.0A\\bin\\NETFX 4.8 Tools\\x64\\;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.20348.0\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;;C:\\Windows\\system32",
     msvc_env_tmp = "C:\\Users\\ContainerAdministrator\\AppData\\Local\\Temp",
     msvc_lib_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x64/lib.exe",
     msvc_link_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x64/link.exe",
     msvc_ml_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x64/ml64.exe",
+    supports_parse_showincludes = True,
     target_libc = "msvcrt",
     target_system_name = "local",
     tool_paths = {
@@ -285,6 +305,7 @@ cc_toolchain_config(
     cpu = "x64_windows",
     cxx_builtin_include_directories = [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include",
+        "C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um",
@@ -296,13 +317,14 @@ cc_toolchain_config(
     fastbuild_mode_debug_flag = "/DEBUG:FASTLINK",
     host_system_name = "local",
     msvc_cl_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x86/cl.exe",
-    msvc_env_include = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\winrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\cppwinrt",
-    msvc_env_lib = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x86;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\ucrt\\x86;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\um\\x86",
-    msvc_env_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x86;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.20348.0\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;;C:\\Windows\\system32",
+    msvc_env_include = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include;C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\winrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\cppwinrt",
+    msvc_env_lib = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x86;C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x86;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\ucrt\\x86;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\um\\x86",
+    msvc_env_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x86;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v10.0A\\bin\\NETFX 4.8 Tools\\x64\\;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.20348.0\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;;C:\\Windows\\system32",
     msvc_env_tmp = "C:\\Users\\ContainerAdministrator\\AppData\\Local\\Temp",
     msvc_lib_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x86/lib.exe",
     msvc_link_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x86/link.exe",
     msvc_ml_path = "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/HostX64/x86/ml.exe",
+    supports_parse_showincludes = True,
     target_libc = "msvcrt",
     target_system_name = "local",
     tool_paths = {
@@ -369,6 +391,7 @@ cc_toolchain_config(
     msvc_lib_path = "vc_installation_error_arm.bat",
     msvc_link_path = "vc_installation_error_arm.bat",
     msvc_ml_path = "vc_installation_error_arm.bat",
+    supports_parse_showincludes = False,
     target_libc = "msvcrt",
     target_system_name = "local",
     tool_paths = {
@@ -435,6 +458,7 @@ cc_toolchain_config(
     msvc_lib_path = "vc_installation_error_arm64.bat",
     msvc_link_path = "vc_installation_error_arm64.bat",
     msvc_ml_path = "vc_installation_error_arm64.bat",
+    supports_parse_showincludes = False,
     target_libc = "msvcrt",
     target_system_name = "local",
     tool_paths = {
@@ -489,6 +513,7 @@ cc_toolchain_config(
     cpu = "x64_windows",
     cxx_builtin_include_directories = [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include",
+        "C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared",
         "C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um",
@@ -497,20 +522,18 @@ cc_toolchain_config(
         "C:\\Program Files\\LLVM\\lib\\clang\\12.0.0\\include",
     ],
     dbg_mode_debug_flag = "/DEBUG",
-    default_link_flags = [
-        "/MACHINE:X64",
-        "/DEFAULTLIB:clang_rt.builtins-x86_64.lib",
-    ],
+    default_link_flags = ["/MACHINE:X64"],
     fastbuild_mode_debug_flag = "/DEBUG",
     host_system_name = "local",
     msvc_cl_path = "C:/Program Files/LLVM/bin/clang-cl.exe",
-    msvc_env_include = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\winrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\cppwinrt;C:\\Program Files\\LLVM\\lib\\clang\\12.0.0\\include",
-    msvc_env_lib = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\ucrt\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\um\\x64;C:\\Program Files\\LLVM\\lib\\clang\\12.0.0\\lib\\windows",
-    msvc_env_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.20348.0\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;;C:\\Windows\\system32",
+    msvc_env_include = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\include;C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\include\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\ucrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\shared;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\um;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\winrt;C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.20348.0\\cppwinrt;C:\\Program Files\\LLVM\\lib\\clang\\12.0.0\\include",
+    msvc_env_lib = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64;C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.8\\lib\\um\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\ucrt\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.20348.0\\um\\x64;C:\\Program Files\\LLVM\\lib\\clang\\12.0.0\\lib\\windows",
+    msvc_env_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v10.0A\\bin\\NETFX 4.8 Tools\\x64\\;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.20348.0\\x64;C:\\Program Files (x86)\\Windows Kits\\10\\bin\\x64;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;;C:\\Windows\\system32",
     msvc_env_tmp = "C:\\Users\\ContainerAdministrator\\AppData\\Local\\Temp",
     msvc_lib_path = "C:/Program Files/LLVM/bin/llvm-lib.exe",
     msvc_link_path = "C:/Program Files/LLVM/bin/lld-link.exe",
     msvc_ml_path = "C:/Program Files/LLVM/bin/clang-cl.exe",
+    supports_parse_showincludes = True,
     target_libc = "msvcrt",
     target_system_name = "local",
     tool_paths = {
@@ -578,6 +601,7 @@ cc_toolchain_config(
     msvc_lib_path = "vc_installation_error_arm64.bat",
     msvc_link_path = "vc_installation_error_arm64.bat",
     msvc_ml_path = "vc_installation_error_arm64.bat",
+    supports_parse_showincludes = False,
     target_libc = "msvcrt",
     target_system_name = "aarch64-pc-windows-msvc",
     tool_paths = {

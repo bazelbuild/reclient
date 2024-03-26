@@ -30,12 +30,13 @@ filegroup(
 
 constraint_setting(
     name = "type",
-    default_constraint_value = ":default",
+    default_constraint_value = ":no_android_toolchain",
 )
 
 constraint_value(
-    name = "default",
+    name = "no_android_toolchain",
     constraint_setting = ":type",
+    visibility = ["//visibility:public"],
 )
 
 constraint_value(
@@ -54,7 +55,6 @@ toolchain(
     target_compatible_with = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
-        ":android_toolchain",
     ],
     toolchain = "@linux_android1404//:cc-compiler-k8-1404",
     toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
@@ -105,13 +105,6 @@ cc_toolchain_config(
     coverage_compile_flags = ["--coverage"],
     coverage_link_flags = ["--coverage"],
     cpu = "k8",
-    cxx_builtin_include_directories = [
-        "{glibc_dir}/sysroot/usr/include/x86_64-linux-gnu",
-        "{glibc_dir}/sysroot/usr/include",
-        "{clang_dir}/lib/clang/{clang_short_version}/include",
-        "{clang_dir}/include/c++/v1",
-        "{clang_dir}/include/x86_64-unknown-linux-gnu/c++/v1",
-    ],
     cxx_flags = ["-std=c++0x"],
     dbg_compile_flags = ["-g"],
     host_system_name = "i686-unknown-linux-gnu",

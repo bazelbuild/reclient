@@ -23,6 +23,7 @@ toolchain(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
         "@bazel_tools//tools/cpp:clang",
+        "@linux_android1404//:no_android_toolchain",
     ],
     target_compatible_with = [
         "@platforms//os:linux",

@@ -1,0 +1,573 @@
+diff --git ./client/DEPS ./client/DEPS.new
+index acb6478e..45aee430 100644
+--- ./client/DEPS
++++ ./client/DEPS.new
+@@ -13,7 +13,7 @@ deps = {
+      # TODO: use released proto including
+      # https://github.com/protocolbuffers/protobuf/blob/ee4f2492ea4e7ff120f68a792af870ee30435aa5/src/google/protobuf/io/zero_copy_stream.h#L122
+      "client/third_party/protobuf/protobuf":
+-     "https://github.com/google/protobuf.git@6aa539bf0195f188ff86efe6fb8bfa2b676cdd46",
++     "https://github.com/google/protobuf.git@54489e95e01882407f356f83c9074415e561db00",
+ 
+      # google-glog v0.5.0
+      "client/third_party/glog":
+diff --git ./client/client/compile_service.cc ./client/client/compile_service.cc.new
+index 0f641a51..702a8002 100644
+--- ./client/client/compile_service.cc
++++ ./client/client/compile_service.cc.new
+@@ -927,8 +927,7 @@ void CompileService::DumpStatsJson(
+       google::protobuf::util::MessageToJsonString(statz, json_string, options);
+   if (!status.ok()) {
+     LOG(ERROR) << "failed to convert GomaStatzStats to json"
+-               << " error_code=" << status.error_code()
+-               << " error_message=" << status.error_message();
++               << " error=" << status;
+     json_string->clear();
+   }
+ }
+diff --git ./client/third_party/protobuf/BUILD.gn ./client/third_party/protobuf/BUILD.gn.new
+index 08534390..771aec1a 100644
+--- ./client/third_party/protobuf/BUILD.gn
++++ ./client/third_party/protobuf/BUILD.gn.new
+@@ -167,8 +167,8 @@ nobase_include_headers = [
+   "protobuf/src/google/protobuf/compiler/cpp/cpp_generator.h",
+   "protobuf/src/google/protobuf/compiler/csharp/csharp_generator.h",
+   "protobuf/src/google/protobuf/compiler/csharp/csharp_names.h",
+-  "protobuf/src/google/protobuf/compiler/java/java_generator.h",
+-  "protobuf/src/google/protobuf/compiler/java/java_names.h",
++  "protobuf/src/google/protobuf/compiler/java/generator.h",
++  "protobuf/src/google/protobuf/compiler/java/names.h",
+   "protobuf/src/google/protobuf/compiler/js/js_generator.h",
+   "protobuf/src/google/protobuf/compiler/js/well_known_types_embed.h",
+   "protobuf/src/google/protobuf/compiler/objectivec/objectivec_generator.h",
+@@ -194,8 +194,8 @@ protobuf_lite_sources = [
+   "protobuf/src/google/protobuf/arenastring.cc",
+   "protobuf/src/google/protobuf/arenastring.h",
+   "protobuf/src/google/protobuf/extension_set.cc",
+-  "protobuf/src/google/protobuf/generated_message_table_driven_lite.cc",
+-  "protobuf/src/google/protobuf/generated_message_table_driven_lite.h",
++  "protobuf/src/google/protobuf/generated_message_tctable_lite.cc",
++  "protobuf/src/google/protobuf/generated_message_tctable_decl.h",
+   "protobuf/src/google/protobuf/generated_message_util.cc",
+   "protobuf/src/google/protobuf/implicit_weak_message.cc",
+   "protobuf/src/google/protobuf/io/coded_stream.cc",
+@@ -207,6 +207,7 @@ protobuf_lite_sources = [
+   "protobuf/src/google/protobuf/parse_context.cc",
+   "protobuf/src/google/protobuf/parse_context.h",
+   "protobuf/src/google/protobuf/repeated_field.cc",
++  "protobuf/src/google/protobuf/repeated_ptr_field.cc",
+   "protobuf/src/google/protobuf/stubs/bytestream.cc",
+   "protobuf/src/google/protobuf/stubs/bytestream.h",
+   "protobuf/src/google/protobuf/stubs/common.cc",
+@@ -304,8 +305,8 @@ static_library("protobuf_full") {
+     "protobuf/src/google/protobuf/extension_set_heavy.cc",
+     "protobuf/src/google/protobuf/field_mask.pb.cc",
+     "protobuf/src/google/protobuf/generated_message_reflection.cc",
+-    "protobuf/src/google/protobuf/generated_message_table_driven.cc",
+-    "protobuf/src/google/protobuf/generated_message_table_driven_lite.h",
++    "protobuf/src/google/protobuf/generated_message_tctable_full.cc",
++    "protobuf/src/google/protobuf/generated_message_tctable_decl.h",
+     "protobuf/src/google/protobuf/io/gzip_stream.cc",
+     "protobuf/src/google/protobuf/io/io_win32.cc",
+     "protobuf/src/google/protobuf/io/printer.cc",
+@@ -395,158 +396,337 @@ static_library("protobuf_full") {
+   cflags = protobuf_lite_cflags
+ }
+ 
++static_library("protoc_lib_java") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/java/context.cc",
++      "protobuf/src/google/protobuf/compiler/java/context.h",
++      "protobuf/src/google/protobuf/compiler/java/doc_comment.cc",
++      "protobuf/src/google/protobuf/compiler/java/doc_comment.h",
++      "protobuf/src/google/protobuf/compiler/java/enum.cc",
++      "protobuf/src/google/protobuf/compiler/java/enum.h",
++      "protobuf/src/google/protobuf/compiler/java/enum_field.cc",
++      "protobuf/src/google/protobuf/compiler/java/enum_field.h",
++      "protobuf/src/google/protobuf/compiler/java/enum_field_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/enum_field_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/enum_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/enum_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/extension.cc",
++      "protobuf/src/google/protobuf/compiler/java/extension.h",
++      "protobuf/src/google/protobuf/compiler/java/extension_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/extension_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/field.cc",
++      "protobuf/src/google/protobuf/compiler/java/field.h",
++      "protobuf/src/google/protobuf/compiler/java/file.cc",
++      "protobuf/src/google/protobuf/compiler/java/file.h",
++      "protobuf/src/google/protobuf/compiler/java/generator.cc",
++      "protobuf/src/google/protobuf/compiler/java/kotlin_generator.cc",
++      "protobuf/src/google/protobuf/compiler/java/kotlin_generator.h",
++      "protobuf/src/google/protobuf/compiler/java/generator_factory.cc",
++      "protobuf/src/google/protobuf/compiler/java/generator_factory.h",
++      "protobuf/src/google/protobuf/compiler/java/helpers.cc",
++      "protobuf/src/google/protobuf/compiler/java/helpers.h",
++      "protobuf/src/google/protobuf/compiler/java/map_field.cc",
++      "protobuf/src/google/protobuf/compiler/java/map_field.h",
++      "protobuf/src/google/protobuf/compiler/java/map_field_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/map_field_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/message.cc",
++      "protobuf/src/google/protobuf/compiler/java/message.h",
++      "protobuf/src/google/protobuf/compiler/java/message_builder.cc",
++      "protobuf/src/google/protobuf/compiler/java/message_builder.h",
++      "protobuf/src/google/protobuf/compiler/java/message_builder_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/message_builder_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/message_field.cc",
++      "protobuf/src/google/protobuf/compiler/java/message_field.h",
++      "protobuf/src/google/protobuf/compiler/java/message_field_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/message_field_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/message_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/message_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/name_resolver.cc",
++      "protobuf/src/google/protobuf/compiler/java/name_resolver.h",
++      "protobuf/src/google/protobuf/compiler/java/options.h",
++      "protobuf/src/google/protobuf/compiler/java/primitive_field.cc",
++      "protobuf/src/google/protobuf/compiler/java/primitive_field.h",
++      "protobuf/src/google/protobuf/compiler/java/primitive_field_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/primitive_field_lite.h",
++      "protobuf/src/google/protobuf/compiler/java/service.cc",
++      "protobuf/src/google/protobuf/compiler/java/service.h",
++      "protobuf/src/google/protobuf/compiler/java/shared_code_generator.cc",
++      "protobuf/src/google/protobuf/compiler/java/shared_code_generator.h",
++      "protobuf/src/google/protobuf/compiler/java/string_field.cc",
++      "protobuf/src/google/protobuf/compiler/java/string_field.h",
++      "protobuf/src/google/protobuf/compiler/java/string_field_lite.cc",
++      "protobuf/src/google/protobuf/compiler/java/string_field_lite.h",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
++
++static_library("protoc_lib_cpp") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/cpp/enum.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/enum.h",
++      "protobuf/src/google/protobuf/compiler/cpp/enum_field.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/enum_field.h",
++      "protobuf/src/google/protobuf/compiler/cpp/extension.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/extension.h",
++      "protobuf/src/google/protobuf/compiler/cpp/field.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/field.h",
++      "protobuf/src/google/protobuf/compiler/cpp/file.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/file.h",
++      "protobuf/src/google/protobuf/compiler/cpp/generator.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/helpers.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/helpers.h",
++      "protobuf/src/google/protobuf/compiler/cpp/map_field.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/map_field.h",
++      "protobuf/src/google/protobuf/compiler/cpp/message.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/message.h",
++      "protobuf/src/google/protobuf/compiler/cpp/message_field.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/message_field.h",
++      "protobuf/src/google/protobuf/compiler/cpp/message_layout_helper.h",
++      "protobuf/src/google/protobuf/compiler/cpp/options.h",
++      "protobuf/src/google/protobuf/compiler/cpp/padding_optimizer.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/padding_optimizer.h",
++      "protobuf/src/google/protobuf/compiler/cpp/primitive_field.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/primitive_field.h",
++      "protobuf/src/google/protobuf/compiler/cpp/service.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/service.h",
++      "protobuf/src/google/protobuf/compiler/cpp/string_field.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/string_field.h",
++      "protobuf/src/google/protobuf/compiler/cpp/parse_function_generator.cc",
++      "protobuf/src/google/protobuf/compiler/cpp/parse_function_generator.h",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
++
++static_library("protoc_lib_objectivec") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum_field.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum_field.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_extension.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_extension.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_field.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_field.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_file.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_file.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_generator.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_helpers.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_helpers.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_map_field.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_map_field.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message_field.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message_field.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_oneof.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_oneof.h",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_primitive_field.cc",
++      "protobuf/src/google/protobuf/compiler/objectivec/objectivec_primitive_field.h",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
++
++static_library("protoc_lib_python") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/python/generator.cc",
++      "protobuf/src/google/protobuf/compiler/python/pyi_generator.cc",
++      "protobuf/src/google/protobuf/compiler/python/pyi_generator.h",
++      "protobuf/src/google/protobuf/compiler/python/helpers.cc",
++      "protobuf/src/google/protobuf/compiler/python/helpers.h",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
++static_library("protoc_lib_php") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/php/php_generator.cc",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
++
++static_library("protoc_lib_ruby") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/ruby/ruby_generator.cc",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
++
++
++static_library("protoc_lib_csharp") {
++    sources = [
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_doc_comment.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_doc_comment.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_enum.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_enum.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_enum_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_enum_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_field_base.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_field_base.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_generator.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_helpers.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_helpers.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_map_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_map_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_message.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_message.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_message_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_message_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_options.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_primitive_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_primitive_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_reflection_class.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_reflection_class.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_enum_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_enum_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_message_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_message_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_primitive_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_primitive_field.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_source_generator_base.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_source_generator_base.h",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_wrapper_field.cc",
++      "protobuf/src/google/protobuf/compiler/csharp/csharp_wrapper_field.h",
++    ]
++
++    configs -= [ "//build/config/compiler:goma_code" ]
++    configs += [
++      "//build/config/compiler:no_goma_code",
++
++      # Must be after no_chromium_code for warning flags to be ordered
++      # correctly.
++      ":protobuf_warnings",
++    ]
++    if (os == "win") {
++      # This is defined internally, don't warn on duplicate.
++      configs -= [ "//build/config/win:lean_and_mean" ]
++    }
++
++    public_configs = [ ":protobuf_config" ]
++
++    cflags = protobuf_lite_cflags
++
++    public_deps = [ ":protobuf_full" ]
++}
++
+ static_library("protoc_lib") {
+   sources = [
+     "protobuf/src/google/protobuf/compiler/code_generator.cc",
+     "protobuf/src/google/protobuf/compiler/command_line_interface.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_enum.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_enum.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_enum_field.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_enum_field.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_extension.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_extension.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_field.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_field.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_file.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_file.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_helpers.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_helpers.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_map_field.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_map_field.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_message.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_message.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_message_field.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_message_field.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_message_layout_helper.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_options.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_padding_optimizer.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_padding_optimizer.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_primitive_field.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_primitive_field.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_service.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_service.h",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_string_field.cc",
+-    "protobuf/src/google/protobuf/compiler/cpp/cpp_string_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_doc_comment.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_doc_comment.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_enum.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_enum.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_enum_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_enum_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_field_base.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_field_base.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_helpers.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_helpers.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_map_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_map_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_message.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_message.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_message_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_message_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_options.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_primitive_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_primitive_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_reflection_class.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_reflection_class.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_enum_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_enum_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_message_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_message_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_primitive_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_repeated_primitive_field.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_source_generator_base.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_source_generator_base.h",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_wrapper_field.cc",
+-    "protobuf/src/google/protobuf/compiler/csharp/csharp_wrapper_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_context.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_context.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_doc_comment.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_doc_comment.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum_field.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum_field_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum_field_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_enum_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_extension.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_extension.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_extension_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_extension_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_field.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_file.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_file.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_generator_factory.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_generator_factory.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_helpers.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_helpers.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_map_field.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_map_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_map_field_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_map_field_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_message.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_message.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_builder.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_builder.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_builder_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_builder_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_field.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_field_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_field_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_message_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_name_resolver.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_name_resolver.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_options.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_primitive_field.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_primitive_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_primitive_field_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_primitive_field_lite.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_service.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_service.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_shared_code_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_shared_code_generator.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_string_field.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_string_field.h",
+-    "protobuf/src/google/protobuf/compiler/java/java_string_field_lite.cc",
+-    "protobuf/src/google/protobuf/compiler/java/java_string_field_lite.h",
+-    "protobuf/src/google/protobuf/compiler/js/js_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/js/well_known_types_embed.cc",
+-    "protobuf/src/google/protobuf/compiler/js/well_known_types_embed.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum_field.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_enum_field.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_extension.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_extension.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_field.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_field.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_file.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_file.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_helpers.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_helpers.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_map_field.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_map_field.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message_field.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_message_field.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_oneof.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_oneof.h",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_primitive_field.cc",
+-    "protobuf/src/google/protobuf/compiler/objectivec/objectivec_primitive_field.h",
+-    "protobuf/src/google/protobuf/compiler/php/php_generator.cc",
+     "protobuf/src/google/protobuf/compiler/plugin.cc",
+     "protobuf/src/google/protobuf/compiler/plugin.pb.cc",
+-    "protobuf/src/google/protobuf/compiler/python/python_generator.cc",
+-    "protobuf/src/google/protobuf/compiler/ruby/ruby_generator.cc",
+     "protobuf/src/google/protobuf/compiler/subprocess.cc",
+     "protobuf/src/google/protobuf/compiler/subprocess.h",
+     "protobuf/src/google/protobuf/compiler/zip_writer.cc",
+@@ -566,6 +746,16 @@ static_library("protoc_lib") {
+     configs -= [ "//build/config/win:lean_and_mean" ]
+   }
+ 
++  deps = [
++    ":protoc_lib_cpp",
++    ":protoc_lib_java",
++    ":protoc_lib_objectivec",
++    ":protoc_lib_python",
++    ":protoc_lib_php",
++    ":protoc_lib_ruby",
++    ":protoc_lib_csharp",
++  ]
++
+   public_configs = [ ":protobuf_config" ]
+ 
+   cflags = protobuf_lite_cflags

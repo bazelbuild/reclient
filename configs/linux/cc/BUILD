@@ -22,6 +22,24 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
+cc_library(name = "empty_lib")
+
+# Label flag for extra libraries to be linked into every binary.
+# TODO(bazel-team): Support passing flag multiple times to build a list.
+label_flag(
+    name = "link_extra_libs",
+    build_setting_default = ":empty_lib",
+)
+
+# The final extra library to be linked into every binary target. This collects
+# the above flag, but may also include more libraries depending on config.
+cc_library(
+    name = "link_extra_lib",
+    deps = [
+        ":link_extra_libs",
+    ],
+)
+
 cc_library(
     name = "malloc",
 )
@@ -49,7 +67,6 @@ filegroup(
 # the "${CPU}" entry in the toolchains attribute.
 cc_toolchain_suite(
     name = "toolchain",
-    tags = ["manual"],
     toolchains = {
         "k8|clang": ":cc-compiler-k8",
         "k8": ":cc-compiler-k8",
@@ -89,6 +106,7 @@ cc_toolchain_config(
         "-fno-omit-frame-pointer",
     ],
     compiler = "clang",
+    conly_flags = [],
     coverage_compile_flags = ["--coverage"],
     coverage_link_flags = ["--coverage"],
     cpu = "k8",
@@ -101,19 +119,24 @@ cc_toolchain_config(
         "/usr/include/c++/9",
         "/usr/include/x86_64-linux-gnu/c++/9",
         "/usr/include/c++/9/backward",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
     ],
-    cxx_flags = ["-std=c++0x"],
+    cxx_flags = ["-std=c++14"],
     dbg_compile_flags = ["-g"],
     host_system_name = "i686-unknown-linux-gnu",
     link_flags = [
         "-fuse-ld=/usr/lib/llvm-17/bin/ld.lld",
+        "-B/usr/lib/llvm-17/bin",
         "-Wl,-no-as-needed",
         "-Wl,-z,relro,-z,now",
-        "-B/usr/lib/llvm-17/bin",
     ],
     link_libs = [
+        "-Wl,--push-state,-as-needed",
         "-lstdc++",
+        "-Wl,--pop-state",
+        "-Wl,--push-state,-as-needed",
         "-lm",
+        "-Wl,--pop-state",
     ],
     opt_compile_flags = [
         "-g0",
