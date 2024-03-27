@@ -72,12 +72,6 @@ const (
 	unixTime       string = "UNIX_TIME"
 )
 
-type statCollector interface {
-	AddRecord(lr *lpb.LogRecord)
-	FinalizeAggregate(pInfos []*lpb.ProxyInfo)
-	ToProto() *spb.Stats
-}
-
 // Logger logs Records asynchronously into a file.
 type Logger struct {
 	Format         Format
@@ -87,7 +81,7 @@ type Logger struct {
 	infoFile       *os.File
 	info           *lpb.ProxyInfo
 	remoteDisabled bool
-	stats          statCollector
+	stats          stats.StatCollector
 	mi             *ignoremismatch.MismatchIgnorer
 	e              monitoring.StatExporter
 
@@ -301,7 +295,7 @@ func ParseFilepath(formatfile string) (Format, string, error) {
 
 // NewFromFormatFile instantiates a new Logger.
 // TODO(b/279057640): this is deprecated, remove and use New instead when --log_path flag is gone.
-func NewFromFormatFile(formatfile string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
+func NewFromFormatFile(formatfile string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
 	format, filepath, err := ParseFilepath(formatfile)
 	if err != nil {
 		return nil, err
@@ -332,7 +326,7 @@ func logFileSuffix(format Format) string {
 	}
 }
 
-func newLogger(format Format, recs, info *os.File, s statCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) *Logger {
+func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) *Logger {
 	l := &Logger{
 		Format:   format,
 		ch:       make(chan logEvent),
@@ -367,7 +361,7 @@ func (l *Logger) startBackgroundProcess() {
 }
 
 // New instantiates a new Logger.
-func New(format Format, dir string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
+func New(format Format, dir string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", format)
 	}

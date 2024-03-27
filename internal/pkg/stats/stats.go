@@ -81,6 +81,13 @@ func (st *Stat) IsEmpty() bool {
 	return st.Outlier1 == nil && st.Count == 0 && len(st.CountByValue) == 0
 }
 
+// StatCollector is the interface for the Stats type for testing.
+type StatCollector interface {
+	AddRecord(lr *lpb.LogRecord)
+	FinalizeAggregate(pInfos []*lpb.ProxyInfo)
+	ToProto() *spb.Stats
+}
+
 // Stats is a collection of Stat by field name.
 type Stats struct {
 	NumRecords                         int64
