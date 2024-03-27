@@ -27,10 +27,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
+
+	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
 	log "github.com/golang/glog"
 	"golang.org/x/oauth2"
@@ -135,12 +137,45 @@ type Error struct {
 	ExitCode int
 }
 
+type reusableCmd struct {
+	path       string
+	args       []string
+	digestOnce sync.Once
+	digest     digest.Digest
+}
+
+func newResubaleCmd(binary string, args []string) *reusableCmd {
+	cmd := exec.Command(binary, args...)
+	return &reusableCmd{
+		path: cmd.Path,
+		args: args,
+	}
+}
+
+func (r *reusableCmd) String() string {
+	return fmt.Sprintf("%s %v", r.path, strings.Join(r.args, " "))
+}
+
+func (r *reusableCmd) Cmd() *exec.Cmd {
+	return exec.Command(r.path, r.args...)
+}
+
+func (r *reusableCmd) Digest() digest.Digest {
+	r.digestOnce.Do(func() {
+		chCmd := append(r.args, r.path)
+		sort.Strings(chCmd)
+		cmdStr := strings.Join(chCmd, ",")
+		r.digest = digest.NewFromBlob([]byte(cmdStr))
+	})
+	return r.digest
+}
+
 // Credentials provides auth functionalities with a specific auth mechanism.
 type Credentials struct {
 	m              Mechanism
 	refreshExp     time.Time
 	tokenSource    *grpcOauth.TokenSource
-	credsHelperCmd *exec.Cmd
+	credsHelperCmd *reusableCmd
 	credsFile      string
 }
 
@@ -223,7 +258,7 @@ func buildCredentials(baseCreds cachedCredentials, credsFile string) (*Credentia
 }
 
 // build credentials obtained from the credentials helper.
-func buildExternalCredentials(baseCreds cachedCredentials, credsFile string, credsHelperCmd *exec.Cmd) *Credentials {
+func buildExternalCredentials(baseCreds cachedCredentials, credsFile string, credsHelperCmd *reusableCmd) *Credentials {
 	c := &Credentials{
 		m:              CredentialsHelper,
 		credsFile:      credsFile,
@@ -247,20 +282,12 @@ func buildExternalCredentials(baseCreds cachedCredentials, credsFile string, cre
 	return c
 }
 
-func execCmdDigest(credsHelperCmd *exec.Cmd) digest.Digest {
-	chCmd := append(credsHelperCmd.Args, credsHelperCmd.Path)
-	sort.Strings(chCmd)
-	cmdStr := strings.Join(chCmd, ",")
-	return digest.NewFromBlob([]byte(cmdStr))
-}
-
-// LoadCredsFromDisk loads credentials helper creds from disk.
-func LoadCredsFromDisk(credsFile string, credsHelperCmd *exec.Cmd) (*Credentials, error) {
+func loadCredsFromDisk(credsFile string, credsHelperCmd *reusableCmd) (*Credentials, error) {
 	cc, err := loadFromDisk(credsFile)
 	if err != nil {
 		return nil, err
 	}
-	cmdDigest := execCmdDigest(credsHelperCmd)
+	cmdDigest := credsHelperCmd.Digest()
 	if cc.credsHelperCmdDigest != cmdDigest.String() {
 		return nil, fmt.Errorf("cached credshelper command digest: %s is not the same as requested credshelper command digest: %s",
 			cc.credsHelperCmdDigest, cmdDigest.String())
@@ -290,8 +317,7 @@ func (c *Credentials) SaveToDisk() {
 	}
 	cc.token = t
 	if c.credsHelperCmd != nil {
-		cmdDigest := execCmdDigest(c.credsHelperCmd)
-		cc.credsHelperCmdDigest = cmdDigest.String()
+		cc.credsHelperCmdDigest = c.credsHelperCmd.Digest().String()
 	}
 	if err := saveToDisk(cc, c.credsFile); err != nil {
 		log.Errorf("Failed to save credentials to disk: %v", err)
@@ -413,7 +439,7 @@ func checkADCStatus() (time.Time, error) {
 // This should be wrapped in a "golang.org/x/oauth2".ReuseTokenSource
 // to avoid obtaining new tokens each time.
 type externalTokenSource struct {
-	credsHelperCmd *exec.Cmd
+	credsHelperCmd *reusableCmd
 }
 
 // Token retrieves an oauth2 token from the external tokensource.
@@ -423,7 +449,7 @@ func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
 	}
 	tk, _, err := runCredsHelperCmd(ts.credsHelperCmd)
 	if err == nil {
-		log.Infof("%s credentials refreshed at %v, expires at %v", ts.credsHelperCmd.Path, time.Now(), tk.Expiry)
+		log.Infof("'%s' credentials refreshed at %v, expires at %v", ts.credsHelperCmd, time.Now(), tk.Expiry)
 	}
 	return tk, err
 }
@@ -437,8 +463,8 @@ func NewExternalCredentials(credshelper string, credshelperArgs []string, credsF
 		}
 		credshelper = credshelperPath
 	}
-	credsHelperCmd := exec.Command(credshelper, credshelperArgs...)
-	creds, err := LoadCredsFromDisk(credsFile, credsHelperCmd)
+	credsHelperCmd := newResubaleCmd(credshelper, credshelperArgs)
+	creds, err := loadCredsFromDisk(credsFile, credsHelperCmd)
 	if err != nil {
 		log.Warningf("Failed to use cached credentials: %v", err)
 		tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
@@ -450,12 +476,13 @@ func NewExternalCredentials(credshelper string, credshelperArgs []string, credsF
 	return creds, err
 }
 
-func runCredsHelperCmd(credsHelperCmd *exec.Cmd) (*oauth2.Token, time.Time, error) {
+func runCredsHelperCmd(credsHelperCmd *reusableCmd) (*oauth2.Token, time.Time, error) {
 	log.V(2).Infof("Running %v", credsHelperCmd)
 	var stdout, stderr bytes.Buffer
-	credsHelperCmd.Stdout = &stdout
-	credsHelperCmd.Stderr = &stderr
-	err := credsHelperCmd.Run()
+	cmd := credsHelperCmd.Cmd()
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	out := stdout.String()
 	if stderr.String() != "" {
 		log.Errorf("Credentials helper warnings and errors: %v", stderr.String())

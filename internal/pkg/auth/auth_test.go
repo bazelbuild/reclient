@@ -18,7 +18,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -90,8 +89,8 @@ func TestCredentialsHelperCache(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to create dir for credentials file %q: %v", cf, err)
 	}
-	cmd := exec.Command("echo", `{"token":"testToken", "expiry":"", "refresh_expiry":""}`)
-	baseTs := &externalTokenSource{credsHelperCmd: cmd}
+	credsHelperCmd := newResubaleCmd("echo", []string{`{"token":"testToken", "expiry":"", "refresh_expiry":""}`})
+	baseTs := &externalTokenSource{credsHelperCmd: credsHelperCmd}
 	ts := &grpcOauth.TokenSource{
 		TokenSource: oauth2.ReuseTokenSourceWithExpiry(
 			&oauth2.Token{},
@@ -104,15 +103,15 @@ func TestCredentialsHelperCache(t *testing.T) {
 		refreshExp:     time.Time{},
 		tokenSource:    ts,
 		credsFile:      cf,
-		credsHelperCmd: cmd,
+		credsHelperCmd: credsHelperCmd,
 	}
 	creds.SaveToDisk()
-	c1, err := LoadCredsFromDisk(cf, cmd)
+	c1, err := loadCredsFromDisk(cf, credsHelperCmd)
 	if err != nil {
 		t.Errorf("LoadCredsFromDisk failed: %v", err)
 	}
 	// Second load to make sure credentials were not purged.
-	c2, err := LoadCredsFromDisk(cf, cmd)
+	c2, err := loadCredsFromDisk(cf, credsHelperCmd)
 	if err != nil {
 		t.Errorf("LoadCredsFromDisk failed: %v", err)
 	}
@@ -125,7 +124,6 @@ func TestCredentialsHelperCache(t *testing.T) {
 }
 
 func TestExternalToken(t *testing.T) {
-	// TODO(b/316005337): This test is disabled for windows since it doesn't work on windows yet. This should be fixed before experimentalCredentialsHelper is used for windows.
 	expiry := time.Now().Truncate(time.Second)
 	exp := expiry.Format(time.UnixDate)
 	tk := "testToken"
@@ -153,7 +151,7 @@ func TestExternalToken(t *testing.T) {
 		credshelperArgs = []string{fmt.Sprintf(`{"token":"%v","expiry":"%s","refresh_expiry":""}`, tk, exp)}
 	}
 
-	credsHelperCmd := exec.Command(credshelper, credshelperArgs...)
+	credsHelperCmd := newResubaleCmd(credshelper, credshelperArgs)
 	ts := &externalTokenSource{
 		credsHelperCmd: credsHelperCmd,
 	}
@@ -166,6 +164,60 @@ func TestExternalToken(t *testing.T) {
 	}
 	if !oauth2tk.Expiry.Equal(expiry) {
 		t.Errorf("externalTokenSource.Token() returned expiry=%s, want=%s", oauth2tk.Expiry, exp)
+	}
+}
+
+func TestExternalTokenRefresh(t *testing.T) {
+	tmp := t.TempDir()
+	tokenFile := filepath.Join(tmp, "reproxy.creds")
+	var (
+		credshelper     string
+		credshelperArgs []string
+	)
+	if runtime.GOOS == "windows" {
+		credshelper = "cmd"
+		credshelperArgs = []string{
+			"/c",
+			"cat",
+			tokenFile,
+		}
+	} else {
+		credshelper = "cat"
+		credshelperArgs = []string{
+			tokenFile,
+		}
+	}
+	credsHelperCmd := newResubaleCmd(credshelper, credshelperArgs)
+	ts := &externalTokenSource{
+		credsHelperCmd: credsHelperCmd,
+	}
+	for _, token := range []string{"testToken", "testTokenRefresh"} {
+		expiry := time.Now().Truncate(time.Second)
+		writeTokenFile(t, tokenFile, token, expiry)
+
+		oauth2tk, err := ts.Token()
+		if err != nil {
+			t.Errorf("externalTokenSource.Token() returned an error: %v", err)
+		}
+		if oauth2tk.AccessToken != token {
+			t.Errorf("externalTokenSource.Token() returned token=%s, want=%s", oauth2tk.AccessToken, token)
+		}
+		if !oauth2tk.Expiry.Equal(expiry) {
+			t.Errorf("externalTokenSource.Token() returned expiry=%s, want=%s", oauth2tk.Expiry, expiry)
+		}
+	}
+}
+
+func writeTokenFile(t *testing.T, path, token string, expiry time.Time) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		t.Fatalf("Unable to open file %v: %v", path, err)
+	}
+	defer f.Close()
+	chJSON := fmt.Sprintf(`{"token":"%v","expiry":"%s","refresh_expiry":""}`, token, expiry.Format(time.UnixDate))
+	if _, err := f.Write([]byte(chJSON)); err != nil {
+		t.Fatalf("Unable to write to file %v: %v", f.Name(), err)
 	}
 }
 
@@ -252,5 +304,33 @@ func TestNewExternalCredentials(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestReusableCmd(t *testing.T) {
+	binary := "echo"
+	args := []string{"hello"}
+	cmd := newResubaleCmd(binary, args)
+
+	output, err := cmd.Cmd().CombinedOutput()
+	if err != nil {
+		t.Errorf("Command failed: %v", err)
+	} else if string(output) != "hello\n" {
+		t.Errorf("Command returned unexpected output: %s", output)
+	}
+
+	output, err = cmd.Cmd().CombinedOutput()
+	if err != nil {
+		t.Errorf("Command failed second time: %v", err)
+	} else if string(output) != "hello\n" {
+		t.Errorf("Command returned unexpected output second time: %s", output)
+	}
+}
+
+func TestReusableCmdDigest(t *testing.T) {
+	cmd1 := newResubaleCmd("echo", []string{"Hello"})
+	cmd2 := newResubaleCmd("echo", []string{"Bye"})
+	if cmd1.Digest() == cmd2.Digest() {
+		t.Errorf("`%s` and `%s` have the same digest", cmd1, cmd2)
 	}
 }
