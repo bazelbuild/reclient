@@ -32,6 +32,7 @@ import (
 	stpb "github.com/bazelbuild/reclient/api/stat"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources/usage"
+	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -77,21 +78,18 @@ type statCollector interface {
 	ToProto() *spb.Stats
 }
 
-// ExportActionMetricsFunc is the type of "github.com/bazelbuild/reclient/internal/pkg/monitoring".Exporter.ExportActionMetrics
-type ExportActionMetricsFunc func(ctx context.Context, lr *lpb.LogRecord, remoteDisabled bool)
-
 // Logger logs Records asynchronously into a file.
 type Logger struct {
-	Format              Format
-	ch                  chan logEvent
-	wg                  sync.WaitGroup
-	recsFile            *os.File
-	infoFile            *os.File
-	info                *lpb.ProxyInfo
-	remoteDisabled      bool
-	stats               statCollector
-	mi                  *ignoremismatch.MismatchIgnorer
-	exportActionMetrics ExportActionMetricsFunc
+	Format         Format
+	ch             chan logEvent
+	wg             sync.WaitGroup
+	recsFile       *os.File
+	infoFile       *os.File
+	info           *lpb.ProxyInfo
+	remoteDisabled bool
+	stats          statCollector
+	mi             *ignoremismatch.MismatchIgnorer
+	e              monitoring.StatExporter
 
 	runningActions     int32
 	peakRunningActions int32
@@ -148,8 +146,8 @@ func (e *endActionEvent) apply(l *Logger) {
 	if !e.lr.open {
 		return
 	}
-	if l.exportActionMetrics != nil {
-		l.exportActionMetrics(context.Background(), e.lr.LogRecord, l.remoteDisabled)
+	if l.e != nil {
+		l.e.ExportActionMetrics(context.Background(), e.lr.LogRecord, l.remoteDisabled)
 	}
 	// Process any mismatches to be ignored for this log record.
 	l.mi.ProcessLogRecord(e.lr.LogRecord)
@@ -303,7 +301,7 @@ func ParseFilepath(formatfile string) (Format, string, error) {
 
 // NewFromFormatFile instantiates a new Logger.
 // TODO(b/279057640): this is deprecated, remove and use New instead when --log_path flag is gone.
-func NewFromFormatFile(formatfile string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
+func NewFromFormatFile(formatfile string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
 	format, filepath, err := ParseFilepath(formatfile)
 	if err != nil {
 		return nil, err
@@ -334,7 +332,7 @@ func logFileSuffix(format Format) string {
 	}
 }
 
-func newLogger(format Format, recs, info *os.File, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) *Logger {
+func newLogger(format Format, recs, info *os.File, s statCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) *Logger {
 	l := &Logger{
 		Format:   format,
 		ch:       make(chan logEvent),
@@ -345,12 +343,12 @@ func newLogger(format Format, recs, info *os.File, s statCollector, mi *ignoremi
 			Metrics:    make(map[string]*lpb.Metric),
 			Flags:      make(map[string]string),
 		},
-		stats:               s,
-		mi:                  mi,
-		exportActionMetrics: e,
-		open:                true,
-		completedActions:    make(map[lpb.CompletionStatus]int32),
-		u:                   u,
+		stats:            s,
+		mi:               mi,
+		e:                e,
+		open:             true,
+		completedActions: make(map[lpb.CompletionStatus]int32),
+		u:                u,
 	}
 	l.startBackgroundProcess()
 	return l
@@ -369,7 +367,7 @@ func (l *Logger) startBackgroundProcess() {
 }
 
 // New instantiates a new Logger.
-func New(format Format, dir string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e ExportActionMetricsFunc, u *usage.PsutilSampler) (*Logger, error) {
+func New(format Format, dir string, s statCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", format)
 	}

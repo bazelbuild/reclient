@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/internal/pkg/deps",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//internal/pkg/event",
         "//internal/pkg/logger",
-        "//internal/pkg/logger/event",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
         "@com_github_golang_glog//:glog",
@@ -21,9 +21,9 @@ go_test(
     embed = [":deps"],
     deps = [
         "//api/log",
+        "//internal/pkg/event",
         "//internal/pkg/execroot",
         "//internal/pkg/logger",
-        "//internal/pkg/logger/event",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",

@@ -24,8 +24,8 @@ import (
 	"time"
 
 	ppb "github.com/bazelbuild/reclient/api/proxy"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/version"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	log "github.com/golang/glog"

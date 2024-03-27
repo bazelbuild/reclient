@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/google/go-cmp/cmp"
@@ -604,7 +604,7 @@ func TestExportMetrics(t *testing.T) {
 	}
 	execRoot := t.TempDir()
 
-	// Test nil exportActionMetrics function.
+	// Test nil exporter function.
 	logger, err := New(TextFormat, execRoot, &stubStats{}, nil, nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
@@ -616,9 +616,9 @@ func TestExportMetrics(t *testing.T) {
 	}
 	logger.CloseAndAggregate()
 
-	// Test valid exportActionMetrics function.
+	// Test valid exporter.
 	e := &stubExporter{}
-	logger, err = New(TextFormat, execRoot, &stubStats{}, nil, e.ExportActionMetrics, nil)
+	logger, err = New(TextFormat, execRoot, &stubStats{}, nil, e, nil)
 	logger.remoteDisabled = false
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
@@ -633,9 +633,9 @@ func TestExportMetrics(t *testing.T) {
 		t.Errorf("Log records sent to exporter returned diff in result: (-want +got)\n%s", diff)
 	}
 
-	// Test valid exportActionMetrics function with remoteDisabled=true.
+	// Test valid exporter with remoteDisabled=true.
 	e = &stubExporter{}
-	logger, err = New(TextFormat, execRoot, &stubStats{}, nil, e.ExportActionMetrics, nil)
+	logger, err = New(TextFormat, execRoot, &stubStats{}, nil, e, nil)
 	logger.remoteDisabled = true
 	if err != nil {
 		t.Errorf("Failed to create new Logger: %v", err)
@@ -685,6 +685,9 @@ type stubExporter struct {
 func (e *stubExporter) ExportActionMetrics(ctx context.Context, rec *lpb.LogRecord, remoteDisabled bool) {
 	e.exportedRecs = append(e.exportedRecs, ExportActionMetricsCall{Rec: rec, RemoteDisabled: remoteDisabled})
 }
+
+func (e *stubExporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats) {}
+func (e *stubExporter) Close()                                                {}
 
 func TestLogger_CollectResourceUsageSamples(t *testing.T) {
 	tests := []struct {

@@ -29,10 +29,10 @@ import (
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/deps"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
 	"github.com/bazelbuild/reclient/internal/pkg/version"

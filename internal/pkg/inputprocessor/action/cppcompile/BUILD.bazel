@@ -11,12 +11,12 @@ go_library(
     deps = [
         "//api/scandeps",
         "//internal/pkg/cppdependencyscanner",
+        "//internal/pkg/event",
         "//internal/pkg/inputprocessor",
         "//internal/pkg/inputprocessor/clangparser",
         "//internal/pkg/inputprocessor/depscache",
         "//internal/pkg/inputprocessor/flags",
         "//internal/pkg/logger",
-        "//internal/pkg/logger/event",
         "//internal/pkg/pathtranslator",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",

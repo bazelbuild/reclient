@@ -28,8 +28,8 @@ import (
 
 	ppb "github.com/bazelbuild/reclient/api/proxy"
 	spb "github.com/bazelbuild/reclient/api/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/reproxypid"
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"

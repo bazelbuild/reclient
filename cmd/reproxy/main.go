@@ -263,13 +263,11 @@ func main() {
 		defer c.SaveToDisk()
 	}
 	var e *monitoring.Exporter
-	var exportActionMetrics logger.ExportActionMetricsFunc
 	if *metricsProject != "" {
 		e, err = newExporter(c)
 		if err != nil {
 			log.Warningf("Failed to initialize cloud monitoring: %v", err)
 		} else {
-			exportActionMetrics = e.ExportActionMetrics
 			defer e.Close()
 		}
 	}
@@ -277,7 +275,7 @@ func main() {
 	if err != nil {
 		log.Errorf("Failed to create mismatch ignorer: %v", err)
 	}
-	l, err := initializeLogger(mi, exportActionMetrics)
+	l, err := initializeLogger(mi, e)
 	if err != nil {
 		log.Exitf("%v", err)
 	}
@@ -475,7 +473,7 @@ func mustBuildCredentials() *auth.Credentials {
 }
 
 
-func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e logger.ExportActionMetricsFunc) (*logger.Logger, error) {
+func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter) (*logger.Logger, error) {
 	u := usage.New()
 	if len(proxyLogDir) > 0 {
 		format, err := logger.ParseFormat(*logFormat)

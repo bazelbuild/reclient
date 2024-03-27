@@ -10,8 +10,8 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/proxy",
+        "//internal/pkg/event",
         "//internal/pkg/logger",
-        "//internal/pkg/logger/event",
         "//internal/pkg/version",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
         "@com_github_golang_glog//:glog",

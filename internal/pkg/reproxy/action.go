@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/deps"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 

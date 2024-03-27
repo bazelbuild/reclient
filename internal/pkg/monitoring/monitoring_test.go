@@ -26,7 +26,7 @@ import (
 	"time"
 
 	lpb "github.com/bazelbuild/reclient/api/log"
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	st "github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/version"
 

@@ -3,6 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "event",
     srcs = ["event.go"],
-    importpath = "github.com/bazelbuild/reclient/internal/pkg/logger/event",
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/event",
     visibility = ["//:__subpackages__"],
 )

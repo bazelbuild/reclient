@@ -28,8 +28,8 @@ import (
 
 	lpb "github.com/bazelbuild/reclient/api/log"
 	spb "github.com/bazelbuild/reclient/api/stats"
+	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
-	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -85,6 +85,13 @@ type recorder interface {
 	close()
 	tagsContext(ctx context.Context, labels map[tag.Key]string) context.Context
 	recordWithTags(ctx context.Context, labels map[tag.Key]string, val stats.Measurement)
+}
+
+// StatExporter is the interface for the exporter type for testing purposes.
+type StatExporter interface {
+	ExportActionMetrics(ctx context.Context, r *lpb.LogRecord, remoteDisabled bool)
+	ExportBuildMetrics(ctx context.Context, sp *spb.Stats)
+	Close()
 }
 
 // Exporter is a type used to construct a monitored resource.
