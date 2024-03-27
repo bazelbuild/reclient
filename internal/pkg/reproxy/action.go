@@ -297,7 +297,7 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 	go func() {
 		select {
 		case <-lCh:
-			ch <- a.runLocalRace(ctx, cCtx, pool)
+			ch <- a.runLocalRace(ctx, cCtx, pool, client)
 		case <-cCtx.Done():
 			ch <- raceResult{t: canceled}
 		}
@@ -473,11 +473,14 @@ func (a *action) runRemoteRace(ctx, cCtx context.Context, client *rexec.Client, 
 // are already acquired and local execution has started, its results will be
 // used regardless of the state of remote execution. Local execution does not
 // get canceled if it starts, even if remote execution is done.
-func (a *action) runLocalRace(ctx, cCtx context.Context, pool *LocalPool) raceResult {
+func (a *action) runLocalRace(ctx, cCtx context.Context, pool *LocalPool, client *rexec.Client) raceResult {
 	log.V(2).Infof("%v: Running local", a.cmd.Identifiers.ExecutionID)
 	lr := logger.NewLogRecord()
 	lOE := outerr.NewRecordingOutErr()
-
+	err := a.downloadVirtualInputs(cCtx, client)
+	if err != nil {
+		log.Warningf("%v: Failed to download virtual inputs before local race run: %v", a.cmd.Identifiers.ExecutionID, err)
+	}
 	cmd := a.duplicateCmd(0)
 	if a.cmd.InputSpec != nil {
 		if len(a.cmdEnvironment) > 0 {
@@ -987,4 +990,50 @@ func mergeMaps(dst, src map[string]string) {
 	for k, v := range src {
 		dst[k] = v
 	}
+}
+
+func (a *action) downloadVirtualInputs(ctx context.Context, cl *rexec.Client) error {
+	if a.cmd.InputSpec == nil {
+		return nil
+	}
+	outDir := a.cmd.ExecRoot
+	outs := map[string]*client.TreeOutput{}
+	for _, vi := range a.cmd.InputSpec.VirtualInputs {
+		if vi.Digest != "" && !(len(vi.Contents) > 0) {
+			dg, err := digest.NewFromString(vi.Digest)
+			if err != nil {
+				log.Warningf("%v: Invalid digest provided for virtual input %v: %v", a.cmd.Identifiers.ExecutionID, vi.Path, err)
+			}
+			outs[vi.Path] = &client.TreeOutput{
+				Path:   vi.Path,
+				Digest: dg,
+			}
+		}
+	}
+	if len(outs) == 0 {
+		return nil
+	}
+	cmd := a.cmd
+	outDir = filepath.Join(outDir, cmd.WorkingDir)
+	_, err := cl.GrpcClient.DownloadOutputs(ctx, outs, outDir, cl.FileMetadataCache)
+	if err != nil {
+		return err
+	}
+	for _, vi := range a.cmd.InputSpec.VirtualInputs {
+		if _, ok := outs[vi.Path]; ok {
+			abspath := filepath.Join(outDir, vi.Path)
+			if vi.Mtime != time.Unix(0, 0).UTC() {
+				if err := os.Chtimes(abspath, vi.Mtime, vi.Mtime); err != nil {
+					log.Warningf("%v: Failed to change mtime of %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
+				}
+			}
+
+			if vi.FileMode != os.FileMode(0) {
+				if err := os.Chmod(abspath, vi.FileMode); err != nil {
+					log.Warningf("%v: Failed to change file mode of %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
+				}
+			}
+		}
+	}
+	return nil
 }

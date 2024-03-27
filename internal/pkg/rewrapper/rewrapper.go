@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,8 +33,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ppb "github.com/bazelbuild/reclient/api/proxy"
+	tspb "google.golang.org/protobuf/types/known/timestamppb"
 
+	ppb "github.com/bazelbuild/reclient/api/proxy"
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 )
 
@@ -76,6 +78,7 @@ type CommandOptions struct {
 	OutputFiles                  []string
 	OutputDirectories            []string
 	Inputs                       []string
+	VirtualInputs                string
 	ToolchainInputs              []string
 	InputListPaths               []string
 	OutputListPaths              []string
@@ -138,6 +141,10 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 		}
 		outputs = append(outputs, more...)
 	}
+	virtualinputs, err := parseVirtualInputs(opts.VirtualInputs)
+	if err != nil {
+		return nil, err
+	}
 	c := &cpb.Command{
 		Identifiers: &cpb.Identifiers{
 			CommandId:    opts.CommandID,
@@ -147,6 +154,7 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 		ExecRoot: opts.ExecRoot,
 		Input: &cpb.InputSpec{
 			Inputs:               inputs,
+			VirtualInputs:        virtualinputs,
 			EnvironmentVariables: envVars(opts.EnvVarAllowlist),
 		},
 		Output: &cpb.OutputSpec{
@@ -208,4 +216,52 @@ func envVars(allowlist []string) map[string]string {
 		vars[v] = os.Getenv(v)
 	}
 	return vars
+}
+
+func parseVirtualInputs(viFlag string) ([]*cpb.VirtualInput, error) {
+	if viFlag == "" {
+		return nil, nil
+	}
+	virtualinputs := make([]*cpb.VirtualInput, 0)
+	files := strings.Split(viFlag, ";")
+	for _, file := range files {
+		if len(file) == 0 {
+			continue
+		}
+		fileProperties := strings.Split(file, ",")
+		vi := &cpb.VirtualInput{}
+		for _, fp := range fileProperties {
+			if strings.HasPrefix(fp, "path=") {
+				vi.Path = strings.TrimPrefix(fp, "path=")
+			} else if strings.HasPrefix(fp, "digest=") {
+				vi.Digest = strings.TrimPrefix(fp, "digest=")
+			} else if strings.HasPrefix(fp, "mtime=") {
+				var nanos int64
+				m := strings.TrimPrefix(fp, "mtime=")
+				if m != "" {
+					mtime, err := strconv.ParseInt(m, 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					nanos = mtime
+				}
+				vi.Mtime = tspb.New(time.Unix(0, nanos).UTC())
+			} else if strings.HasPrefix(fp, "filemode=") {
+				fm := strings.TrimPrefix(fp, "filemode=")
+				if fm == "" {
+					continue
+				}
+				filemode, err := strconv.ParseInt(fm, 8, 32)
+				if err != nil {
+					return nil, err
+				}
+				vi.Filemode = uint32(filemode)
+			}
+		}
+		if vi.Path == "" || vi.Digest == "" {
+			return nil, fmt.Errorf("invalid format provided for virtual input %v. path and digest are required", file)
+		}
+		virtualinputs = append(virtualinputs, vi)
+	}
+	return virtualinputs, nil
 }
