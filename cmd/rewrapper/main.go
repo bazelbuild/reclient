@@ -40,7 +40,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/rewrapper"
-	"github.com/bazelbuild/reclient/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 

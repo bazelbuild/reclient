@@ -28,7 +28,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
-	"github.com/bazelbuild/reclient/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
 	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"

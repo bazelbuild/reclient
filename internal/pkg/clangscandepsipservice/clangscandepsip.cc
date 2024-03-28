@@ -20,7 +20,7 @@
 #include <glog/logging.h>
 
 #include "include_processor.h"
-#include "pkg/version/version.h"
+#include "internal/pkg/version/version.h"
 
 using grpc::ServerContext;
 using grpc::Status;

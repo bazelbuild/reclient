@@ -47,8 +47,8 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/reproxypid"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
-	"github.com/bazelbuild/reclient/pkg/version"
 
 	"cloud.google.com/go/profiler"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"

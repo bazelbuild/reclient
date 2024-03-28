@@ -30,7 +30,7 @@ import (
 	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
-	"github.com/bazelbuild/reclient/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	log "github.com/golang/glog"

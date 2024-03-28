@@ -12,7 +12,7 @@ go_library(
         "//api/proxy",
         "//internal/pkg/logger",
         "//internal/pkg/logger/event",
-        "//pkg/version",
+        "//internal/pkg/version",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
         "@com_github_golang_glog//:glog",
         "@org_golang_google_protobuf//proto",

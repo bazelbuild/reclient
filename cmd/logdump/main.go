@@ -22,7 +22,7 @@ import (
 
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
-	"github.com/bazelbuild/reclient/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"google.golang.org/protobuf/proto"
 

@@ -11,7 +11,7 @@ cc_library(
     deps = [
         ":include_processor",
         "//api/scandeps:scandeps_cc",
-        "//pkg/version:version_cc",
+        "//internal/pkg/version:version_cc",
         "@com_github_grpc_grpc//:grpc++",
     ],
 )
@@ -59,7 +59,7 @@ cc_library(
         "@goma//:root",
         "@goma//:zlib",
         "//goma:goma_input_processor",
-        "//pkg/version:version_cc",
+        "//internal/pkg/version:version_cc",
     ] + select({
         "@platforms//os:windows": [
             "@com_github_google_glog//:glog",

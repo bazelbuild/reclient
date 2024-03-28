@@ -30,7 +30,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/internal/pkg/reproxystatus"
-	"github.com/bazelbuild/reclient/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 	log "github.com/golang/glog"
 
 	"cloud.google.com/go/bigquery"

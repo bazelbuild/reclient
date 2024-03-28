@@ -25,7 +25,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/DependencyScanning/DependencyScanningTool.h"
-#include "pkg/version/version.h"
+#include "internal/pkg/version/version.h"
 
 // Some of reclient's use cases require ubuntu 16.04, which is only shipped
 // with GLIBC 2.23 at the latest, by default (or so is the ubuntu:16.04 docker

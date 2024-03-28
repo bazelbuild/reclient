@@ -28,7 +28,7 @@ import (
 	lpb "github.com/bazelbuild/reclient/api/log"
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	st "github.com/bazelbuild/reclient/internal/pkg/stats"
-	"github.com/bazelbuild/reclient/pkg/version"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"

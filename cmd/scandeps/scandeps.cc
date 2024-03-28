@@ -24,7 +24,7 @@
 #include <glog/logging.h>
 
 #include "gflags/gflags.h"
-#include "pkg/version/version.h"
+#include "internal/pkg/version/version.h"
 #include "server/server.h"
 
 #ifdef __linux__

@@ -9,7 +9,7 @@ go_library(
         "//api/log",
         "//internal/pkg/logger",
         "//internal/pkg/rbeflag",
-        "//pkg/version",
+        "//internal/pkg/version",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/moreflag",
         "@com_github_golang_glog//:glog",
         "@org_golang_google_protobuf//proto",

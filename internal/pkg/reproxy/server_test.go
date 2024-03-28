@@ -35,8 +35,8 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/logger/event"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
+	"github.com/bazelbuild/reclient/internal/pkg/version"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
-	"github.com/bazelbuild/reclient/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
