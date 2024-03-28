@@ -247,10 +247,10 @@ func main() {
 
 	logDir := getLogDir()
 	var opts []grpc.ServerOption
-	truncateInterceptor := interceptors.NewTruncInterceptor(ipc.GrpcMaxMsgSize, logDir)
+	truncateInterceptor := interceptors.NewTruncInterceptor(ipc.GrpcMaxListenSize, logDir)
 	opts = append(
 		opts,
-		grpc.MaxRecvMsgSize(ipc.GrpcMaxMsgSize),
+		grpc.MaxRecvMsgSize(ipc.GrpcMaxListenSize),
 		grpc.ChainUnaryInterceptor(interceptors.UnaryServerInterceptor, truncateInterceptor),
 		grpc.StreamInterceptor(interceptors.StreamServerInterceptor),
 	)

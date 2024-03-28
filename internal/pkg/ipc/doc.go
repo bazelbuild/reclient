@@ -18,4 +18,10 @@ package ipc
 const (
 	// GrpcMaxMsgSize is the max value of gRPC response that can be received by the client (in bytes)
 	GrpcMaxMsgSize = 1024 * 1024 * 32 // 32MB (default is 4MB)
+
+	// GrpcMaxListenSize is the max value of the gRPC response that can be listened for by the proxy.
+	// This is message size received from rewrapper.
+	// Limiting this to a smaller value than reception from RBE due to performance issues on intel macs
+	// when this is set to 32MB.
+	GrpcMaxListenSize = 1024 * 1024 * 8
 )
