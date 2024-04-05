@@ -56,6 +56,7 @@ var (
 	uploadBufferSize     = flag.Int("upload_buffer_size", 10000, "Buffer size to flush unified uploader daemon.")
 	uploadTickDuration   = flag.Duration("upload_tick_duration", 50*time.Millisecond, "How often to flush unified uploader daemon.")
 	oauthToken           = flag.String("oauth_token", "", "Token to use when authenticating with GCP.")
+	uploadLogs           = flag.Bool("upload_logs", false, "If true, uploads logs files to cas and includes references hashes in uploaded stats proto.")
 )
 
 func main() {
@@ -89,25 +90,27 @@ func main() {
 		*logPath = ""
 	}
 
-	logDirs, err := collectlogfiles.DeduplicateDirs(append(proxyLogDir, getLogDir(), *outputDir))
-	if err != nil {
-		log.Errorf("Unable to determine log dirs for uploading: %v", err)
+	if *uploadLogs {
+		logDirs, err := collectlogfiles.DeduplicateDirs(append(proxyLogDir, getLogDir(), *outputDir))
+		if err != nil {
+			log.Errorf("Unable to determine log dirs for uploading: %v", err)
+		}
+
+		if len(logDirs) > 0 {
+			grpcClient, err := connectToRBE(ctx, ts)
+			if err != nil {
+				log.Errorf("Error connecting to rbe: %v", err)
+			}
+			defer grpcClient.Close()
+			ldgs, err := collectlogfiles.UploadDirsToCas(grpcClient, logDirs, *logPath)
+			if err != nil {
+				log.Errorf("Error uploading logs to rbe: %v", err)
+			}
+			s.LogDirectories = ldgs
+		}
 	}
 
-	if len(logDirs) > 0 {
-		grpcClient, err := connectToRBE(ctx, ts)
-		if err != nil {
-			log.Errorf("Error connecting to rbe: %v", err)
-		}
-		defer grpcClient.Close()
-		ldgs, err := collectlogfiles.UploadDirsToCas(grpcClient, logDirs, *logPath)
-		if err != nil {
-			log.Errorf("Error uploading logs to rbe: %v", err)
-		}
-		s.LogDirectories = ldgs
-	}
-
-	err = stats.WriteStats(s, *outputDir)
+	err := stats.WriteStats(s, *outputDir)
 	if err != nil {
 		log.Errorf("Error writing log digests to rbe_metrics files: %v", err)
 	}
