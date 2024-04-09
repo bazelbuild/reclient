@@ -222,6 +222,9 @@ func (e *Exporter) initCloudMonitoring(ctx context.Context) error {
 
 // ExportActionMetrics exports metrics for one log record to opencensus.
 func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord, remoteDisabled bool) {
+	if e == nil {
+		return
+	}
 	aCtx := e.recorder.tagsContext(ctx, staticKeys)
 	aCtx = e.recorder.tagsContext(aCtx, map[tag.Key]string{
 		osFamilyKey: runtime.GOOS,
