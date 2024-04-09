@@ -32,6 +32,7 @@ import (
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 
+	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
 	log "github.com/golang/glog"
@@ -214,6 +215,9 @@ func MechanismFromFlags() (Mechanism, error) {
 
 // Cacheable returns true if this mechanism should be cached to disk
 func (m Mechanism) Cacheable() bool {
+	if !features.GetConfig().EnableCredentialCache {
+		return false
+	}
 	if m == CredentialsHelper {
 		return true
 	}

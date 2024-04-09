@@ -45,6 +45,10 @@ type Config struct {
 	// closing reproxy to pin down where the execution gets stuck
 	//TODO(b/284246561) Remove once we have a confirmation where action execution gets stuck
 	ExperimentalExitOnStuckActions bool
+
+	// If false, disables the credential cache even if the auth mechanism claims it is cachable.
+	// It is enabled by default.
+	EnableCredentialCache bool
 }
 
 var config = &Config{}
@@ -61,4 +65,5 @@ func init() {
 	flag.BoolVar(&GetConfig().ExperimentalSysrootDoNotUpload, "experimental_sysroot_do_not_upload", false, "Do not upload the the files/directories under the directory specified by the --sysroot flag.")
 	flag.BoolVar(&GetConfig().ExperimentalGomaDepsCache, "experimental_goma_deps_cache", false, "Use go deps cache with goma instead of goma's deps cache")
 	flag.BoolVar(&GetConfig().ExperimentalExitOnStuckActions, "experimental_exit_on_stuck_actions", false, "Stops reproxy with exit_code=1 if the command didn't finish within 2*reclient_timeout")
+	flag.BoolVar(&GetConfig().EnableCredentialCache, "enable_creds_cache", true, "If false, disables the credentials cache even if used auth mechanism supports it")
 }
