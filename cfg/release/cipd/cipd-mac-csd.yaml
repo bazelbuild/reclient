@@ -32,3 +32,4 @@ data:
   - file: remotetool
   - file: scandeps_server
   - file: metricsuploader
+  - file: auxiliary_proto-descriptor-set.proto.bin

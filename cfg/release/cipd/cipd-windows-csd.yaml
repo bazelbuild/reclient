@@ -33,3 +33,4 @@ data:
   - file: scandeps_server.pdb
   - file: scandeps_server.sym
   - file: metricsuploader.exe
+  - file: auxiliary_proto-descriptor-set.proto.bin
