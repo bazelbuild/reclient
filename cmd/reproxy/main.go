@@ -132,6 +132,8 @@ var (
 	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
 	useCasNg           = flag.Bool("use_casng", false, "Use casng pkg.")
 	logHTTPCalls       = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
+
+	maxListenSizeKb = flag.Int("max_listen_size_kb", 8*1024, "Maximum grpc listen size in kilobytes for messages from rewrapper")
 )
 
 func verifyFlags() {
@@ -247,10 +249,12 @@ func main() {
 
 	logDir := getLogDir()
 	var opts []grpc.ServerOption
-	truncateInterceptor := interceptors.NewTruncInterceptor(ipc.GrpcMaxListenSize, logDir)
+
+	maxListenBytes := *maxListenSizeKb * 1024
+	truncateInterceptor := interceptors.NewTruncInterceptor(maxListenBytes, logDir)
 	opts = append(
 		opts,
-		grpc.MaxRecvMsgSize(ipc.GrpcMaxListenSize),
+		grpc.MaxRecvMsgSize(maxListenBytes),
 		grpc.ChainUnaryInterceptor(interceptors.UnaryServerInterceptor, truncateInterceptor),
 		grpc.StreamInterceptor(interceptors.StreamServerInterceptor),
 	)
