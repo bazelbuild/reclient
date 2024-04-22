@@ -50,7 +50,6 @@ var (
 	metricsNamespace     = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project).")
 	metricsTable         = flag.String("metrics_table", "", "Resource specifier of the BigQuery table to upload the contents of rbe_metrics.pb to. If the project is not provided in the specifier metrics_project will be used.")
 	outputDir            = flag.String("output_dir", os.TempDir(), "The location to which stats should be written.")
-	useCasNg             = flag.Bool("use_casng", false, "Use casng pkg.")
 	compressionThreshold = flag.Int("compression_threshold", -1, "Threshold size in bytes for compressing Bytestream reads or writes. Use a negative value for turning off compression.")
 	useBatches           = flag.Bool("use_batches", true, "Use batch operations for relatively small blobs.")
 	uploadBufferSize     = flag.Int("upload_buffer_size", 10000, "Buffer size to flush unified uploader daemon.")
@@ -136,7 +135,6 @@ func connectToRBE(ctx context.Context, ts *oauth.TokenSource) (*client.Client, e
 		client.UnifiedUploadTickDuration(*uploadTickDuration),
 		client.UseBatchOps(*useBatches),
 		client.CompressedBytestreamThreshold(*compressionThreshold),
-		client.UseCASNG(*useCasNg),
 	}
 	if ts != nil {
 		clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})

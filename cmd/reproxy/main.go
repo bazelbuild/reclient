@@ -130,7 +130,6 @@ var (
 
 	credsFile          = flag.String("creds_file", "", "Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
 	waitForShutdownRPC = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
-	useCasNg           = flag.Bool("use_casng", false, "Use casng pkg.")
 	logHTTPCalls       = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 
 	maxListenSizeKb = flag.Int("max_listen_size_kb", 8*1024, "Maximum grpc listen size in kilobytes for messages from rewrapper")
@@ -356,7 +355,6 @@ func main() {
 			client.UnifiedDownloadTickDuration(*downloadTickDuration),
 			client.UseBatchOps(*useBatches),
 			client.CompressedBytestreamThreshold(*compressionThreshold),
-			client.UseCASNG(*useCasNg),
 		}
 		if ts := c.TokenSource(); ts != nil {
 			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
