@@ -30,4 +30,5 @@ data:
   - file: rewrapper
   - file: reproxystatus
   - file: reclientreport
+  - file: scandeps_server
   - file: metricsuploader

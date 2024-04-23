@@ -29,4 +29,5 @@ data:
   - file: rewrapper.exe
   - file: reproxystatus.exe
   - file: reclientreport.exe
+  - file: scandeps_server
   - file: metricsuploader.exe
