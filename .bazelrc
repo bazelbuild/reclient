@@ -80,7 +80,8 @@ build:windows --workspace_status_command=./scripts/sha.bat
 # TODO(b/144421495): Temporary workaround for https://github.com/bazelbuild/rules_go/issues/2224
 # to stamp version numbers. Remove when the issue is fixed.
 build --stamp
-build --copt '-fPIC'
+build:linux --copt '-fPIC'
+build:macos --copt '-fPIC'
 
 # Required for backwards compatibility with older GLIBC
 # version present on Ubuntu 1604. See the comment on
