@@ -26,6 +26,19 @@ _platform_transition = transition(
     outputs = [_PLATFORMS, _EXEC_PLATFORMS, _CXXOPT, _HOST_CXXOPT],
 )
 
+def _copy_file(ctx, input, output):
+    ctx.actions.run_shell(
+        inputs = [input],
+        outputs = [output],
+        command = "cp %s %s" % (input.path, output.path),
+        mnemonic = "Copy",
+        # Sensible defaults copied from https://github.com/bazelbuild/bazel-skylib/blob/main/rules/private/copy_common.bzl
+        execution_requirements = {
+            "no-remote": "1",
+            "no-cache": "1",
+        },
+    )
+
 def _cc_platform_binary_impl(ctx):
     """ The implementation of _cc_platform_binary rule.
 
@@ -44,20 +57,23 @@ def _cc_platform_binary_impl(ctx):
     extension = ".exe" if cc_binary_outfile.path.endswith(".exe") else ""
     outfile = ctx.actions.declare_file(ctx.label.name + extension)
 
-    ctx.actions.run_shell(
-        inputs = [cc_binary_outfile],
-        outputs = [outfile],
-        command = "cp %s %s" % (cc_binary_outfile.path, outfile.path),
-        mnemonic = "Copy",
-        # Sensible defaults copied from https://github.com/bazelbuild/bazel-skylib/blob/main/rules/private/copy_common.bzl
-        execution_requirements = {
-            "no-remote": "1",
-            "no-cache": "1",
-        },
-    )
+    _copy_file(ctx, cc_binary_outfile, outfile)
 
     files = [outfile]
     result = []
+
+    if DebugPackageInfo in actual_binary:
+        wrapped_dbginfo = actual_binary[DebugPackageInfo]
+        if actual_binary[DebugPackageInfo].stripped_file:
+            _copy_file(ctx, actual_binary[DebugPackageInfo].stripped_file, ctx.outputs.out_stripped_file)
+        result.append(
+            DebugPackageInfo(
+                target_label = ctx.label,
+                stripped_file = ctx.outputs.out_stripped_file if wrapped_dbginfo.stripped_file else None,
+                unstripped_file = outfile,
+            ),
+        )
+
     if "pdb_file" in actual_binary.output_groups:
         cc_binary_pdbfile = actual_binary.output_groups.pdb_file.to_list()[0]
         pdbfile = ctx.actions.declare_file(
@@ -66,17 +82,7 @@ def _cc_platform_binary_impl(ctx):
         )
         files.append(pdbfile)
         result.append(OutputGroupInfo(pdb_file = depset([pdbfile])))
-        ctx.actions.run_shell(
-            inputs = [cc_binary_pdbfile],
-            outputs = [pdbfile],
-            command = "cp %s %s" % (cc_binary_pdbfile.path, pdbfile.path),
-            mnemonic = "Copy",
-            # Sensible defaults copied from https://github.com/bazelbuild/bazel-skylib/blob/main/rules/private/copy_common.bzl
-            execution_requirements = {
-                "no-remote": "1",
-                "no-cache": "1",
-            },
-        )
+        _copy_file(ctx, cc_binary_pdbfile, pdbfile)
 
     # The following ensures that when a cc_platform_binary is included as a data
     # dependency that the executable is found at the correct path within the
@@ -123,6 +129,7 @@ _cc_platform_binary = rule(
             mandatory = False,
             providers = [platform_common.PlatformInfo],
         ),
+        "out_stripped_file": attr.output(),
         # This attribute is required to use starlark transitions. It allows
         # allowlisting usage of this rule. For more information, see
         # https://bazel.build/extending/config#user-defined-transitions
@@ -158,6 +165,7 @@ def cc_platform_binary(name, platform = None, cxxopt = None, visibility = None, 
         platform = platform,
         cxxopt = cxxopt,
         actual_binary = native_binary_name,
+        out_stripped_file = name + ".stripped",
         visibility = visibility,
     )
     if tags == None:

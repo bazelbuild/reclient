@@ -45,9 +45,7 @@ cc_platform_binary(
         "//:goma_input_processor_config": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    visibility = [
-        "//tests/integ:__subpackages__",
-    ],
+    visibility = ["//visibility:public"],
     deps =
         select({
             "//:clangscandeps_input_processor_config": [
@@ -115,4 +113,5 @@ filegroup(
         "@platforms//os:windows": [":scandeps_server_pdb"],
         "//conditions:default": [],
     }),
+    visibility = ["//visibility:public"],
 )
