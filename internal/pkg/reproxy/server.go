@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -113,6 +114,7 @@ type Server struct {
 	numActions                *windowedCount
 	numFallbacks              *windowedCount
 	numIPTimeouts             *atomic.Int64
+	numActiveActions          *atomic.Int32
 	failBuild                 bool
 	failBuildMu               sync.RWMutex
 	failBuildErr              error
@@ -130,6 +132,7 @@ type Server struct {
 	startErr                  error
 	cleanupFns                []func()
 	smu                       sync.Mutex
+	maxThreads                int32
 }
 
 type ctxWithCause struct {
@@ -167,6 +170,12 @@ func (s *Server) Init() {
 	s.numActions = &windowedCount{window: s.FailEarlyWindow}
 	s.numFallbacks = &windowedCount{window: s.FailEarlyWindow}
 	s.numIPTimeouts = &atomic.Int64{}
+	s.numActiveActions = &atomic.Int32{}
+	prevMaxThreads := debug.SetMaxThreads(10000)
+	if prevMaxThreads != 10000 {
+		debug.SetMaxThreads(prevMaxThreads)
+	}
+	s.maxThreads = int32(prevMaxThreads)
 }
 
 // SetInputProcessor sets the InputProcessor property of Server and then unblocks startup.
@@ -501,7 +510,19 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		downloadTmp:     s.DownloadTmp,
 		atomicDownloads: req.GetExecutionOptions().GetEnableAtomicDownloads(),
 	}
+	if s.numActiveActions.Load() >= s.maxThreads {
+		// By default, go runtime only hold maximum 10K M (machines), Once the num
+		// of M is already at max, but there are still more G (goroutines) in any
+		// P (processors) that is ready to be executed, go runtime will try to
+		// creat a new M and then crash.
+		// In this case, rejecting any new commands, and relying on rewrapper to
+		// re-try the action would be more graceful.
+		// See: https://github.com/bazelbuild/remote-apis-sdks/blob/8a36686a6350d32b9f40c213290b107a59e2ab00/go/pkg/retry/retry.go#L89
+		return nil, status.Error(codes.Unavailable, fmt.Sprintf("%v: Reproxy currently has high num of in-flight actions. Please retry with a backoff.", executionID))
+	}
 	s.activeActions.Store(executionID, a)
+	s.numActiveActions.Add(1)
+	defer s.numActiveActions.Add(-1)
 	defer s.activeActions.Delete(executionID)
 
 	if rand.Intn(100) < features.GetConfig().ExperimentalCacheMissRate {
