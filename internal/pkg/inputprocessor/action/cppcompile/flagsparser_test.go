@@ -87,17 +87,19 @@ func TestParseFlags(t *testing.T) {
 		{
 			name:       "Simple clang command with rsp file",
 			workingDir: ".",
-			command:    []string{"clang++", "@rsp", "-c", "-o", "test.o", "-MF", "test.d", "test.cpp"},
+			command:    []string{"clang++", "-c", "@outs.rsp", "-MF", "test.d", "test.cpp"},
+			files:      map[string][]byte{"outs.rsp": []byte("-o\ntest.o")},
 			want: &flags.CommandFlags{
 				ExecutablePath: "clang++",
 				Flags: []*flags.Flag{
 					&flags.Flag{Key: "-c"},
+					&flags.Flag{Value: "@outs.rsp"},
 				},
 				TargetFilePaths:       []string{"test.cpp"},
 				EmittedDependencyFile: "test.d",
 				WorkingDirectory:      ".",
 				ExecRoot:              er,
-				Dependencies:          []string{"rsp"},
+				Dependencies:          []string{"outs.rsp"},
 				OutputFilePaths:       []string{"test.o", "test.d"},
 			},
 		},

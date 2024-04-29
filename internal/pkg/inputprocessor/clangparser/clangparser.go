@@ -100,6 +100,37 @@ type State struct {
 	saveTemps   string
 }
 
+// HandleClangFlagsFromScanner updates the provided CommandFlags from the next item from the provded scanner.
+// This
+func (s *State) HandleClangFlagsFromScanner(cmdFlags *flags.CommandFlags, scanner *args.Scanner, legacyBehavior bool) error {
+	nextRes := scanner.ReadNextFlag()
+
+	// Argument handler, called from here as well as rsp file processor which it can be passed into.
+	handleArgFunc := func(sc *args.Scanner) error {
+		return s.HandleClangFlags(&sc.CurResult, cmdFlags, legacyBehavior)
+	}
+
+	// If the next result is a @file (rsp), then handle that via the rsp file processor
+	if strings.HasPrefix(nextRes.Args[0], "@") {
+		// Add the rsp file as a dependency so it gets uploaded.
+		rspFile := nextRes.Args[0][1:]
+		cmdFlags.Dependencies = append(cmdFlags.Dependencies, rspFile)
+		if !filepath.IsAbs(rspFile) {
+			rspFile = filepath.Join(cmdFlags.ExecRoot, cmdFlags.WorkingDirectory, rspFile)
+		}
+		cmdFlags.Flags = append(cmdFlags.Flags, &flags.Flag{Value: nextRes.Args[0]})
+		if err := rsp.ParseWithFunc(rspFile, *scanner, handleArgFunc); err != nil {
+			return err
+		}
+	} else {
+		if err := handleArgFunc(scanner); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // HandleClangFlags updates the given CommandFlags with the passed flag given the current ClangState.
 func (s *State) HandleClangFlags(nextRes *args.FlagResult, f *flags.CommandFlags, legacyBehavior bool) error {
 	normalizedKey, values := nextRes.NormalizedKey, nextRes.Values
