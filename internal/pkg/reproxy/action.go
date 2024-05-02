@@ -327,6 +327,7 @@ func (a *action) race(ctx context.Context, client *rexec.Client, pool *LocalPool
 		case rr := <-ch:
 			if winner.t == canceled && rr.t == local {
 				numFallbacks.Add(1)
+				log.Warningf("%v: Local result used after remote failed", a.cmd.Identifiers.ExecutionID)
 			}
 			if rr.t == local {
 				// Local was not canceled. Will make local the winner.
