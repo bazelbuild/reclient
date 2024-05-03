@@ -480,8 +480,12 @@ func mustBuildCredentials() *auth.Credentials {
 func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter) (*logger.Logger, error) {
 	u := usage.New()
 	if *auxiliaryMetadataPath != "" {
-		if err := auxiliary.SetMessageDescriptor(*auxiliaryMetadataPath); err != nil {
-			log.Errorf("Failed to set message descriptor for auxiliary metadata: %q", err)
+		if p, err := pathtranslator.BinaryRelToAbs(*auxiliaryMetadataPath); err != nil {
+			log.Errorf("Failed to parse auxiliary metadata's descriptor's file path: %q", err)
+		} else {
+			if err := auxiliary.SetMessageDescriptor(p); err != nil {
+				log.Errorf("Failed to set message descriptor for auxiliary metadata: %q", err)
+			}
 		}
 	} else {
 		log.Warningf("Path for auxiliary metadata message descriptor file is empty." +

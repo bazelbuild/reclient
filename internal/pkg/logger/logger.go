@@ -675,7 +675,7 @@ func CommandRemoteMetadataToProto(r *command.Metadata) *lpb.RemoteMetadata {
 		res.EventTimes[name] = command.TimeIntervalToProto(t)
 	}
 
-	if auxiliary.AuxMsgDescriptor != nil {
+	if auxiliary.AuxMsgDescriptor != nil && len(r.AuxiliaryMetadata) > 0 {
 		res.AuxiliaryMetadata = auxiliary.FlatRawMsg(r.AuxiliaryMetadata[0].GetValue())
 	}
 	res.OutputFileDigests = make(map[string]string)
