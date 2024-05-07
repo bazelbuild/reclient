@@ -781,7 +781,7 @@ func (a *action) populateCommandIO(ctx context.Context, ip *inputprocessor.Input
 
 func (a *action) addDepsFileOutput() {
 	if a.depsFile != "" {
-		a.cmd.OutputFiles = append(a.cmd.OutputFiles, a.depsFile)
+		a.cmd.OutputFiles = append(a.cmd.OutputFiles, pathtranslator.RelToWorkingDir(a.cmd.ExecRoot, a.cmd.WorkingDir, a.depsFile))
 	}
 }
 
@@ -830,7 +830,7 @@ func (a *action) createParser() {
 	if a.parser != nil {
 		return
 	}
-	a.parser = &deps.Parser{ExecRoot: a.cmd.ExecRoot, DigestStore: a.fmc}
+	a.parser = &deps.Parser{ExecRoot: a.cmd.ExecRoot, WorkingDir: a.cmd.WorkingDir, DigestStore: a.fmc}
 }
 
 func (a *action) cachedResultValid() bool {

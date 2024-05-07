@@ -35,33 +35,76 @@ import (
 func TestGetDepsParseDFile(t *testing.T) {
 	tests := []struct {
 		name     string
+		workdir  string
 		dContent []byte
 	}{
 		{
-			name: "one header per line",
+			name:    "one header per line",
+			workdir: ".",
 			dContent: []byte(`
 	     	          foo.o: \
 	     	          foo.c \
 	     	          foo.h \
 	     	       `),
 		}, {
-			name: "all headers same line",
+			name:    "all headers same line",
+			workdir: ".",
 			dContent: []byte(`
 		          foo.o: foo.c foo.h
 		       `),
 		}, {
-			name: "all headers same line with slash",
+			name:    "all headers same line with slash",
+			workdir: ".",
 			dContent: []byte(`
 		          foo.o: foo.c foo.h \
 		       `),
 		}, {
-			name: "one same line one next line",
+			name:    "one same line one next line",
+			workdir: ".",
 			dContent: []byte(`
 		          foo.o: foo.c \
 		          foo.h \
 		       `),
 		}, {
-			name: "all next line",
+			name:    "all next line",
+			workdir: ".",
+			dContent: []byte(`
+		          foo.o: \
+		          foo.c foo.h \
+		       `),
+		},
+		// Below are cases with a working directory that isn't the same as
+		// the exec_root.
+		{
+			name:    "one header per line - wd",
+			workdir: "wd",
+			dContent: []byte(`
+	     	          foo.o: \
+	     	          foo.c \
+	     	          foo.h \
+	     	       `),
+		}, {
+			name:    "all headers same line - wd",
+			workdir: "wd",
+			dContent: []byte(`
+		          foo.o: foo.c foo.h
+		       `),
+		}, {
+			name:    "all headers same line with slash - wd",
+			workdir: "wd",
+			dContent: []byte(`
+		          foo.o: foo.c foo.h \
+		       `),
+		}, {
+			name:    "one same line one next line - wd",
+			workdir: "wd",
+			dContent: []byte(`
+		          foo.o: foo.c \
+		          foo.h \
+		       `),
+		}, {
+			name:    "all next line - wd",
+			workdir: "wd",
 			dContent: []byte(`
 		          foo.o: \
 		          foo.c foo.h \
@@ -72,23 +115,24 @@ func TestGetDepsParseDFile(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			existingFiles := map[string][]byte{
-				"foo.h": []byte("HEADER"),
-				"foo.c": []byte("SOURCE"),
-				"foo.d": test.dContent,
+				filepath.Join(test.workdir, "foo.h"): []byte("HEADER"),
+				filepath.Join(test.workdir, "foo.c"): []byte("SOURCE"),
+				filepath.Join(test.workdir, "foo.d"): test.dContent,
 			}
 			r, cleanup := execroot.Setup(t, nil)
+			execroot.AddDirs(t, r, []string{test.workdir})
 			defer cleanup()
 			execroot.AddFilesWithContent(t, r, existingFiles)
 			// Prevents parallel tests
 			filemetadata.ResetGlobalCache()
 			fms := filemetadata.NewSingleFlightCache()
-			p := &Parser{ExecRoot: r, DigestStore: fms}
+			p := &Parser{ExecRoot: r, WorkingDir: test.workdir, DigestStore: fms}
 
 			wantDeps := fmt.Sprintf(
 				"foo.c:%s\nfoo.h:%s\n",
-				digest.NewFromBlob(existingFiles["foo.c"]),
-				digest.NewFromBlob(existingFiles["foo.h"]))
-			gotDeps, err := p.GetDeps("foo.d")
+				digest.NewFromBlob(existingFiles[filepath.Join(test.workdir, "foo.c")]),
+				digest.NewFromBlob(existingFiles[filepath.Join(test.workdir, "foo.h")]))
+			gotDeps, err := p.GetDeps(filepath.Join(test.workdir, "foo.d"))
 			if err != nil {
 				t.Errorf(`GetDeps("foo.d") returned error: %v`, err)
 			}

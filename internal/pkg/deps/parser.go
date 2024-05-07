@@ -47,8 +47,11 @@ var (
 
 // Parser parses dependency files into manifests.
 type Parser struct {
-	// ExecRoot is the exec root under which all file paths are relative.
+	// ExecRoot is the exec root under which all file paths exist.
 	ExecRoot string
+	// WorkingDir is the working directory from which the command was run,
+	// paths are relative to ExecRoot/WorkingDir.
+	WorkingDir string
 	// DigestStore is a store for file digests as read from disk.
 	DigestStore filemetadata.Cache
 }
@@ -85,7 +88,7 @@ func (p *Parser) VerifyDepsFile(dFilePath string, rec *logger.LogRecord) (bool, 
 		if len(match) < 3 {
 			return false, fmt.Errorf(".deps file has an invalid format in line %v", match[0])
 		}
-		md := p.DigestStore.Get(filepath.Join(p.ExecRoot, match[1]))
+		md := p.DigestStore.Get(filepath.Join(p.ExecRoot, p.WorkingDir, match[1]))
 		if match[2] == notFoundMarker {
 			if md.Err == nil {
 				return false, nil
@@ -132,7 +135,7 @@ func (p *Parser) readDFileDeps(dFilePath string) ([]string, error) {
 		}
 		relPath := match[1]
 		if filepath.IsAbs(match[1]) {
-			if relPath, err = getRelPath(p.ExecRoot, match[1]); err != nil {
+			if relPath, err = getRelPath(filepath.Join(p.ExecRoot, p.WorkingDir), match[1]); err != nil {
 				log.Warningf("Failed to make path relative to exec root: %v", err)
 				continue
 			}
@@ -143,7 +146,7 @@ func (p *Parser) readDFileDeps(dFilePath string) ([]string, error) {
 }
 
 func (p *Parser) addDep(relPath string, deps map[string]bool) bool {
-	md := p.DigestStore.Get(filepath.Join(p.ExecRoot, relPath))
+	md := p.DigestStore.Get(filepath.Join(p.ExecRoot, p.WorkingDir, relPath))
 	if md.Err == nil {
 		deps[fmt.Sprintf("%s:%s\n", filepath.Clean(relPath), md.Digest)] = true
 		return true
