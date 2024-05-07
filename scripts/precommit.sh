@@ -72,6 +72,7 @@ if ! $GAZELLEPASS; then
   PASS=false
 fi
 
+./scripts/regenpbgo.sh
 
 if ! git diff --exit-code &> /dev/null; then
   printf "\033[0;30m\033[41mPrecommit made changes to source. Please check the changes and re-stage files.\033[0m\n"

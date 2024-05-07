@@ -45,6 +45,7 @@ set -o nounset
 set -o pipefail
 
 pkg="$1"
+diff_found=0
 for file in "${@:2}"
 do
   gen="$(rlocation "$TEST_WORKSPACE/$file")"
@@ -58,5 +59,11 @@ do
       exit 1
   fi
   echo "Checking $pkg/$(basename "$file")"
-  diff "$(rlocation "$TEST_WORKSPACE/$file")" "$(rlocation "$TEST_WORKSPACE/$pkg/$(basename "$file")")"
+  if ! diff "$(rlocation "$TEST_WORKSPACE/$file")" "$(rlocation "$TEST_WORKSPACE/$pkg/$(basename "$file")")"; then
+      diff_found=1
+  fi
 done
+if [ "$diff_found" -ne 0 ]; then
+    echo
+    echo "diff detected, you should run ./scripts/regenpbgo.sh"
+fi
