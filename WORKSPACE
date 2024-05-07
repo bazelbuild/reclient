@@ -23,10 +23,10 @@ http_archive(
     # RE side, and https://github.com/bazelbuild/bazel/issues/11636 on bazel side.
     patch_args = ["-p1"],
     patches = ["//third_party/patches/bazel:rules_go.patch"],
-    sha256 = "16e9fca53ed6bd4ff4ad76facc9b7b651a89db1689a2877d6fd7b82aa824e366",
+    sha256 = "bfc5ce70b9d1634ae54f4e7b495657a18a04e0d596785f672d35d5f505ab491a",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.34.0/rules_go-v0.34.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.34.0/rules_go-v0.34.0.zip",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.40.0/rules_go-v0.40.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.40.0/rules_go-v0.40.0.zip",
     ],
 )
 
@@ -171,7 +171,7 @@ shirou_gopsutil_deps()
 
 go_rules_dependencies()
 
-go_register_toolchains(version = "1.19.5")
+go_register_toolchains(version = "1.20.7")
 
 # Needed for protobuf.
 http_archive(
@@ -499,10 +499,10 @@ go_repository(
     importpath = "github.com/bazelbuild/remote-apis-sdks",
 )
 # Use the local_reprository configuration below to replace the github version of the SDK with a local version.
-#local_repository(
+# local_repository(
 #    name = "com_github_bazelbuild_remote_apis_sdks",
 #    path = "/usr/local/google/home/{user}/remote-apis-sdks"
-#)
+# )
 
 load("@com_github_bazelbuild_remote_apis_sdks//:go_deps.bzl", "remote_apis_sdks_go_deps")
 

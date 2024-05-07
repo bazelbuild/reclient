@@ -1,8 +1,8 @@
 diff --git a/go/private/rules/binary.bzl b/go/private/rules/binary.bzl
-index e79cbda5..7b54682b 100644
+index 51530b04..88d2d0a9 100644
 --- a/go/private/rules/binary.bzl
 +++ b/go/private/rules/binary.bzl
-@@ -204,9 +204,12 @@ def _go_tool_binary_impl(ctx):
+@@ -442,9 +442,12 @@ def _go_tool_binary_impl(ctx):
              output = bat,
              content = cmd,
          )
@@ -10,10 +10,10 @@ index e79cbda5..7b54682b 100644
 +        bargs.add("/c", bat.path.replace("/", "\\"))
          ctx.actions.run(
 -            executable = bat,
--            inputs = sdk.libs + sdk.headers + sdk.tools + ctx.files.srcs + [sdk.go],
+-            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go],
 +            executable = "cmd",
 +            arguments = [bargs],
-+            inputs = sdk.libs + sdk.headers + sdk.tools + ctx.files.srcs + [sdk.go] + [bat],
-             outputs = [cout],
-             env = {"GOROOT": sdk.root_file.dirname},  # NOTE(#2005): avoid realpath in sandbox
-             mnemonic = "GoToolchainBinaryCompile",
++            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go] + [bat],
+             outputs = [out, gopath, gocache],
+             mnemonic = "GoToolchainBinaryBuild",
+         )
