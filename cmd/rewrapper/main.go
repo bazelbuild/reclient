@@ -51,14 +51,14 @@ import (
 
 var (
 	cOpts       = &rewrapper.CommandOptions{StartTime: time.Now()}
-	serverAddr  = "127.0.0.1:8000"
+	serverAddr  = ""
 	dialTimeout *time.Duration
 
 	execStrategies = []string{"local", "remote", "remote_local_fallback", "racing"}
 )
 
 func initFlags() {
-	flag.StringVar(&serverAddr, "server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	flag.StringVar(&serverAddr, "server_address", "", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
 	flag.StringVar(&cOpts.CommandID, "command_id", "", "An identifier for the command for use in future debugging")
 	flag.StringVar(&cOpts.InvocationID, "invocation_id", "", "An identifier for a group of commands for use in future debugging")
 	flag.StringVar(&cOpts.ToolName, "tool_name", "", "The name of the tool to associate with executed commands")
@@ -123,7 +123,7 @@ func main() {
 		log.Exitf("No exec_strategy provided, must be one of %v", execStrategies)
 	}
 	if serverAddr == "" {
-		log.Exitf("Invalid server address (%q), must be non empty.", serverAddr)
+		log.Exit("-server_address cannot be empty")
 	}
 
 	ctx := context.Background()

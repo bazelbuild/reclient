@@ -77,7 +77,7 @@ var (
 	proxyLogDir                []string
 	clangDepScanIgnoredPlugins = flag.String("clang_depscan_ignored_plugins", "", `Comma-separated list of plugins that should be ignored by clang dependency scanner.
 	Use this flag if you're using custom llvm build as your toolchain and your llvm plugins cause dependency scanning failures.`)
-	serverAddr               = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	serverAddr               = flag.String("server_address", "", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
 	logFormat                = flag.String("log_format", "reducedtext", "Format of proxy log. Currently only text and reducedtext are supported. Defaults to reducedtext.")
 	logPath                  = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
 	mismatchIgnoreConfigPath = flag.String("mismatch_ignore_config_path", "", "If provided, mismatches will be ignored according to the provided rule config.")
@@ -169,6 +169,7 @@ func main() {
 	rbeflag.Parse()
 	rbeflag.LogAllFlags(0)
 	defer log.Flush()
+
 	if *logHTTPCalls {
 		loghttp.Register()
 	}
@@ -200,6 +201,10 @@ func main() {
 	log.Flush()
 	version.PrintAndExitOnVersionFlag(true)
 	verifyFlags()
+
+	if *serverAddr == "" {
+		log.Exit("-server_address cannot be empty")
+	}
 
 	if *profilerService != "" {
 		log.Infof("Enable cloud profiler: service=%s project=%s", *profilerService, *profilerProjectID)

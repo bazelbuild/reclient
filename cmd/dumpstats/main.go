@@ -37,7 +37,7 @@ var (
 	proxyLogDir     []string
 	shutdownProxy   = flag.Bool("shutdown_proxy", false, "Whether to shut down the proxy before reading the log file.")
 	shutdownSeconds = flag.Int("shutdown_seconds", 5, "Number of seconds to wait for reproxy to shut down")
-	serverAddr      = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	serverAddr      = flag.String("server_address", "", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
 	logFormat       = flag.String("log_format", "text", "Format of proxy log. Currently only text is supported.")
 	logPath         = flag.String("log_path", "", "DEPRECATED. Use proxy_log_dir instead. If provided, the path to a log file of all executed records. The format is e.g. text://full/file/path.")
 	outputDir       = flag.String("output_dir", os.TempDir(), "The location to which stats should be written.")

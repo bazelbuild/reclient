@@ -59,7 +59,7 @@ var (
 
 var (
 	proxyLogDir                       []string
-	serverAddr                        = flag.String("server_address", "127.0.0.1:8000", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
+	serverAddr                        = flag.String("server_address", "", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
 	reProxy                           = flag.String("re_proxy", reproxyDefaultPath(), "Location of the reproxy binary")
 	waitSeconds                       = flag.Int("reproxy_wait_seconds", 20, "Number of seconds to wait for reproxy to start")
 	shutdown                          = flag.Bool("shutdown", false, "Whether to shut down the proxy and dump the stats.")
@@ -90,6 +90,10 @@ func main() {
 	rbeflag.LogAllFlags(0)
 	log.Flush()
 	version.PrintAndExitOnVersionFlag(true)
+
+	if *serverAddr == "" {
+		log.Exit("-server_address cannot be empty")
+	}
 
 	httpProxy := os.Getenv("RBE_HTTP_PROXY")
 	if httpProxy != "" {
