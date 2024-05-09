@@ -55,7 +55,7 @@ func Parse() {
 			// Set the flags remaining in the config map.
 			for k, v := range cfgMap {
 				if err := flag.Set(k, v); err != nil {
-					log.Warningf("Failed to set flag %v to %q", k, v)
+					log.Warningf("Failed to set flag %v to %q: %v", k, v, err)
 				}
 			}
 		}
