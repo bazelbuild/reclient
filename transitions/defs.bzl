@@ -1,5 +1,6 @@
 """Provides cc_platform_binary"""
 _PLATFORMS = "//command_line_option:platforms"
+_CPU = "//command_line_option:cpu"
 _EXEC_PLATFORMS = "//command_line_option:extra_execution_platforms"
 _CXXOPT = "//command_line_option:cxxopt"
 _HOST_CXXOPT = "//command_line_option:host_cxxopt"
@@ -219,3 +220,58 @@ dbg_target = rule(
         ),
     },
 )
+
+def _target_platform_transition_impl(settings, attr):
+    ''' The implementation if the _target_platform_transition transition.
+
+    This transition
+        - Overrides --cpu to be attr.cpu is attr.cpu is not None
+        - Overrides --platforms to be attr.platform is attr.platform is not None
+    '''
+    output = dict(settings)
+    if attr.platform:
+        output[_PLATFORMS] = [attr.platform]
+    if attr.cpu:
+        output[_CPU] = attr.cpu
+    return output
+
+_target_platform_transition = transition(
+    implementation = _target_platform_transition_impl,
+    inputs = [_PLATFORMS, _CPU],
+    outputs = [_PLATFORMS, _CPU],
+)
+
+def _platform_filegroup_impl(ctx):
+    return [ctx.attr.filegroup[0][DefaultInfo]]
+
+_platform_filegroup = rule(
+    implementation = _platform_filegroup_impl,
+    doc = """A filegroup like rule that applies a transition to use the given cpu and or platform.""",
+    attrs = {
+        "filegroup": attr.label(
+            mandatory = True,
+            cfg = _target_platform_transition,
+        ),
+        "platform": attr.label(),
+        "cpu": attr.string(),
+        # This attribute is required to use starlark transitions. It allows
+        # allowlisting usage of this rule. For more information, see
+        # https://bazel.build/extending/config#user-defined-transitions
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
+    },
+)
+
+def platform_filegroup(name, srcs, platform, cpu, **kwargs):
+    native.filegroup(
+        name = name + "_native",
+        srcs = srcs,
+    )
+    _platform_filegroup(
+        name = name,
+        filegroup = ":" + name + "_native",
+        platform = platform,
+        cpu = cpu,
+        **kwargs,
+    )
