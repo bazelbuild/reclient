@@ -166,6 +166,13 @@ go_repository(
 
 load("//:go_deps.bzl", "shirou_gopsutil_deps")
 
+go_repository(
+    name = "com_google_cloud_go_storage",
+    importpath = "cloud.google.com/go/storage",
+    sum = "h1:86K1Gel7BQ9/WmNWn7dTKMvTLFzwtBe5FNqYbi9X35g=",
+    version = "v1.8.0",
+)
+
 # gazelle:repository_macro go_deps.bzl%shirou_gopsutil_deps
 shirou_gopsutil_deps()
 
