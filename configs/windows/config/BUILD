@@ -38,7 +38,7 @@ platform(
         "@platforms//cpu:x86_64",
     ],
     exec_properties = {
-        "container-image": "docker://us-central1-docker.pkg.dev/kokoro-container-bakery/re-client/reclient-builder-win@sha256:9b9b9cd4583f2c0853fcd81c120ff8161da66eb7cd7d872166776a56b36b74aa",
+        "container-image": "docker://us-central1-docker.pkg.dev/kokoro-container-bakery/re-client/reclient-builder-win@sha256:9ba393f95f26222a8674d7de68b68222a741e5dca4fd22ba766804b01c6c47df",
         "OSFamily": "Windows",
     },
     parents = ["@local_config_platform//:host"],
