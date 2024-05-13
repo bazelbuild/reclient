@@ -49,13 +49,13 @@ var (
 	toAbsArgs         = map[string]bool{}
 	virtualInputFlags = map[string]bool{"-I": true, "/I": true, "-imsvc": true, "-winsysroot": true}
 	versionRegex      = regexp.MustCompile(`^([0-9]+)(\.([0-9]+)(\.([0-9]+)(\.([0-9]+))?)?)?$`)
+	winSDKCache       cache.SingleFlight
+	vcToolchainCache  cache.SingleFlight
 )
 
 // Preprocessor is the preprocessor of clang-cl compile actions.
 type Preprocessor struct {
 	*cppcompile.Preprocessor
-	winSDKCache      cache.SingleFlight
-	vcToolchainCache cache.SingleFlight
 }
 
 // ParseFlags parses the commands flags and populates the ActionSpec object with inferred
@@ -109,7 +109,7 @@ func (p *Preprocessor) AppendVirtualInput(res []*command.VirtualInput, flag, pat
 		// locally.
 		winsysroot := path
 		absWinsysroot := filepath.Join(p.Flags.ExecRoot, path)
-		cacheEntry, _ := p.winSDKCache.LoadOrStore(winsysroot, func() (interface{}, error) {
+		cacheEntry, _ := winSDKCache.LoadOrStore(winsysroot, func() (interface{}, error) {
 			absDir, err := winSDKDir(absWinsysroot)
 			if err != nil {
 				// If failed to get Win SDK dir, return winsysroot instead (don't return the error)
@@ -129,7 +129,7 @@ func (p *Preprocessor) AppendVirtualInput(res []*command.VirtualInput, flag, pat
 		if computedPath != winsysroot {
 			res = p.Preprocessor.AppendVirtualInput(res, flag, computedPath)
 		}
-		cacheEntry, _ = p.vcToolchainCache.LoadOrStore(winsysroot, func() (interface{}, error) {
+		cacheEntry, _ = vcToolchainCache.LoadOrStore(winsysroot, func() (interface{}, error) {
 			absDir, err := vcToolchainDir(absWinsysroot)
 			if err != nil {
 				log.Warningf("Failed to get VC toolchain path for %q. %v", winsysroot, err)
