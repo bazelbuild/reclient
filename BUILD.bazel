@@ -99,11 +99,11 @@ config_setting(
 
 genrule(
     name = "version_txt",
-    srcs = ["//cmd/version"],
+    srcs = ["//internal/pkg/version:version_txt"],
     outs = ["version.txt"],
-    cmd = select({
-        "//:clangscandeps_input_processor_config": "$(location //cmd/version) --out=\"$@\"",
-        "//:goma_input_processor_config": "$(location //cmd/version) --out=\"$@\" --suffix=\"-gomaip\"",
+    cmd = "cat $(location //internal/pkg/version:version_txt) >> $@;" + select({
+        "//:clangscandeps_input_processor_config": "",
+        "//:goma_input_processor_config": "echo -n \"-gomaip\" >> $@",
     }),
     visibility = ["//visibility:public"],
 )

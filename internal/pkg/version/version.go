@@ -18,6 +18,7 @@
 package version
 
 import (
+	_ "embed" // needed for embed directive
 	"flag"
 	"fmt"
 	"os"
@@ -33,19 +34,6 @@ const undef = "undefined"
 // version number. Refer to README.md for guidelines on when / how to update
 // version numbers.
 var (
-	// versionMajor denotes the major version number.
-	versionMajor = "0"
-
-	// versionMinor denotes the minor version number.
-	versionMinor = "1"
-
-	// versionPatch denotes the patch version number.
-	versionPatch = "1"
-
-	// versionSHA denotes the SHA of the re-client repository from which
-	// the current version is built.
-	versionSHA = undef
-
 	sdkVersionSHA = undef
 
 	// versionFlag is a boolean flag to determine whether to print version number or not.
@@ -76,7 +64,10 @@ func PrintAndExitOnVersionFlag(info bool) {
 	}
 }
 
+//go:embed version.txt
+var version string
+
 // CurrentVersion returns the current version number in semver format.
 func CurrentVersion() string {
-	return fmt.Sprintf("%s.%s.%s.%s", versionMajor, versionMinor, versionPatch, versionSHA)
+	return version
 }

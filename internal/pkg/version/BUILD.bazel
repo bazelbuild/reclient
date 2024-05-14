@@ -5,20 +5,28 @@ load("//:version.bzl", "VERSION_MAJOR", "VERSION_MINOR", "VERSION_PATCH")
 
 # gazelle:exclude *.h
 
+# We use a genrule instead of rules_go's built in x_defs support for workspace
+# status variables as they dont get stamped in binaries build for the host configuration.
+# This causes cross compiled builds to either fail if we build the binary for
+# the target configuration or not have the version stamped if built for the host configuration.
+genrule(
+    name = "version_txt",
+    outs = ["version.txt"],
+    cmd = "STABLE_VERSION_SHA=$$(cat bazel-out/stable-status.txt | awk '/STABLE_VERSION_SHA/{{print $$2}}');" +
+          "echo -n " + VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH + ".$$STABLE_VERSION_SHA >>$@;",
+    stamp = 1,
+    visibility = ["//visibility:public"],
+)
+
 go_library(
     name = "version",
     srcs = ["version.go"],
+    embedsrcs = ["version.txt"],
     importpath = "github.com/bazelbuild/reclient/internal/pkg/version",
     visibility = ["//visibility:public"],
     # x_defs attribute substitutes the string with given values.
     # Refer to https://github.com/bazelbuild/rules_go/blob/master/go/core.rst#defines-and-stamping.
     x_defs = {
-        "github.com/bazelbuild/reclient/internal/pkg/version.versionMajor": VERSION_MAJOR,
-        "github.com/bazelbuild/reclient/internal/pkg/version.versionMinor": VERSION_MINOR,
-        "github.com/bazelbuild/reclient/internal/pkg/version.versionPatch": VERSION_PATCH,
-        # "{STABLE_VERSION_SHA}" is the git-sha is produced by the workspace status
-        #  command set in ".bazelrc" file of this repository.
-        "github.com/bazelbuild/reclient/internal/pkg/version.versionSHA": "{STABLE_VERSION_SHA}",
         "github.com/bazelbuild/reclient/internal/pkg/version.sdkVersionSHA": SDK_COMMIT,
     },
     deps = [
@@ -34,46 +42,28 @@ go_test(
 )
 
 genrule(
-    name = "stable_status",
-    outs = ["stable_status.h"],
-    cmd = """
-        echo "#ifndef _INTERNAL_PKG_VERSION_STABLE_STATUS_H" > $@;
-        echo "# define _INTERNAL_PKG_VERSION_STABLE_STATUS_H" >> $@;
-        cat bazel-out/stable-status.txt | sed 's/\\(.*\\) \\(.*\\)/# define \\1 "\\2"/' >> $@;
-        echo "#endif // _PKG_VERSION_STABLE_STATUS_H" >> $@;
-    """,
-    stamp = 1,
-)
-
-expand_template(
     name = "version_h",
-    out = "version.h",
-    substitutions = select({
-        "//:clangscandeps_input_processor_config": {
-            "{INPUT_PROCESSOR}": "ClangscandepsIPService",
-            "{VERSION_MAJOR}": VERSION_MAJOR,
-            "{VERSION_MINOR}": VERSION_MINOR,
-            "{VERSION_PATCH}": VERSION_PATCH,
-        },
-        "//:goma_input_processor_config": {
-            "{INPUT_PROCESSOR}": "GomaIPService",
-            "{VERSION_MAJOR}": VERSION_MAJOR,
-            "{VERSION_MINOR}": VERSION_MINOR,
-            "{VERSION_PATCH}": VERSION_PATCH,
-        },
-    }),
+    srcs = ["version.txt"],
+    outs = ["version.h"],
+    cmd = 'echo "#ifndef _INTERNAL_PKG_VERSION_VERSION_H" > $@;' +
+          'echo "# define _INTERNAL_PKG_VERSION_VERSION_H" >> $@;' +
+          'echo "# define RECLIENT_VERSION \\"$$(cat $(location version.txt))\\"" >> $@;' +
+          'echo "# define INPUT_PROCESSOR \\"' + select({
+              "//:clangscandeps_input_processor_config": "ClangscandepsIPService",
+              "//:goma_input_processor_config": "GomaIPService",
+          }) + '\\"" >> $@;' +
+          'echo "#endif // _INTERNAL_PKG_VERSION_VERSION_H" >> $@;',
+    stamp = 1,
     target_compatible_with = select({
         "//:goma_input_processor_config": [],
         "//:clangscandeps_input_processor_config": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    template = "version.tmpl.h",
 )
 
 cc_library(
     name = "version_cc",
     srcs = [
-        "stable_status.h",
         "version.h",
     ],
     hdrs = [
