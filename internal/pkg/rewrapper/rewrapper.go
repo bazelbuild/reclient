@@ -177,6 +177,13 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 	if opts.PreserveSymlink {
 		c.Input.SymlinkBehavior = cpb.SymlinkBehaviorType_PRESERVE
 	}
+	rDnc := !opts.RemoteUpdateCache
+	if rDnc && strategy == ppb.ExecutionStrategy_LOCAL {
+		// Do not set DoNotCache in the remote execution options, since in local execution
+		// mode, this being set means there will never be a remote cache hit for that
+		// action.
+		rDnc = false
+	}
 	return &ppb.RunRequest{
 		Command: c,
 		Labels:  opts.Labels,
@@ -191,7 +198,7 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 			DownloadRegex:          opts.DownloadRegex,
 			RemoteExecutionOptions: &ppb.RemoteExecutionOptions{
 				AcceptCached:                 opts.RemoteAcceptCache,
-				DoNotCache:                   !opts.RemoteUpdateCache,
+				DoNotCache:                   rDnc,
 				DownloadOutputs:              opts.DownloadOutputs,
 				Wrapper:                      opts.RemoteWrapper,
 				CanonicalizeWorkingDir:       opts.CanonicalizeWorkingDir,

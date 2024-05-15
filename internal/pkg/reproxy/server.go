@@ -431,7 +431,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 	if cmd.Platform == nil {
 		cmd.Platform = make(map[string]string)
 	}
-	if req.GetExecutionOptions().GetExecutionStrategy() == ppb.ExecutionStrategy_LOCAL || s.VersionCacheSilo {
+	if (req.GetExecutionOptions().GetExecutionStrategy() == ppb.ExecutionStrategy_LOCAL && !req.GetExecutionOptions().GetLocalExecutionOptions().GetDoNotCache()) || s.VersionCacheSilo {
 		// For LERC actions, there's a chance we may have reclient bugs.
 		// We want to ensure we don't persist those across actions.
 		// We also want to add version if the option to do so is set to true.
