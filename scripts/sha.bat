@@ -18,4 +18,4 @@
 
 :: This script is used to print current git SHA so that Bazel's workspace command
 :: can consume it.
-for /f "usebackq tokens=*" %%h in (`git rev-parse --short HEAD`) do echo STABLE_VERSION_SHA %%h
+for /f "usebackq tokens=*" %%h in (`git rev-parse HEAD`) do echo STABLE_VERSION_SHA %%h

@@ -12,7 +12,7 @@ load("//:version.bzl", "VERSION_MAJOR", "VERSION_MINOR", "VERSION_PATCH")
 genrule(
     name = "version_txt",
     outs = ["version.txt"],
-    cmd = "STABLE_VERSION_SHA=$$(cat bazel-out/stable-status.txt | awk '/STABLE_VERSION_SHA/{{print $$2}}');" +
+    cmd = "STABLE_VERSION_SHA=$$(cat bazel-out/stable-status.txt | awk '/STABLE_VERSION_SHA/{{print $$2}}' | cut -c 1-8);" +
           "echo -n " + VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH + ".$$STABLE_VERSION_SHA >>$@;",
     stamp = 1,
     visibility = ["//visibility:public"],

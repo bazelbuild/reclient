@@ -16,7 +16,7 @@
 
 # This script is used to print current git SHA so that Bazel's workspace command
 # can consume it.
-if gitSha=$(git rev-parse --short HEAD); then
+if gitSha=$(git rev-parse HEAD); then
   echo STABLE_VERSION_SHA "$gitSha"
 else
   echo STABLE_VERSION_SHA unknown
