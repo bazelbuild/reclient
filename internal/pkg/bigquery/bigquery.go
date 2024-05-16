@@ -78,12 +78,14 @@ type BQSpec struct {
 	TableSpec  string
 	BatchSize  int
 	Concurrent int
+	Timeout    time.Duration
 }
 
 // InsertRows insert a slice of LogRecords to bigquery table.
 func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEnabled bool) error {
 	processed := int32(0)
 	total := int32(len(logs))
+	var failed atomic.Int32
 	startTime := time.Now()
 
 	defer func() {
@@ -115,7 +117,7 @@ func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEn
 					// https://cloud.google.com/bigquery/sla
 					time.Sleep(1 * time.Second)
 					if err := inserter.Put(ctx, item); err != nil {
-						log.Errorf("Failed to insert record after retry: %v", err)
+						failed.Add(1)
 						return err
 					}
 				}
@@ -139,7 +141,7 @@ func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEn
 	close(items)
 
 	if err := g.Wait(); err != nil {
-		log.Errorf("Error while uploading to bigquery: %v", err)
+		log.Errorf("%v rows having error while uploading to bigquery: %v", failed.Load(), err)
 	}
 	return nil
 }

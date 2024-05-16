@@ -34,6 +34,8 @@ import (
 	stpb "github.com/bazelbuild/reclient/api/stat"
 	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/auxiliary"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources/usage"
 	"github.com/bazelbuild/reclient/internal/pkg/monitoring"
@@ -100,6 +102,10 @@ type Logger struct {
 	qpsStartTime    time.Time
 	qpsLastDuration time.Duration
 	qpsCount        int32
+
+	// fields used for upload data to bigquery
+	items  chan *bigquerytranslator.Item
+	bqSpec *bigquery.BQSpec
 }
 
 type logEvent interface {
@@ -145,6 +151,9 @@ func (e *endActionEvent) apply(l *Logger) {
 	// Process any mismatches to be ignored for this log record.
 	l.mi.ProcessLogRecord(e.lr.LogRecord)
 	l.stats.AddRecord(e.lr.LogRecord)
+	if l.bqSpec != nil {
+		l.items <- &bigquerytranslator.Item{LogRecord: toBigQueryRecords(e.lr.LogRecord)}
+	}
 	e.lr.open = false
 	l.completedActions[e.lr.CompletionStatus]++
 	l.runningActions--
@@ -294,7 +303,7 @@ func ParseFilepath(formatfile string) (Format, string, error) {
 
 // NewFromFormatFile instantiates a new Logger.
 // TODO(b/279057640): this is deprecated, remove and use New instead when --log_path flag is gone.
-func NewFromFormatFile(formatfile string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
+func NewFromFormatFile(formatfile string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler, bqSpec *bigquery.BQSpec) (*Logger, error) {
 	format, filepath, err := ParseFilepath(formatfile)
 	if err != nil {
 		return nil, err
@@ -307,7 +316,7 @@ func NewFromFormatFile(formatfile string, s stats.StatCollector, mi *ignoremisma
 		return nil, err
 	}
 	log.Infof("Created log file %s", filepath)
-	return newLogger(format, f, nil, s, mi, e, u), nil
+	return newLogger(format, f, nil, s, mi, e, u, bqSpec), nil
 }
 
 func logFileSuffix(format Format) string {
@@ -325,7 +334,7 @@ func logFileSuffix(format Format) string {
 	}
 }
 
-func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) *Logger {
+func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler, bqSpec *bigquery.BQSpec) *Logger {
 	l := &Logger{
 		Format:   format,
 		ch:       make(chan logEvent),
@@ -342,6 +351,8 @@ func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ig
 		open:             true,
 		completedActions: make(map[lpb.CompletionStatus]int32),
 		u:                u,
+		items:            make(chan *bigquerytranslator.Item),
+		bqSpec:           bqSpec,
 	}
 	l.startBackgroundProcess()
 	return l
@@ -357,10 +368,17 @@ func (l *Logger) startBackgroundProcess() {
 		l.wg.Add(1)
 		go l.processUsageData(ctx)
 	}
+	if l.bqSpec != nil {
+		l.wg.Add(1)
+		go func() {
+			l.processLogRecords()
+			l.wg.Done()
+		}()
+	}
 }
 
 // New instantiates a new Logger.
-func New(format Format, dir string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler) (*Logger, error) {
+func New(format Format, dir string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler, bqSpec *bigquery.BQSpec) (*Logger, error) {
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", format)
 	}
@@ -377,7 +395,7 @@ func New(format Format, dir string, s stats.StatCollector, mi *ignoremismatch.Mi
 		return nil, err
 	}
 	log.Infof("Created log file %s", filename)
-	return newLogger(format, recs, info, s, mi, e, u), nil
+	return newLogger(format, recs, info, s, mi, e, u, bqSpec), nil
 }
 
 // AddEventTimeToProxyInfo will add an reproxy level event to the ProxyInfo object.
@@ -601,6 +619,7 @@ func (l *Logger) CloseAndAggregate() *spb.Stats {
 	if l.cancelSamplerCtx != nil {
 		l.cancelSamplerCtx()
 	}
+	close(l.items)
 	l.wg.Wait()
 	l.info.Stats = append(l.info.Stats, summarize(l.resourceUsage)...)
 	l.writeProxyInfo()
@@ -628,6 +647,31 @@ func (l *Logger) processUsageData(ctx context.Context) {
 			return
 		case <-ticker.C:
 			l.collectResourceUsageSamples(usage.Sample(l.u))
+		}
+	}
+}
+
+func (l *Logger) processLogRecords() {
+	batchSize := l.bqSpec.BatchSize
+	batch := make([]*lpb.LogRecord, 0, batchSize)
+	for {
+		r, ok := <-l.items
+		if !ok {
+			ctx, cancel := context.WithTimeout(context.Background(), l.bqSpec.Timeout)
+			defer cancel()
+			bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
+			return
+		}
+		batch = append(batch, r.LogRecord)
+		if len(batch) == batchSize {
+			l.wg.Add(1)
+			go func(batch []*lpb.LogRecord) {
+				ctx, cancel := context.WithTimeout(context.Background(), l.bqSpec.Timeout)
+				defer cancel()
+				bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
+				l.wg.Done()
+			}(batch)
+			batch = make([]*lpb.LogRecord, 0, batchSize)
 		}
 	}
 }
@@ -745,6 +789,27 @@ func toBytes(format Format, rec *lpb.LogRecord) ([]byte, error) {
 		return nil, err
 	}
 	return append(textb, []byte(textDelimiter)...), nil
+}
+
+func toBigQueryRecords(rec *lpb.LogRecord) *lpb.LogRecord {
+	tmpRec, _ := proto.Clone(rec).(*lpb.LogRecord)
+	// We want to Save the reduced text format into bigquery for cache hit actions to save storage cost.
+	if tmpRec.GetResult().GetStatus() == cpb.CommandResultStatus_CACHE_HIT {
+		if tmpRec.Command != nil {
+			tmpRec.Command.Input = nil
+			tmpRec.Command.Args = nil
+		}
+	}
+	if input := tmpRec.GetCommand().GetInput(); input != nil {
+		// truncate large virtual inputs contents
+		// http://b/171842303
+		for _, vi := range input.VirtualInputs {
+			if len(vi.Contents) > 1024 {
+				vi.Contents = vi.Contents[:1024]
+			}
+		}
+	}
+	return tmpRec
 }
 
 // ParseFromFormatFile reads Records from a log file created by a Logger.

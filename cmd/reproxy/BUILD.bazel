@@ -9,6 +9,7 @@ go_library(
         "//api/proxy",
         "//internal/pkg/auth",
         "//internal/pkg/auxiliary",
+        "//internal/pkg/bigquery",
         "//internal/pkg/ignoremismatch",
         "//internal/pkg/interceptors",
         "//internal/pkg/ipc",

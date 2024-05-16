@@ -34,6 +34,7 @@ import (
 
 	"github.com/bazelbuild/reclient/internal/pkg/auth"
 	"github.com/bazelbuild/reclient/internal/pkg/auxiliary"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
 	"github.com/bazelbuild/reclient/internal/pkg/ignoremismatch"
 	"github.com/bazelbuild/reclient/internal/pkg/interceptors"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
@@ -133,6 +134,11 @@ var (
 	waitForShutdownRPC    = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
 	logHTTPCalls          = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 	auxiliaryMetadataPath = flag.String("auxiliary_metadata_path", "", "Path to file where auxiliary_metadata.pb file is stored. Should be a absolute path or a relative path to reproxy.")
+
+	bqProjectID = flag.String("bq_project", "", "Project where log records are stored.")
+	bqTableSpec = flag.String("bq_table", "", "Table where log records are stored.")
+	bqBatchSize = flag.Int("bq_batch_size", 2000, "Batch size for bigquery uploading.")
+	bqTimeout   = flag.Duration("bq_timeout", 30*time.Second, "The maximum time to wait for a batch of log records to be uploaded to BigQuery.")
 
 	maxListenSizeKb = flag.Int("max_listen_size_kb", 8*1024, "Maximum grpc listen size in kilobytes for messages from rewrapper")
 )
@@ -496,12 +502,26 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter
 		log.Warningf("Path for auxiliary metadata message descriptor file is empty." +
 			"\nIf you want to collect backend workers' cpu/mem usage information into reproxy log, please set the --auxiliary_metadata_path flag (see instruction in api/auxiliary_metadata/readme.md).")
 	}
+
+	var bqSpec *bigquery.BQSpec
+	if *bqProjectID != "" && *bqTableSpec != "" {
+		bqSpec = &bigquery.BQSpec{
+			ProjectID: *bqProjectID,
+			TableSpec: *bqTableSpec,
+			BatchSize: *bqBatchSize,
+			// from experiment, Concurrent = BatchSize has good performance.
+			Concurrent: *bqBatchSize,
+			Timeout:    *bqTimeout,
+		}
+	} else {
+		log.Infof("If you want to collect LogRecords for each action to bigquery table, please set the --bq_project_id, --bq_table_spec flags.")
+	}
 	if len(proxyLogDir) > 0 {
 		format, err := logger.ParseFormat(*logFormat)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing logger: %v", err)
 		}
-		l, err := logger.New(format, proxyLogDir[0], stats.New(), mi, e, u)
+		l, err := logger.New(format, proxyLogDir[0], stats.New(), mi, e, u, bqSpec)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing logger: %v", err)
 		}
@@ -509,7 +529,7 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter
 	}
 
 	if *logPath != "" {
-		l, err := logger.NewFromFormatFile(*logPath, stats.New(), mi, e, u)
+		l, err := logger.NewFromFormatFile(*logPath, stats.New(), mi, e, u, bqSpec)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing log file %v: %v", *logPath, err)
 		}

@@ -11,6 +11,8 @@ go_library(
         "//api/stat",
         "//api/stats",
         "//internal/pkg/auxiliary",
+        "//internal/pkg/bigquery",
+        "//internal/pkg/bigquerytranslator",
         "//internal/pkg/ignoremismatch",
         "//internal/pkg/localresources/usage",
         "//internal/pkg/monitoring",
