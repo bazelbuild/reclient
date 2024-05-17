@@ -84,8 +84,12 @@ func mapPaths(execRoot, workingDir string, paths []string, mapper mapperType) []
 
 // BinaryRelToAbs converts a path that is relative to the current executable
 // to an absolute path. If the executable is a symlink then the symlink is
-// resolved before generating the path.
+// resolved before generating the path. If the input path is already an absolute
+// path, just return it.
 func BinaryRelToAbs(relPath string) (string, error) {
+	if filepath.IsAbs(relPath) {
+		return relPath, nil
+	}
 	executable, err := os.Executable()
 	if err != nil {
 		return "", err
