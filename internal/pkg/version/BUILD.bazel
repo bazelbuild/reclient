@@ -9,12 +9,20 @@ load("//:version.bzl", "VERSION_MAJOR", "VERSION_MINOR", "VERSION_PATCH")
 # status variables as they dont get stamped in binaries build for the host configuration.
 # This causes cross compiled builds to either fail if we build the binary for
 # the target configuration or not have the version stamped if built for the host configuration.
+
+genrule(
+    name = "stable_version_sha_txt",
+    outs = ["stable_version_sha.txt"],
+    cmd = "cat bazel-out/stable-status.txt | awk '/STABLE_VERSION_SHA/{{print $$2}}' > $@",
+    stamp = 1,
+    visibility = ["//visibility:public"],
+)
+
 genrule(
     name = "version_txt",
+    srcs = ["stable_version_sha.txt"],
     outs = ["version.txt"],
-    cmd = "STABLE_VERSION_SHA=$$(cat bazel-out/stable-status.txt | awk '/STABLE_VERSION_SHA/{{print $$2}}' | cut -c 1-8);" +
-          "echo -n " + VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH + ".$$STABLE_VERSION_SHA >>$@;",
-    stamp = 1,
+    cmd = "echo -n " + VERSION_MAJOR + "." + VERSION_MINOR + "." + VERSION_PATCH + ".$$(cat $(location stable_version_sha.txt) | cut -c 1-8) >>$@",
     visibility = ["//visibility:public"],
 )
 
