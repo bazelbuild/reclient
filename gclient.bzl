@@ -3,10 +3,12 @@ def _gclient_repository_rule(ctx):
     _config(ctx)
     ctx.report_progress("Cloning {}...".format(ctx.attr.remote))
     _clone(ctx)
-    ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
-    _patch(ctx)
+    ctx.report_progress("Checking out {}...".format(ctx.attr.revision))
+    _checkout(ctx)
     ctx.report_progress("Syncing to {}...".format(ctx.attr.revision))
     _sync(ctx)
+    ctx.report_progress("Applying required patches: {}...".format(ctx.attr.patches))
+    _patch(ctx)
     ctx.report_progress("Saving version...")
     _version(ctx)
     ctx.report_progress("Optionally stripping...")
@@ -29,6 +31,9 @@ def _config(ctx):
 
 def _clone(ctx):
     __execute(ctx, __prefix(ctx, "git") + ["clone", ctx.attr.remote])
+
+def _checkout(ctx):
+    __execute(ctx, __prefix(ctx, "git") + ["checkout", ctx.attr.revision], wd = ctx.attr.base_dir)
 
 def _sync(ctx):
     __execute(ctx, __prefix(ctx, "gclient") + ["sync", "-r", ctx.attr.revision, "--shallow"])
