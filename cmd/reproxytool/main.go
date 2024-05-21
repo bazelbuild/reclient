@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Binary reproxytool parses reclient log files for common debugging purpose.
+// Binary reproxytool has a variety of functionality to usefully parse both
+// reproxy.INFO and reproxy.rrpl files.
 //
 // To see help information:
 //
@@ -21,54 +22,79 @@
 // Example Invocation:
 //
 // Convert reproxy.INFO log to usage CSV:
-// bazelisk run //cmd/reproxytool:reproxytool -- \
-// --operation=usage_to_csv --log_path=/tmp/reproxy.INFO \
-// --alsologtostderr
+//
+//	bazelisk run //cmd/reproxytool:reproxytool -- \
+//	  --operation=usage_to_csv --log_path=/tmp/reproxy.INFO \
+//	  --alsologtostderr
+//
+// Example Invocation to show an action:
+//
+//	bazelisk run //cmd/reproxytool:reproxytool -- \
+//	  --operation show_action --instance=<instance> \
+//	  --service <service> --alsologtostderr --v 1 \
+//	  --use_application_default_credentials=true --digest <digest>
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"path"
 
 	csv "github.com/bazelbuild/reclient/cmd/reproxytool/usage2csv"
+	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
+	remotetool "github.com/bazelbuild/remote-apis-sdks/go/pkg/tool"
 	log "github.com/golang/glog"
 )
 
-// OpType denotes the type of operation to perform.
-type OpType string
-
 const (
-	usage2CSV OpType = "usage_to_csv"
+	usage2CSV remotetool.OpType = "usage_to_csv"
 )
 
-var supportedOps = []OpType{
-	usage2CSV,
-}
+var (
+	supportedOps = append(remotetool.SupportedOps, usage2CSV)
+)
 
 var (
 	operation = flag.String("operation", "", fmt.Sprintf("Specifies the operation to perform. Supported values: %v", supportedOps))
 	logPath   = flag.String("log_path", "", "Path to log file. E.g., /tmp/reproxy.INFO")
 )
 
+func addOps() {
+	remotetool.SupportedOps = supportedOps
+	remotetool.RemoteToolOperations[usage2CSV] = func(ctx context.Context, c *remotetool.Client) {
+		if err := csv.Usage2CSV(getLogPathFlag()); err != nil {
+			log.Exitf("Error parsing usage data from reproxy.INFO, %v,to CSV file %v", logPath, err)
+		}
+	}
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %v [-flags] -- --operation <op> arguments ...\n", path.Base(os.Args[0]))
 		flag.PrintDefaults()
 	}
+	remotetool.RegisterFlags()
+	addOps()
 	flag.Parse()
 	if *operation == "" {
 		log.Exitf("--operation must be specified.")
 	}
-	switch OpType(*operation) {
-	case usage2CSV:
-		if err := csv.Usage2CSV(getLogPathFlag()); err != nil {
-			log.Exitf("Error parsing usage data from reproxy.INFO, %v,to CSV file %v", logPath, err)
-		}
-	default:
-		log.Exitf("Unsupported operation %v. Supported operations:\n%v", *operation, supportedOps)
+
+	ctx := context.Background()
+	grpcClient, err := rflags.NewClientFromFlags(ctx)
+	if err != nil {
+		log.Exitf("error connecting to remote execution client: %v", err)
 	}
+	defer grpcClient.Close()
+	c := &remotetool.Client{GrpcClient: grpcClient}
+
+	fn, ok := remotetool.RemoteToolOperations[remotetool.OpType(*operation)]
+	if !ok {
+		log.Exitf("unsupported operation %v. Supported operations:\n%v", *operation, remotetool.SupportedOps)
+	}
+	fn(ctx, c)
 }
 
 func getLogPathFlag() string {

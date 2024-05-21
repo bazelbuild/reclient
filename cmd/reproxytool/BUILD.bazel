@@ -7,6 +7,8 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//cmd/reproxytool/usage2csv",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/flags",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/tool",
         "@com_github_golang_glog//:glog",
     ],
 )
