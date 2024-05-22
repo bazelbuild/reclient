@@ -1,0 +1,343 @@
+command: {
+	identifiers: {
+		command_id: "1c2a12e4-a8adcfac"
+		invocation_id: "aosp-master-aosp_cf_x86_64_phone-userdebug_coverage-10448490"
+		tool_name: "re-client"
+		execution_id: "fba1b0c4-13be-44f8-a061-1c3ac986f62d"
+	}
+	exec_root: "/mnt/disks/build-disk/src/android/master"
+	output: {
+		output_files: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o.d"
+		output_files: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o"
+	}
+	execution_timeout: 3600
+	working_directory: "."
+	platform: {
+		key: "Pool"
+		value: "default"
+	}
+	platform: {
+		key: "container-image"
+		value: "docker://gcr.io/androidbuild-re-dockerimage/android-build-remoteexec-image@sha256:582efb38f0c229ea39952fff9e132ccbe183e14869b39888010dacf56b360d62"
+	}
+}
+result: {
+	status: CACHE_HIT
+}
+remote_metadata: {
+	result: {
+		status: CACHE_HIT
+	}
+	num_input_files: 1058
+	num_input_directories: 148
+	total_input_bytes: 1003867016
+	num_output_files: 2
+	total_output_bytes: 583397
+	command_digest: "173686d8f5e88c46ffdd8c23e22f2ad27b937c0748cb1bd4a5fce0dacfcffb8c/5298"
+	action_digest: "65e9e1fb7ed67b37e41185f82c502cabf484ff44c9767dc1902d3043689f7080/147"
+	event_times: {
+		key: "CheckActionCache"
+		value: {
+			from: {
+				seconds: 1688662512
+				nanos: 659996791
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 688487608
+			}
+		}
+	}
+	event_times: {
+		key: "ComputeMerkleTree"
+		value: {
+			from: {
+				seconds: 1688662508
+				nanos: 710456453
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 659995638
+			}
+		}
+	}
+	event_times: {
+		key: "DownloadResults"
+		value: {
+			from: {
+				seconds: 1688662512
+				nanos: 688492262
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 795805850
+			}
+		}
+	}
+	logical_bytes_downloaded: 583397
+	real_bytes_downloaded: 583397
+	output_file_digests: {
+		key: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o"
+		value: "caba0de462ae1fd1ebe77cb9a5dc8682415f638ad8ffa6a05cd76458f2fc2310/572644"
+	}
+	output_file_digests: {
+		key: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o.d"
+		value: "402e7ff9b85585bfa8bb708b6e1e553d7057255fdde55ffccbc31c6aafa4b537/10753"
+	}
+	stderr_digest: "/0"
+	stdout_digest: "/0"
+}
+local_metadata: {
+	event_times: {
+		key: "CPPInputProcessor"
+		value: {
+			from: {
+				seconds: 1688662507
+				nanos: 956990924
+			}
+			to: {
+				seconds: 1688662508
+				nanos: 709591388
+			}
+		}
+	}
+	event_times: {
+		key: "InputProcessorWait"
+		value: {
+			from: {
+				seconds: 1688662507
+				nanos: 956986395
+			}
+			to: {
+				seconds: 1688662507
+				nanos: 956987476
+			}
+		}
+	}
+	event_times: {
+		key: "ProcessInputs"
+		value: {
+			from: {
+				seconds: 1688662504
+				nanos: 268031810
+			}
+			to: {
+				seconds: 1688662508
+				nanos: 710400457
+			}
+		}
+	}
+	event_times: {
+		key: "ProxyExecution"
+		value: {
+			from: {
+				seconds: 1688662504
+				nanos: 267925516
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 795982640
+			}
+		}
+	}
+	event_times: {
+		key: "WrapperOverhead"
+		value: {
+			from: {
+				seconds: 1688662504
+				nanos: 243991904
+			}
+			to: {
+				seconds: 1688662504
+				nanos: 267925516
+			}
+		}
+	}
+	labels: {
+		key: "compiler"
+		value: "clang"
+	}
+	labels: {
+		key: "lang"
+		value: "cpp"
+	}
+	labels: {
+		key: "type"
+		value: "compile"
+	}
+}
+completion_status: STATUS_CACHE_HIT
+
+
+
+command: {
+	identifiers: {
+		command_id: "1c2a12e4-d62078c1"
+		invocation_id: "aosp-master-aosp_cf_x86_64_phone-userdebug_coverage-10448490"
+		tool_name: "re-client"
+		execution_id: "6c215534-580e-4f99-97a8-04feb9d2ad03"
+	}
+	exec_root: "/mnt/disks/build-disk/src/android/master"
+	output: {
+		output_files: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_64_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o.d"
+		output_files: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_64_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o"
+	}
+	execution_timeout: 3600
+	working_directory: "."
+	platform: {
+		key: "Pool"
+		value: "default"
+	}
+	platform: {
+		key: "container-image"
+		value: "docker://gcr.io/androidbuild-re-dockerimage/android-build-remoteexec-image@sha256:582efb38f0c229ea39952fff9e132ccbe183e14869b39888010dacf56b360d62"
+	}
+}
+result: {
+	status: CACHE_HIT
+}
+remote_metadata: {
+	result: {
+		status: CACHE_HIT
+	}
+	num_input_files: 1058
+	num_input_directories: 148
+	total_input_bytes: 1003866901
+	num_output_files: 2
+	total_output_bytes: 579420
+	command_digest: "e76799fb7f2462f785bd03eac1d82a5beda8ff181736d178fb6e4f9c2213f225/5337"
+	action_digest: "d4bf189b6c5082521b9b2f6a7968d807b0525330a7390a841cc55496e496f616/147"
+	event_times: {
+		key: "CheckActionCache"
+		value: {
+			from: {
+				seconds: 1688662512
+				nanos: 658606630
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 673328008
+			}
+		}
+	}
+	event_times: {
+		key: "ComputeMerkleTree"
+		value: {
+			from: {
+				seconds: 1688662508
+				nanos: 765949689
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 658605702
+			}
+		}
+	}
+	event_times: {
+		key: "DownloadResults"
+		value: {
+			from: {
+				seconds: 1688662512
+				nanos: 673334532
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 801571678
+			}
+		}
+	}
+	logical_bytes_downloaded: 579420
+	real_bytes_downloaded: 579420
+	output_file_digests: {
+		key: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_64_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o"
+		value: "021076442a0fc159c457b2a7ae593c3b4d77728c0fc188989442be9d10d9bff8/568664"
+	}
+	output_file_digests: {
+		key: "out/soong/.intermediates/system/security/ondevice-signing/tests/libsigningutils_test/android_x86_64_silvermont_cfi_cov/e560d7b19ebf7276b3e850d3d346dec8/obj/system/security/ondevice-signing/tests/SigningUtilsTest.o.d"
+		value: "93b2166764e775d2e4b20f2e6fe695f0abc5a3703d9d1d181f42e7e141ad551e/10756"
+	}
+	stderr_digest: "/0"
+	stdout_digest: "/0"
+}
+local_metadata: {
+	event_times: {
+		key: "CPPInputProcessor"
+		value: {
+			from: {
+				seconds: 1688662507
+				nanos: 953956597
+			}
+			to: {
+				seconds: 1688662508
+				nanos: 765433261
+			}
+		}
+	}
+	event_times: {
+		key: "InputProcessorWait"
+		value: {
+			from: {
+				seconds: 1688662507
+				nanos: 953952366
+			}
+			to: {
+				seconds: 1688662507
+				nanos: 953953563
+			}
+		}
+	}
+	event_times: {
+		key: "ProcessInputs"
+		value: {
+			from: {
+				seconds: 1688662504
+				nanos: 267102755
+			}
+			to: {
+				seconds: 1688662508
+				nanos: 765891233
+			}
+		}
+	}
+	event_times: {
+		key: "ProxyExecution"
+		value: {
+			from: {
+				seconds: 1688662504
+				nanos: 267024322
+			}
+			to: {
+				seconds: 1688662512
+				nanos: 801709367
+			}
+		}
+	}
+	event_times: {
+		key: "WrapperOverhead"
+		value: {
+			from: {
+				seconds: 1688662504
+				nanos: 244271432
+			}
+			to: {
+				seconds: 1688662504
+				nanos: 267024322
+			}
+		}
+	}
+	labels: {
+		key: "compiler"
+		value: "clang"
+	}
+	labels: {
+		key: "lang"
+		value: "cpp"
+	}
+	labels: {
+		key: "type"
+		value: "compile"
+	}
+}
+completion_status: STATUS_CACHE_HIT
+
+

@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "logrecordserver",
+    srcs = ["logrecordserver.go"],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/logrecordserver",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/log",
+        "//internal/pkg/logger",
+        "@com_github_golang_glog//:glog",
+        "@com_github_gorilla_mux//:mux",
+    ],
+)
+
+go_test(
+    name = "logrecordserver_test",
+    srcs = ["logrecordserver_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":logrecordserver"],
+)

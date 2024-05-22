@@ -164,6 +164,13 @@ go_repository(
     version = "v0.0.4",
 )
 
+go_repository(
+    name = "com_github_gorilla_mux",
+    importpath = "github.com/gorilla/mux",
+    sum = "h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=",
+    version = "v1.8.1",
+)
+
 load("//:go_deps.bzl", "shirou_gopsutil_deps")
 
 go_repository(

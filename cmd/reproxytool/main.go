@@ -42,6 +42,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/bazelbuild/reclient/internal/pkg/logrecordserver"
+
 	csv "github.com/bazelbuild/reclient/cmd/reproxytool/usage2csv"
 	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
 	remotetool "github.com/bazelbuild/remote-apis-sdks/go/pkg/tool"
@@ -50,10 +52,11 @@ import (
 
 const (
 	usage2CSV remotetool.OpType = "usage_to_csv"
+	server    remotetool.OpType = "server"
 )
 
 var (
-	supportedOps = append(remotetool.SupportedOps, usage2CSV)
+	supportedOps = append(remotetool.SupportedOps, usage2CSV, server)
 )
 
 var (
@@ -67,6 +70,11 @@ func addOps() {
 		if err := csv.Usage2CSV(getLogPathFlag()); err != nil {
 			log.Exitf("Error parsing usage data from reproxy.INFO, %v,to CSV file %v", logPath, err)
 		}
+	}
+	remotetool.RemoteToolOperations[server] = func(ctx context.Context, c *remotetool.Client) {
+		lr := &logrecordserver.Server{}
+		lr.LoadLogRecords(getLogPathFlag())
+		logrecordserver.Start(lr)
 	}
 }
 
