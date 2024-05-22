@@ -18,12 +18,9 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	ppb "github.com/bazelbuild/reclient/api/proxy"
@@ -241,34 +238,4 @@ func startProxy(ctx context.Context, serverAddr string, cmd *exec.Cmd, waitSecon
 		}
 	}
 	return fmt.Errorf("proxy failed to start within %v seconds", waitSeconds)
-}
-
-func pidFilePath(serverAddr string) (string, error) {
-	address := ""
-	if strings.HasPrefix(serverAddr, "unix://") {
-		address = strings.TrimPrefix(serverAddr, "unix://") + ".pid"
-	} else {
-		_, port, err := net.SplitHostPort(serverAddr)
-		if err != nil {
-			return "", err
-		}
-		address = filepath.Join(os.TempDir(), Proxyname+"_"+port+".pid")
-		err = os.MkdirAll(filepath.Dir(address), 0755)
-		if err != nil {
-			return "", fmt.Errorf("failed to create dir for pid file %q: %v", address, err)
-		}
-	}
-	return address, nil
-}
-
-func readPidFromFile(fp string) (int, error) {
-	contents, err := os.ReadFile(fp)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read pid file %v: %v", fp, err)
-	}
-	pid, err := strconv.Atoi(string(contents))
-	if err != nil {
-		return 0, fmt.Errorf("cannot parse pid from contents of %v (%v): %v", fp, string(contents), err)
-	}
-	return pid, nil
 }

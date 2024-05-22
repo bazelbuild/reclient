@@ -31,6 +31,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,7 @@ var (
 	cOpts       = &rewrapper.CommandOptions{StartTime: time.Now()}
 	serverAddr  = ""
 	dialTimeout *time.Duration
+	offlineMode = false
 
 	execStrategies = []string{"local", "remote", "remote_local_fallback", "racing"}
 )
@@ -93,6 +95,7 @@ func initFlags() {
 	flag.BoolVar(&cOpts.PreserveSymlink, "preserve_symlink", false, "Boolean indicating whether to preserve symlinks in input tree. Default is false.")
 	flag.BoolVar(&cOpts.CanonicalizeWorkingDir, "canonicalize_working_dir", false, "Replaces local working directory with a canonical value when running on RE server. The feature makes actions working-dir agnostic and enables to cache them across various same depth (e.g. out/default and out/rbe-build) local working directories (default: false)")
 	flag.StringVar(&cOpts.ActionLog, "action_log", "", "If set, write a reproxy log entry for this remote action to the named file.")
+	flag.BoolVar(&offlineMode, "offline", false, "If set, run in offline mode (rewrapper executes the action directly).  No remote caching or executing.")
 }
 
 func execStrategyValid() bool {
@@ -118,6 +121,27 @@ func main() {
 		flag.Usage()
 		log.Exitf("No command provided")
 	}
+
+	// Check to make sure reproxy is actually running, unless running in
+	// offline mode.  In that case, just run the command directly.
+	if offlineMode {
+		executable := exec.Command(cmd[0], cmd[1:]...)
+		executable.Stdout = os.Stdout
+		executable.Stderr = os.Stderr
+
+		err := executable.Start()
+		if err != nil {
+			log.Errorf("Error running command locally: %v", err)
+			os.Exit(1)
+		}
+
+		executable.Wait()
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr != nil {
+			os.Exit(exitErr.ExitCode())
+		}
+		os.Exit(0)
+	}
+
 	if !execStrategyValid() {
 		flag.Usage()
 		log.Exitf("No exec_strategy provided, must be one of %v", execStrategies)
