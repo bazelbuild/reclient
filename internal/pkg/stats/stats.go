@@ -399,6 +399,9 @@ func (vs *ProtoSaver) Save() (map[string]bigquery.Value, string, error) {
 			if pi["flags"] != nil {
 				pi["flags"] = mapToArr(pi["flags"])
 			}
+			if pi["bq_stats"] != nil {
+				pi["bq_stats"] = mapToArr(pi["bq_stats"])
+			}
 		}
 	}
 	return out, uuid.New().String(), nil

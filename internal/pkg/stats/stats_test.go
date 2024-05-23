@@ -935,6 +935,9 @@ func TestStatsProtoSaver(t *testing.T) {
 					From: timestamppb.New(time.Unix(1676388339, 0)),
 				},
 			},
+			BqStats: map[string]int32{
+				"success_bq_uploads": 42000,
+			},
 		}},
 	}
 	vs := &ProtoSaver{original}
@@ -952,6 +955,7 @@ func TestStatsProtoSaver(t *testing.T) {
 		"num_records": string("5"),
 		"proxy_info": []interface{}{
 			map[string]interface{}{
+				"bq_stats": []interface{}{map[string]interface{}{"key": string("success_bq_uploads"), "value": float64(42000)}},
 				"event_times": []interface{}{
 					map[string]interface{}{
 						"key":   string("Event"),

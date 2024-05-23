@@ -288,6 +288,8 @@ message ProxyInfo {
   map<string, string> flags = 3;
   // Resource usage stats during the lifetime of reproxy.
   repeated stats.Stat stats= 4;
+  // A map containing counts of LogRecords successfully and unsuccessfully saved to BigQuery
+  map<string, int32> bq_stats = 5;
 }
 
 // Generic message to hold data relevant to a specific metric.

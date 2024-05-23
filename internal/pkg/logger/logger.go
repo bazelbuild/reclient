@@ -104,8 +104,10 @@ type Logger struct {
 	qpsCount        int32
 
 	// fields used for upload data to bigquery
-	items  chan *bigquerytranslator.Item
-	bqSpec *bigquery.BQSpec
+	items     chan *bigquerytranslator.Item
+	bqSpec    *bigquery.BQSpec
+	bqSuccess atomic.Int32
+	bqFailed  atomic.Int32
 }
 
 type logEvent interface {
@@ -622,6 +624,10 @@ func (l *Logger) CloseAndAggregate() *spb.Stats {
 	close(l.items)
 	l.wg.Wait()
 	l.info.Stats = append(l.info.Stats, summarize(l.resourceUsage)...)
+	l.info.BqStats = map[string]int32{
+		"success_bq_uploads": l.bqSuccess.Load(),
+		"failed_bq_uploads":  l.bqFailed.Load(),
+	}
 	l.writeProxyInfo()
 	l.stats.FinalizeAggregate([]*lpb.ProxyInfo{l.info})
 	return l.stats.ToProto()
@@ -659,7 +665,9 @@ func (l *Logger) processLogRecords() {
 		if !ok {
 			ctx, cancel := context.WithTimeout(context.Background(), l.bqSpec.Timeout)
 			defer cancel()
-			bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
+			failed, _ := bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
+			l.bqSuccess.Add(int32(len(batch)))
+			l.bqFailed.Add(failed)
 			return
 		}
 		batch = append(batch, r.LogRecord)
@@ -668,7 +676,9 @@ func (l *Logger) processLogRecords() {
 			go func(batch []*lpb.LogRecord) {
 				ctx, cancel := context.WithTimeout(context.Background(), l.bqSpec.Timeout)
 				defer cancel()
-				bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
+				failed, _ := bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
+				l.bqSuccess.Add(int32(len(batch)))
+				l.bqFailed.Add(failed)
 				l.wg.Done()
 			}(batch)
 			batch = make([]*lpb.LogRecord, 0, batchSize)

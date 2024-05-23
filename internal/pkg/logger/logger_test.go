@@ -87,6 +87,7 @@ func TestProxyInfo(t *testing.T) {
 	logger.IncrementMetricIntToProxyInfo(event.GomaInputProcessorRestart, 1)
 	logger.IncrementMetricIntToProxyInfo(event.GomaInputProcessorRestart, 5)
 	logger.IncrementMetricIntToProxyInfo(event.GomaInputProcessorRestart, 3)
+	logger.bqSuccess.Add(1000)
 	testFlagSet := flag.NewFlagSet("TestFlagSet", flag.ContinueOnError)
 	testFlagSet.String("key1", "val1", "test")
 	testFlagSet.String("key2", "val2", "test")
@@ -122,6 +123,10 @@ func TestProxyInfo(t *testing.T) {
 			Flags: map[string]string{
 				"key1": "val1",
 				"key2": "val2",
+			},
+			BqStats: map[string]int32{
+				"failed_bq_uploads":  0,
+				"success_bq_uploads": 1000,
 			},
 		},
 	}

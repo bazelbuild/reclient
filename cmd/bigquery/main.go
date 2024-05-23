@@ -76,7 +76,7 @@ func main() {
 		Concurrent: *numConcurrentOps,
 	}
 	ctx := context.Background()
-	if err := bigquery.InsertRows(ctx, logRecords, bqSpecs, true); err != nil {
-		log.Exitf("Unable to insert records into bigquery table: %+v", err)
+	if failed, err := bigquery.InsertRows(ctx, logRecords, bqSpecs, true); err != nil {
+		log.Exitf("%v records out of %v failed to be inserted into bigquery table: %+v", failed, len(logRecords), err)
 	}
 }

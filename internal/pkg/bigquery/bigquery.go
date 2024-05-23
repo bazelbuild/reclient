@@ -81,8 +81,9 @@ type BQSpec struct {
 	Timeout    time.Duration
 }
 
-// InsertRows insert a slice of LogRecords to bigquery table.
-func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEnabled bool) error {
+// InsertRows inserts a slice of LogRecords into a BigQuery table and returns
+// the number of rows that failed to insert, along with any associated errors.
+func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEnabled bool) (int32, error) {
 	processed := int32(0)
 	total := int32(len(logs))
 	var failed atomic.Int32
@@ -90,18 +91,18 @@ func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEn
 
 	defer func() {
 		elapsedTime := time.Since(startTime)
-		log.Infof("Uploading %v rows of LogRecords to bigquery, %v failed to insert, elapsed time: %v", total, total-processed, elapsedTime)
+		log.Infof("Uploading %v rows of LogRecords to bigquery, %v failed to insert, elapsed time: %v", total, failed.Load(), elapsedTime)
 	}()
 
 	//No items to load to bigquery.
 	if total < 1 {
-		return nil
+		return failed.Load(), nil
 	}
 
 	inserter, cleanup, err := NewInserter(ctx, bqSpec.TableSpec, bqSpec.ProjectID, nil)
 	defer cleanup()
 	if err != nil {
-		return fmt.Errorf("bigquery.NewInserter: %v", err)
+		return failed.Load(), fmt.Errorf("bigquery.NewInserter: %v", err)
 	}
 
 	items := make(chan *bigquerytranslator.Item, bqSpec.BatchSize)
@@ -143,5 +144,5 @@ func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEn
 	if err := g.Wait(); err != nil {
 		log.Errorf("%v rows having error while uploading to bigquery: %v", failed.Load(), err)
 	}
-	return nil
+	return failed.Load(), nil
 }
