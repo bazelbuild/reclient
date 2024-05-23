@@ -38,102 +38,45 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"sync"
-	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
-	"github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
-
-	lpb "github.com/bazelbuild/reclient/api/log"
-
 	log "github.com/golang/glog"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
 	// TODO: support --proxy_log_dir.
-	logPath          = flag.String("log_path", "", "If provided, the path to a log file of all executed records. The format is e.g. text:///full/file/path.")
-	projectID        = flag.String("project_id", "foundry-x-experiments", "The project containing the big query table to which log records should be streamed to.")
-	tableSpec        = flag.String("table", "reproxy_log_test.test_1", "Resource specifier of the BigQuery to which log records should be streamed to. If the project is not provided in the specifier project_id will be used.")
-	numConcurrentOps = flag.Int("num_concurrent_uploads", 100, "Number of concurrent upload operations to perform.")
+	logPath   = flag.String("log_path", "", "If provided, the path to a log file of all executed records. The format is e.g. text:///full/file/path.")
+	projectID = flag.String("project_id", "foundry-x-experiments", "The project containing the big query table to which log records should be streamed to.")
+	tableSpec = flag.String("table", "reproxy_log_test.test_1", "Resource specifier of the BigQuery to which log records should be streamed to. If the project is not provided in the specifier project_id will be used.")
+	// The default value of 2k for num_concurrent_uploads/batch_size was chosen empirically.
+	numConcurrentOps = flag.Int("num_concurrent_uploads", 2000, "Number of concurrent upload operations to perform.")
+	batchSize        = flag.Int("batch_size", 2000, "Number of LogRecords to share one BigQuery Client.")
 )
-
-func insertRows(logs []*lpb.LogRecord) error {
-	ctx := context.Background()
-	inserter, cleanup, err := bigquery.NewInserter(ctx, *tableSpec, *projectID, nil)
-	defer cleanup()
-	if err != nil {
-		return fmt.Errorf("bigquery.NewInserter: %v", err)
-	}
-
-	items := make(chan *bigquerytranslator.Item, *numConcurrentOps)
-
-	g, _ := errgroup.WithContext(context.Background())
-
-	var processed int32
-	var processedMu sync.Mutex
-
-	for i := 0; i < *numConcurrentOps; i++ {
-		g.Go(func() error {
-			for item := range items {
-				if err := inserter.Put(ctx, item); err != nil {
-					// In case of error (gpaste/6313679673360384), retrying the job with
-					// back-off as described in BigQuery Service Level Agreement
-					// https://cloud.google.com/bigquery/sla
-					time.Sleep(1 * time.Second)
-					if err := inserter.Put(ctx, item); err != nil {
-						log.Errorf("Failed to insert record after retry: %v", err)
-						return err
-					}
-				}
-				processedMu.Lock()
-				processed++
-				processedMu.Unlock()
-			}
-			return nil
-		})
-	}
-	go func() {
-		for range time.Tick(5 * time.Second) {
-			processedMu.Lock()
-			log.Infof("Finished %v/%v items...", int(processed), len(logs))
-			processedMu.Unlock()
-		}
-	}()
-	if len(logs) < 1 {
-		log.Infof("No items to load to bigquery.")
-		return nil
-	}
-	log.Infof("Total number of items: %v", len(logs))
-	for _, r := range logs {
-		items <- &bigquerytranslator.Item{r}
-	}
-	close(items)
-
-	if err := g.Wait(); err != nil {
-		log.Errorf("Error while uploading to bigquery: %v", err)
-	}
-	return nil
-}
 
 func main() {
 	defer log.Flush()
 	rbeflag.Parse()
 	if *logPath == "" {
-		log.Fatal("Must provide proxy log path.")
+		log.Exit("Must provide proxy log path.")
 	}
 
 	log.Infof("Loading stats from %v...", *logPath)
 	logRecords, err := logger.ParseFromFormatFile(*logPath)
 	if err != nil {
-		log.Fatalf("Failed reading proxy log: %v", err)
+		log.Exitf("Failed reading proxy log: %v", err)
 	}
 
 	log.Infof("Inserting stats into bigquery table...")
-	if err := insertRows(logRecords); err != nil {
-		log.Fatalf("Unable to insert records into bigquery table: %+v", err)
+	bqSpecs := bigquery.BQSpec{
+		ProjectID:  *projectID,
+		TableSpec:  *tableSpec,
+		BatchSize:  *batchSize,
+		Concurrent: *numConcurrentOps,
+	}
+	ctx := context.Background()
+	if err := bigquery.InsertRows(ctx, logRecords, bqSpecs, true); err != nil {
+		log.Exitf("Unable to insert records into bigquery table: %+v", err)
 	}
 }

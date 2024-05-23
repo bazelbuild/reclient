@@ -18,8 +18,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"cloud.google.com/go/bigquery"
+	lpb "github.com/bazelbuild/reclient/api/log"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator"
+	log "github.com/golang/glog"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/credentials/oauth"
 )
@@ -47,7 +53,7 @@ func parseResourceSpec(spec, defaultProject string) (project, dataset, table str
 	return project, chunks[0], chunks[1], nil
 }
 
-// NewInserter creates a an inserter for the table specified by the given resourceSpec in
+// NewInserter creates an inserter for the table specified by the given resourceSpec in
 // the form <project>:<dataset>.<table> or <dataset>.<table>
 func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *oauth.TokenSource) (inserter *bigquery.Inserter, cleanup func() error, err error) {
 	project, dataset, table, err := parseResourceSpec(resourceSpec, defaultProject)
@@ -64,4 +70,76 @@ func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *o
 		return nil, cleanup, err
 	}
 	return client.Dataset(dataset).Table(table).Inserter(), client.Close, nil
+}
+
+// BQSpec defines which bigquery table the LogRecords will be saved.
+type BQSpec struct {
+	ProjectID  string
+	TableSpec  string
+	BatchSize  int
+	Concurrent int
+}
+
+// InsertRows insert a slice of LogRecords to bigquery table.
+func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEnabled bool) error {
+	processed := int32(0)
+	total := int32(len(logs))
+	startTime := time.Now()
+
+	defer func() {
+		elapsedTime := time.Since(startTime)
+		log.Infof("Uploading %v rows of LogRecords to bigquery, %v failed to insert, elapsed time: %v", total, total-processed, elapsedTime)
+	}()
+
+	//No items to load to bigquery.
+	if total < 1 {
+		return nil
+	}
+
+	inserter, cleanup, err := NewInserter(ctx, bqSpec.TableSpec, bqSpec.ProjectID, nil)
+	defer cleanup()
+	if err != nil {
+		return fmt.Errorf("bigquery.NewInserter: %v", err)
+	}
+
+	items := make(chan *bigquerytranslator.Item, bqSpec.BatchSize)
+
+	g, _ := errgroup.WithContext(context.Background())
+
+	for i := 0; i < bqSpec.Concurrent; i++ {
+		g.Go(func() error {
+			for item := range items {
+				if err := inserter.Put(ctx, item); err != nil {
+					// In case of error (gpaste/6313679673360384), retrying the job with
+					// back-off as described in BigQuery Service Level Agreement
+					// https://cloud.google.com/bigquery/sla
+					time.Sleep(1 * time.Second)
+					if err := inserter.Put(ctx, item); err != nil {
+						log.Errorf("Failed to insert record after retry: %v", err)
+						return err
+					}
+				}
+				atomic.AddInt32(&processed, 1)
+			}
+			return nil
+		})
+	}
+	if logEnabled {
+		t := time.NewTicker(2 * time.Second)
+		defer t.Stop()
+		go func() {
+			for range t.C {
+				log.Infof("Finished %v/%v items...", atomic.LoadInt32(&processed), total)
+			}
+		}()
+	}
+	for _, r := range logs {
+		items <- &bigquerytranslator.Item{r}
+	}
+	close(items)
+
+	if err := g.Wait(); err != nil {
+		log.Errorf("Error while uploading to bigquery: %v", err)
+	}
+	return nil
 }
