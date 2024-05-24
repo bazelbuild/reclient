@@ -46,22 +46,12 @@ cc_platform_binary(
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//visibility:public"],
-    deps =
-        select({
-            "//:clangscandeps_input_processor_config": [
-                ":scandeps_lib",
-                #gazelle:ignore
-                "//internal/pkg/clangscandepsipservice",
-                "//internal/pkg/clangscandepsipservice:include_processor",
-            ],
-            "//:goma_input_processor_config": [
-                ":scandeps_lib",
-                #gazelle:ignore
-                "//internal/pkg/gomaipservice",
-                "//internal/pkg/gomaipservice:include_processor",
-            ],
-            "//conditions:default": [],
-        }),
+    deps = [
+        ":scandeps_lib",
+    ] + select({
+        "//:goma_input_processor_config": ["//internal/pkg/scandeps:include_processor"],
+        "//conditions:default": [],
+    }),
 )
 
 dbg_target(

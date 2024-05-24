@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,19 +16,20 @@
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif
 
-#include "gomaip.h"
+#include "scandeps.h"
 
 #include <glog/logging.h>
 
 #include <condition_variable>
 #include <cstdlib>
 
+#include "include_processor.h"
+
 #if defined(_WIN32)
 #include <winsock2.h>
 #define WSA_VERSION MAKEWORD(2, 2)  // using winsock 2.2
 #endif
 
-#include "include_processor.h"
 #include "internal/pkg/version/version.h"
 
 using grpc::ServerContext;
@@ -40,33 +41,13 @@ using scandeps::CPPProcessInputsRequest;
 using scandeps::CPPProcessInputsResponse;
 using scandeps::StatusResponse;
 
-// Implementation of newDepsScanner from scandeps.h
-// TODO (b/268656738): remove experimental_deadlock and experimental_segfault
-scandeps::CPPDepsScanner::Service* newDepsScanner(
-    std::function<void()> shutdown_server, const char* process_name,
-    const char* cache_dir, const char* log_dir, int deps_cache_max_mb,
-    bool enable_deps_cache, uint32_t experimental_deadlock,
-    uint32_t experimental_segfault) {
-  return new GomaIPServiceImpl(shutdown_server, process_name, cache_dir,
-                               log_dir, deps_cache_max_mb, enable_deps_cache,
-                               experimental_deadlock, experimental_segfault);
-}
-// Implementation of deleteDepsScanner from scandeps.h
-bool deleteDepsScanner(scandeps::CPPDepsScanner::Service* grpc_service_impl) {
-  GomaIPServiceImpl* gomaip_service =
-      static_cast<GomaIPServiceImpl*>(grpc_service_impl);
-  // Do necessary shutdown of the dependency scanner
-  LOG(INFO) << "Destroying GomaIP service.";
-  delete gomaip_service;
-  return true;
-}
-
-GomaIPServiceImpl::GomaIPServiceImpl(std::function<void()> shutdown_server,
-                                     const char* process_name,
-                                     std::string cache_dir, std::string log_dir,
-                                     int cache_file_max_mb, bool use_deps_cache,
-                                     uint32_t experimental_deadlock,
-                                     uint32_t experimental_segfault)
+namespace include_processor {
+ScandepsService::ScandepsService(std::function<void()> shutdown_server,
+                                 const char* process_name,
+                                 std::string cache_dir, std::string log_dir,
+                                 int cache_file_max_mb, bool use_deps_cache,
+                                 uint32_t experimental_deadlock,
+                                 uint32_t experimental_segfault)
     : current_actions_(0),
       completed_actions_(0),
       shutdown_server_(shutdown_server),
@@ -95,43 +76,41 @@ GomaIPServiceImpl::GomaIPServiceImpl(std::function<void()> shutdown_server,
 #endif
   std::unique_lock<std::mutex> exp_lock(init_mutex_);
   if (deps_scanner_cache_ != nullptr) {
-    LOG(WARNING) << "Goma dependency scanner is already initialized and will "
-                    "not be reinitialized";
+    LOG(WARNING) << INPUT_PROCESSOR
+        " dependency scanner is already initialized and will "
+        "not be reinitialized";
   } else {
     std::time_t start = std::time(0);
-    deps_scanner_cache_ = include_processor::NewDepsScanner(
+    deps_scanner_cache_ = std::make_unique<include_processor::IncludeProcessor>(
         process_name_, cache_dir_.c_str(), log_dir_.c_str(), cache_file_max_mb_,
         use_deps_cache_);
     std::time_t end = std::time(0);
     if (!deps_scanner_cache_) {
-      LOG(FATAL) << "Unable to create new goma dependency scanner";
+      LOG(FATAL) << "Unable to create new " INPUT_PROCESSOR
+                    " dependency scanner";
     }
-    LOG(INFO) << "Initializing goma dependency scanner took " << end - start
-              << " seconds";
+    LOG(INFO) << "Initializing " INPUT_PROCESSOR " dependency scanner took "
+              << end - start << " seconds";
   }
   init_cv_.notify_all();
 }
 
-GomaIPServiceImpl::~GomaIPServiceImpl() {
+ScandepsService::~ScandepsService() {
 #ifdef _WIN32
   if (wsa_initialized_) {
     WSACleanup();
   }
 #endif
-  if (deps_scanner_cache_ != nullptr) {
-    LOG(INFO) << "Shutting down input processor";
-    deps_scanner_cache_->Quit();
-  }
 }
 
-Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
-                                        const CPPProcessInputsRequest* request,
-                                        CPPProcessInputsResponse* response) {
+Status ScandepsService::ProcessInputs(ServerContext* context,
+                                      const CPPProcessInputsRequest* request,
+                                      CPPProcessInputsResponse* response) {
   (void)context;
 
-  // TODO b/268656738: refactor this to common service code
   // Count an action
   ++current_actions_;
+  // This is a hack to simulate a segfault.
   if (experimental_segfault_ > 0) {
     std::unique_lock<std::mutex> exp_lock(exp_mutex_);
     if (experimental_segfault_ > 0) {
@@ -142,6 +121,7 @@ Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
       }
     }
   }
+  // This is a hack to simulate a deadlock.
   if (experimental_deadlock_ > 0) {
     std::unique_lock<std::mutex> exp_lock(exp_mutex_);
     if (experimental_deadlock_ > 0) {
@@ -166,34 +146,33 @@ Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
     }
   }
 
-  auto goma_result = std::make_shared<include_processor::GomaResult>();
-  goma_result->directory = request->directory();
-  goma_result->filename = request->filename();
-  std::unique_lock<std::mutex> result_lock(goma_result->result_mutex);
+  auto result = std::make_shared<include_processor::Result>();
+  result->directory = request->directory();
+  result->filename = request->filename();
+  std::unique_lock<std::mutex> result_lock(result->result_mutex);
   deps_scanner_cache_->ComputeIncludes(
       request->exec_id(), request->directory(),
       std::vector<std::string>(request->command().begin(),
                                request->command().end()),
       std::vector<std::string>(request->cmd_env().begin(),
                                request->cmd_env().end()),
-      goma_result);
-  goma_result->result_condition.wait(
-      result_lock, [&goma_result]() { return goma_result->result_complete; });
+      result);
+  result->result_condition.wait(
+      result_lock, [&result]() { return result->result_complete; });
 
-  if (goma_result->error.size() > 0) {
+  if (result->error.size() > 0) {
     std::ostringstream command;
     std::copy(request->command().begin(), request->command().end(),
               std::ostream_iterator<std::string>(command, " "));
-    LOG(ERROR)
-        << "Goma encountered the following error processing a command: \""
-        << goma_result->error << "\"; Command: [" << command.str() << "]";
+    LOG(ERROR) << INPUT_PROCESSOR
+        " encountered the following error processing a command: \""
+               << result->error << "\"; Command: [" << command.str() << "]";
   }
-  response->set_error(goma_result->error);
-  response->set_used_cache(goma_result->used_cache);
-  for (auto dependency : goma_result->dependencies) {
+  response->set_error(result->error);
+  response->set_used_cache(result->used_cache);
+  for (auto dependency : result->dependencies) {
     response->add_dependencies(dependency);
   }
-  response->add_dependencies(request->filename());
 
   // TODO b/268656738: refactor this to common service code
   // Count the action as complete
@@ -202,9 +181,9 @@ Status GomaIPServiceImpl::ProcessInputs(ServerContext* context,
   return grpc::Status::OK;
 }
 
-Status GomaIPServiceImpl::Status(ServerContext* context,
-                                 const google::protobuf::Empty* request,
-                                 StatusResponse* response) {
+Status ScandepsService::Status(ServerContext* context,
+                               const google::protobuf::Empty* request,
+                               StatusResponse* response) {
   (void)context;
   (void)request;
 
@@ -214,9 +193,9 @@ Status GomaIPServiceImpl::Status(ServerContext* context,
   return grpc::Status::OK;
 }
 
-Status GomaIPServiceImpl::Shutdown(ServerContext* context,
-                                   const google::protobuf::Empty* request,
-                                   StatusResponse* response) {
+Status ScandepsService::Shutdown(ServerContext* context,
+                                 const google::protobuf::Empty* request,
+                                 StatusResponse* response) {
   (void)context;
   (void)request;
 
@@ -230,20 +209,20 @@ Status GomaIPServiceImpl::Shutdown(ServerContext* context,
   return grpc::Status::OK;
 }
 
-Status GomaIPServiceImpl::Capabilities(ServerContext* context,
-                                       const google::protobuf::Empty* request,
-                                       CapabilitiesResponse* response) {
+Status ScandepsService::Capabilities(ServerContext* context,
+                                     const google::protobuf::Empty* request,
+                                     CapabilitiesResponse* response) {
   (void)context;
   (void)request;
 
   VLOG(1) << "Capabilities request received.";
-  response->set_caching(true);
-  response->set_expects_resource_dir(false);
-
+  response->set_caching(include_processor::IncludeProcessor::caching);
+  response->set_expects_resource_dir(
+      include_processor::IncludeProcessor::expects_resource_dir);
   return grpc::Status::OK;
 }
 
-void GomaIPServiceImpl::PopulateStatusResponse(
+void ScandepsService::PopulateStatusResponse(
     scandeps::StatusResponse* response) {
   response->set_name(INPUT_PROCESSOR);
   response->set_version(RECLIENT_VERSION);
@@ -253,3 +232,4 @@ void GomaIPServiceImpl::PopulateStatusResponse(
   response->set_completed_actions(completed_actions_);
   response->set_running_actions(current_actions_);
 }
+}  // namespace include_processor

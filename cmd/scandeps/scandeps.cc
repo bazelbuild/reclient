@@ -88,14 +88,13 @@ int main(int argc, char** argv) {
   gflags::SetVersionString(RECLIENT_VERSION " " INPUT_PROCESSOR);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  std::unique_ptr<ScandepsServer> server = std::make_unique<ScandepsServer>(
-      FLAGS_server_address, FLAGS_cache_dir, FLAGS_log_dir,
-      FLAGS_deps_cache_max_mb, FLAGS_enable_deps_cache,
-      FLAGS_shutdown_delay_seconds, FLAGS_experimental_deadlock,
-      FLAGS_experimental_segfault);
+  ScandepsServer server(FLAGS_server_address, FLAGS_cache_dir, FLAGS_log_dir,
+                        FLAGS_deps_cache_max_mb, FLAGS_enable_deps_cache,
+                        FLAGS_shutdown_delay_seconds,
+                        FLAGS_experimental_deadlock,
+                        FLAGS_experimental_segfault);
 
-  auto success =
-      server.get()->RunServer(argv[0]);  // Block until server is stopped
+  auto success = server.RunServer(argv[0]);  // Block until server is stopped
   LOG(INFO) << "Server has been stopped.";
   if (success) {
     return EXIT_SUCCESS;

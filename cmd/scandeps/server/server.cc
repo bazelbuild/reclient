@@ -23,7 +23,7 @@
 #include <thread>
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
-#include "scandeps.h"
+#include "internal/pkg/scandeps/scandeps.h"
 
 using scandeps::CPPDepsScanner;
 using scandeps::CPPProcessInputsRequest;
@@ -72,15 +72,15 @@ ScandepsServer::ScandepsServer(const std::string &server_address,
 ScandepsServer::~ScandepsServer() {}
 
 bool ScandepsServer::RunServer(const char *process_name) {
-  scandeps::CPPDepsScanner::Service *service = newDepsScanner(
-      [&]() { this->StopServer(); }, process_name, cache_dir_.c_str(),
-      log_dir_.c_str(), cache_size_max_mb_, use_deps_cache_,
-      experimental_deadlock_, experimental_segfault_);
+  include_processor::ScandepsService service(
+      [&]() { this->StopServer(); }, process_name, cache_dir_, log_dir_,
+      cache_size_max_mb_, use_deps_cache_, experimental_deadlock_,
+      experimental_segfault_);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
   builder.AddListeningPort(server_address_, grpc::InsecureServerCredentials());
-  builder.RegisterService(service);
+  builder.RegisterService(&service);
   grpc_server_ = builder.BuildAndStart();
   if (grpc_server_ == nullptr) {
     LOG(ERROR) << "Failed to bind to address " << server_address_;
@@ -122,7 +122,6 @@ bool ScandepsServer::RunServer(const char *process_name) {
   }
 #endif
   LOG(INFO) << "Server stopped, destroying deps scanner.";
-  deleteDepsScanner(service);
   return true;
 }
 

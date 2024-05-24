@@ -1,18 +1,21 @@
 cc_library(
     name = "scandeps_server_lib",
     srcs = [
-        "scandeps.h",
         "server.cc",
         "server.h",
     ],
-    hdrs = ["scandeps.h"],
+    hdrs = ["server.h"],
     tags = ["manual"],
     visibility = ["//:__subpackages__"],
     deps = [
+        "//internal/pkg/scandeps",
         "//api/scandeps:scandeps_cc",
         "@com_github_grpc_grpc//:grpc++",
     ] + select({
-        "@platforms//os:windows": [
+        "//:goma_input_processor_config_windows": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//:clangscandeps_input_processor_config": [
             "@com_github_google_glog//:glog",
         ],
         "//conditions:default": [

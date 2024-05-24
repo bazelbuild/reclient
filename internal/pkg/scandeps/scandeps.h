@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CMD_SCANDEPS_GOMAIPSERVICE_GOMAIP_H_
-#define CMD_SCANDEPS_GOMAIPSERVICE_GOMAIP_H_
+#ifndef INTERNAL_PKG_SCANDEPS_SCANDEPS_H_
+#define INTERNAL_PKG_SCANDEPS_SCANDEPS_H_
 
 #include <grpcpp/grpcpp.h>
 
 #include <atomic>
 #include <condition_variable>
 #include <ctime>
+#include <string>
 #include <thread>
 
 #include "api/scandeps/cppscandeps.grpc.pb.h"
 #include "include_processor.h"
 
-class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
+namespace include_processor {
+
+class ScandepsService final : public scandeps::CPPDepsScanner::Service {
  public:
-  GomaIPServiceImpl(std::function<void()> shutdown_server,
-                    const char* process_name, std::string cache_dir,
-                    std::string log_dir, int cache_file_max_mb,
-                    bool use_deps_cache, uint32_t experimental_deadlock,
-                    uint32_t experimental_segfault);
-  ~GomaIPServiceImpl();
+  ScandepsService(std::function<void()> shutdown_server,
+                  const char* process_name, std::string cache_dir,
+                  std::string log_dir, int cache_file_max_mb,
+                  bool use_deps_cache, uint32_t experimental_deadlock,
+                  uint32_t experimental_segfault);
+  ScandepsService(const ScandepsService& other) = delete;
+  ScandepsService& operator=(const ScandepsService& other) = delete;
+  ~ScandepsService();
   grpc::Status ProcessInputs(grpc::ServerContext*,
                              const scandeps::CPPProcessInputsRequest*,
                              scandeps::CPPProcessInputsResponse*) override;
@@ -52,12 +57,12 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
   std::atomic<std::size_t> current_actions_;
   std::atomic<std::size_t> completed_actions_;
   std::function<void()> shutdown_server_;
-  std::unique_ptr<include_processor::IncludeProcessor> deps_scanner_cache_;
+  std::unique_ptr<IncludeProcessor> deps_scanner_cache_;
   const char* process_name_;
-  std::string cache_dir_;
-  std::string log_dir_;
-  int cache_file_max_mb_;
-  bool use_deps_cache_;
+  const std::string cache_dir_;
+  const std::string log_dir_;
+  const int cache_file_max_mb_;
+  const bool use_deps_cache_;
 #ifdef _WIN32
   bool wsa_initialized_;
 #endif
@@ -70,4 +75,6 @@ class GomaIPServiceImpl final : public scandeps::CPPDepsScanner::Service {
   void PopulateStatusResponse(scandeps::StatusResponse*);
 };
 
-#endif  // CMD_SCANDEPS_GOMAIPSERVICE_GOMAIP_H_
+}  // namespace include_processor
+
+#endif  // INTERNAL_PKG_SCANDEPSIPSERVICE_DEPENDENCY_SCANNER_H_

@@ -16,8 +16,6 @@
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #endif
 
-#include "include_processor.h"
-
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -42,6 +40,7 @@
 #include "file_stat_cache.h"
 #include "get_compiler_info_param.h"
 #include "goma_init.h"
+#include "include_processor.h"
 #include "internal/pkg/version/version.h"
 #include "ioutil.h"
 #include "list_dir_cache.h"
@@ -95,10 +94,6 @@ int __wrap_glob(const char* pattern, int flags,
 
 #include "subprocess_controller_client.h"
 #include "subprocess_task.h"
-// Exported by goma.go when reproxy is built, declare this when building the
-// depsscanner service.
-void gComputeIncludesDone(uintptr_t req_ptr, std::set<std::string>& res,
-                          bool used_cache, std::string& err);
 
 #define REPROXY_CACHE_FILE "reproxy-gomaip.cache"
 
@@ -121,24 +116,41 @@ struct IncludeProcessorResponseParam {
   bool canceled = false;
 };
 
-class Request;
-
 // IncludeProcessor receives include processor requests and manages the worker
 // pools necessary to execute such requests. It provides common functionality
 // across requests like CompilerInfo querying. The code mostly comes from
 // https://chromium.googlesource.com/infra/goma/client/+/refs/heads/main/client/compile_service.cc
-class IncludeProcessorImpl final : public IncludeProcessor {
+class IncludeProcessor::impl {
  public:
   unique_ptr<WorkerThreadManager> wm_;
   int include_processor_pool_;
-  void ComputeIncludesDone(unique_ptr<Request> request);
   void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
                        const std::vector<std::string>& args,
                        const std::vector<std::string>& envs,
-                       std::shared_ptr<GomaResult> req);
-  void Quit();
+                       std::shared_ptr<Result> req);
+  impl(impl&&) = delete;
+  impl(const impl& other) = delete;
+  impl& operator=(impl&&) = delete;
+  impl& operator=(const impl& other) = delete;
+  ~impl() {
+    FlushLogFiles();
+    SubProcessControllerClient::Get()->Quit();
+    load_deps_cache_.reset();
+    load_compiler_info_cache_.reset();
+    devtools_goma::CompilerInfoCache::instance()->Save();
+    CompilerInfoCache::Quit();
+    DepsCache::Quit();
+    IncludeCache::Quit();
+    modulemap::Cache::Quit();
+    ListDirCache::Quit();
+    SubProcessControllerClient::Get()->Shutdown();
+    wm_->Finish();
+    if (FLAGS_ENABLE_GLOBAL_FILE_STAT_CACHE) {
+      GlobalFileStatCache::Quit();
+    }
+  }
 
-  IncludeProcessorImpl(string tmpdir)
+  impl(string tmpdir)
       : wm_(make_unique<WorkerThreadManager>()),
         compiler_type_specific_collection_(
             make_unique<CompilerTypeSpecificCollection>()) {
@@ -157,16 +169,63 @@ class IncludeProcessorImpl final : public IncludeProcessor {
     load_compiler_info_cache_ = make_unique<WorkerThreadRunner>(
         wm_.get(), FROM_HERE, NewCallback(CompilerInfoCache::LoadIfEnabled));
   }
-  void GetCompilerInfo(const string exec_id, GetCompilerInfoParam* param,
-                       OneshotClosure* callback);
 
   CompilerTypeSpecificCollection* compiler_type_specific_collection() {
     return compiler_type_specific_collection_.get();
   }
 
  private:
+  // Request holds information about a single command we receive for input
+  // processing. It is responsible for determining the CompilerInfoState and
+  // running the include scanner. Most of the code comes from
+  // https://chromium.googlesource.com/infra/goma/client/+/refs/heads/main/client/compile_task.cc
+  class Request {
+   public:
+    unique_ptr<CompilerFlags> flags_;
+    string exec_id_;
+    const string cwd_;
+    vector<string> args_;
+    vector<string> env_;
+    PlatformThreadId thread_id_;
+    DepsCache::Identifier deps_identifier_;
+    bool depscache_used_ = false;
+    set<string> required_files_;
+    string err_;
+    shared_ptr<Result> res_;
+
+    impl* processor_;
+    CompilerTypeSpecific* compiler_type_specific_;
+    ScopedCompilerInfoState compiler_info_state_;
+    std::unique_ptr<FileStatCache> input_file_stat_cache_;
+    Request(const string exec_id, const string cwd, const vector<string>& args,
+            const vector<string>& env, impl* processor, shared_ptr<Result> res)
+        : exec_id_(exec_id),
+          cwd_(cwd),
+          args_(args),
+          env_(env),
+          res_(res),
+          processor_(processor) {}
+
+   private:
+  };
+  void ComputeIncludesDone(unique_ptr<Request> request);
+  void GetCompilerInfo(const string exec_id, GetCompilerInfoParam* param,
+                       OneshotClosure* callback);
   void GetCompilerInfoInternal(GetCompilerInfoParam* param,
                                OneshotClosure* callback);
+  static void FillCompilerInfo(unique_ptr<Request> request);
+  static void FillCompilerInfoDone(unique_ptr<Request> request,
+                                   std::unique_ptr<GetCompilerInfoParam> param);
+  static void StartIncludeProcessor(unique_ptr<Request> request);
+  static void RunIncludeProcessor(
+      unique_ptr<Request> request,
+      std::unique_ptr<IncludeProcessorRequestParam> request_param);
+  static void RunIncludeProcessorDone(
+      unique_ptr<Request> request,
+      std::unique_ptr<IncludeProcessorResponseParam> response_param);
+  static void StartInputProcessing(unique_ptr<Request> req);
+  static void SaveToDepsCache(unique_ptr<Request> req);
+
   typedef std::pair<GetCompilerInfoParam*, OneshotClosure*> CompilerInfoWaiter;
   typedef std::vector<CompilerInfoWaiter> CompilerInfoWaiterList;
   unique_ptr<CompilerTypeSpecificCollection> compiler_type_specific_collection_;
@@ -181,52 +240,6 @@ class IncludeProcessorImpl final : public IncludeProcessor {
   unordered_map<string, shared_ptr<Lock>> compiler_info_locks_
       ABSL_GUARDED_BY(gmu_);
 };
-
-// Request holds information about a single command we receive for input
-// processing. It is responsible for determining the CompilerInfoState and
-// running the include scanner. Most of the code comes from
-// https://chromium.googlesource.com/infra/goma/client/+/refs/heads/main/client/compile_task.cc
-class Request {
- public:
-  unique_ptr<CompilerFlags> flags_;
-  string exec_id_;
-  const string cwd_;
-  vector<string> args_;
-  vector<string> env_;
-  PlatformThreadId thread_id_;
-  DepsCache::Identifier deps_identifier_;
-  bool depscache_used_ = false;
-  set<string> required_files_;
-  string err_;
-  shared_ptr<GomaResult> res_;
-
-  IncludeProcessorImpl* processor_;
-  CompilerTypeSpecific* compiler_type_specific_;
-  ScopedCompilerInfoState compiler_info_state_;
-  std::unique_ptr<FileStatCache> input_file_stat_cache_;
-  Request(const string exec_id, const string cwd, const vector<string>& args,
-          const vector<string>& env, IncludeProcessorImpl* processor,
-          shared_ptr<GomaResult> res)
-      : exec_id_(exec_id),
-        cwd_(cwd),
-        args_(args),
-        env_(env),
-        res_(res),
-        processor_(processor) {}
-
- private:
-};
-
-void FillCompilerInfo(unique_ptr<Request> request);
-void FillCompilerInfoDone(unique_ptr<Request> request,
-                          std::unique_ptr<GetCompilerInfoParam> param);
-void StartIncludeProcessor(unique_ptr<Request> request);
-void RunIncludeProcessor(
-    unique_ptr<Request> request,
-    std::unique_ptr<IncludeProcessorRequestParam> request_param);
-void RunIncludeProcessorDone(
-    unique_ptr<Request> request,
-    std::unique_ptr<IncludeProcessorResponseParam> response_param);
 
 void GetAdditionalEnv(const vector<string>& in_envs, const char* name,
                       vector<string>* envs) {
@@ -245,27 +258,9 @@ void GetAdditionalEnv(const vector<string>& in_envs, const char* name,
   }
 }
 
-void IncludeProcessorImpl::Quit() {
-  FlushLogFiles();
-  SubProcessControllerClient::Get()->Quit();
-  load_deps_cache_.reset();
-  load_compiler_info_cache_.reset();
-  devtools_goma::CompilerInfoCache::instance()->Save();
-  CompilerInfoCache::Quit();
-  DepsCache::Quit();
-  IncludeCache::Quit();
-  modulemap::Cache::Quit();
-  ListDirCache::Quit();
-  SubProcessControllerClient::Get()->Shutdown();
-  wm_->Finish();
-  if (FLAGS_ENABLE_GLOBAL_FILE_STAT_CACHE) {
-    GlobalFileStatCache::Quit();
-  }
-}
-
-void IncludeProcessorImpl::GetCompilerInfo(const string exec_id,
-                                           GetCompilerInfoParam* param,
-                                           OneshotClosure* callback) {
+void IncludeProcessor::impl::GetCompilerInfo(const string exec_id,
+                                             GetCompilerInfoParam* param,
+                                             OneshotClosure* callback) {
   VLOG(1) << exec_id << ": Started GetCompilerInfo";
   param->state.reset(CompilerInfoCache::instance()->Lookup(param->key));
   if (param->state.get() != nullptr) {
@@ -292,13 +287,13 @@ void IncludeProcessorImpl::GetCompilerInfo(const string exec_id,
   VLOG(1) << exec_id << ": Finished GetCompilerInfo without cache hit";
   wm_->RunClosureInPool(
       FROM_HERE, compiler_info_pool_,
-      NewCallback(this, &IncludeProcessorImpl::GetCompilerInfoInternal, param,
+      NewCallback(this, &IncludeProcessor::impl::GetCompilerInfoInternal, param,
                   callback),
       WorkerThread::PRIORITY_MED);
 }
 
-void IncludeProcessorImpl::GetCompilerInfoInternal(GetCompilerInfoParam* param,
-                                                   OneshotClosure* callback) {
+void IncludeProcessor::impl::GetCompilerInfoInternal(
+    GetCompilerInfoParam* param, OneshotClosure* callback) {
   std::vector<std::string> env(param->run_envs);
   env.push_back("GOMA_WILL_FAIL_WITH_UKNOWN_FLAG=true");
   param->state.reset(CompilerInfoCache::instance()->Lookup(param->key));
@@ -342,7 +337,7 @@ void IncludeProcessorImpl::GetCompilerInfoInternal(GetCompilerInfoParam* param,
   }
 }
 
-void FillCompilerInfo(unique_ptr<Request> req) {
+void IncludeProcessor::impl::FillCompilerInfo(unique_ptr<Request> req) {
   std::vector<std::string> run_envs;
   VLOG(1) << req->exec_id_ << ": Started FillCompilerInfo";
   // Append scandeps service version string as env variable in CompilerInfo, so
@@ -380,8 +375,8 @@ void FillCompilerInfo(unique_ptr<Request> req) {
       NewCallback(FillCompilerInfoDone, std::move(req), std::move(param)));
 }
 
-void FillCompilerInfoDone(unique_ptr<Request> req,
-                          std::unique_ptr<GetCompilerInfoParam> param) {
+void IncludeProcessor::impl::FillCompilerInfoDone(
+    unique_ptr<Request> req, std::unique_ptr<GetCompilerInfoParam> param) {
   VLOG(1) << req->exec_id_ << ": Started FillCompilerInfoDone";
   if (param->state.get() == nullptr) {
     req->err_ = "something went wrong trying to get compiler info.";
@@ -402,7 +397,7 @@ void FillCompilerInfoDone(unique_ptr<Request> req,
   StartIncludeProcessor(std::move(req));
 }
 
-void StartIncludeProcessor(unique_ptr<Request> req) {
+void IncludeProcessor::impl::StartIncludeProcessor(unique_ptr<Request> req) {
   auto b = req->compiler_type_specific_->SupportsDepsCache(*req->flags_);
   VLOG(1) << req->exec_id_ << ": Started StartIncludeProcessor";
   if (DepsCache::IsEnabled() && b &&
@@ -439,7 +434,7 @@ void StartIncludeProcessor(unique_ptr<Request> req) {
       WorkerThread::PRIORITY_LOW);
 }
 
-void RunIncludeProcessor(
+void IncludeProcessor::impl::RunIncludeProcessor(
     unique_ptr<Request> req,
     std::unique_ptr<IncludeProcessorRequestParam> request_param) {
   VLOG(1) << req->exec_id_ << ": Started RunIncludeProcessor";
@@ -475,7 +470,7 @@ void RunIncludeProcessor(
       WorkerThread::PRIORITY_LOW);
 }
 
-void RunIncludeProcessorDone(
+void IncludeProcessor::impl::RunIncludeProcessorDone(
     unique_ptr<Request> req,
     std::unique_ptr<IncludeProcessorResponseParam> response_param) {
   VLOG(1) << req->exec_id_ << ": Started RunIncludeProcessorDone";
@@ -489,7 +484,7 @@ void RunIncludeProcessorDone(
   processor->ComputeIncludesDone(std::move(req));
 }
 
-void SaveToDepsCache(unique_ptr<Request> req) {
+void IncludeProcessor::impl::SaveToDepsCache(unique_ptr<Request> req) {
   VLOG(1) << req->exec_id_ << ": Started SaveToDepsCache";
   // When deps_identifier_.has_value() is true, the condition to use DepsCache
   // should be satisfied. However, several checks are done for the safe.
@@ -513,7 +508,7 @@ void SaveToDepsCache(unique_ptr<Request> req) {
   VLOG(1) << req->exec_id_ << ": Finished SaveToDepsCache";
 }
 
-void StartInputProcessing(unique_ptr<Request> req) {
+void IncludeProcessor::impl::StartInputProcessing(unique_ptr<Request> req) {
   VLOG(1) << req->exec_id_ << ": Starting input processing";
   req->input_file_stat_cache_ = absl::make_unique<FileStatCache>();
   req->flags_ = CompilerFlagsParser::MustNew(req->args_, req->cwd_);
@@ -529,7 +524,7 @@ void StartInputProcessing(unique_ptr<Request> req) {
   FillCompilerInfo(std::move(req));
 }
 
-void IncludeProcessorImpl::ComputeIncludesDone(unique_ptr<Request> request) {
+void IncludeProcessor::impl::ComputeIncludesDone(unique_ptr<Request> request) {
   VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
   std::unique_lock<std::mutex> result_lock(request->res_->result_mutex);
   request->res_->dependencies = request->required_files_;
@@ -543,6 +538,7 @@ void IncludeProcessorImpl::ComputeIncludesDone(unique_ptr<Request> request) {
     }
   }
 
+  request->res_->dependencies.insert(request->res_->filename);
   request->res_->used_cache = request->depscache_used_;
   request->res_->error = request->err_;
   request->res_->result_complete = true;
@@ -550,11 +546,11 @@ void IncludeProcessorImpl::ComputeIncludesDone(unique_ptr<Request> request) {
   SaveToDepsCache(std::move(request));
 }
 
-void IncludeProcessorImpl::ComputeIncludes(const string& exec_id,
-                                           const string& cwd,
-                                           const vector<string>& args,
-                                           const vector<string>& envs,
-                                           shared_ptr<GomaResult> res) {
+void IncludeProcessor::impl::ComputeIncludes(const string& exec_id,
+                                             const string& cwd,
+                                             const vector<string>& args,
+                                             const vector<string>& envs,
+                                             shared_ptr<Result> res) {
   wm_->RunClosureInPool(
       FROM_HERE, request_pool_,
       NewCallback(StartInputProcessing,
@@ -562,9 +558,12 @@ void IncludeProcessorImpl::ComputeIncludes(const string& exec_id,
       WorkerThread::PRIORITY_MED);
 }
 
-unique_ptr<include_processor::IncludeProcessor> NewDepsScanner(
-    const char* process_name, const char* cache_dir, const char* log_dir,
-    int cache_file_max_mb, bool use_deps_cache) {
+const bool include_processor::IncludeProcessor::caching = true;
+const bool include_processor::IncludeProcessor::expects_resource_dir = false;
+
+IncludeProcessor::IncludeProcessor(const char* process_name,
+                                   const char* cache_dir, const char* log_dir,
+                                   int cache_file_max_mb, bool use_deps_cache) {
   auto argc = 1;
   char* argv[1];
   argv[0] = strdup(process_name);
@@ -659,7 +658,16 @@ unique_ptr<include_processor::IncludeProcessor> NewDepsScanner(
       cache_dir, FLAGS_COMPILER_INFO_CACHE_FILE,
       FLAGS_COMPILER_INFO_CACHE_NUM_ENTRIES,
       absl::Seconds(FLAGS_COMPILER_INFO_CACHE_HOLDING_TIME_SEC));
-  return make_unique<include_processor::IncludeProcessorImpl>(tmpdir);
+  pImpl = make_unique<IncludeProcessor::impl>(tmpdir);
 }
+
+void include_processor::IncludeProcessor::ComputeIncludes(
+    const std::string& exec_id, const std::string& cwd,
+    const std::vector<std::string>& args, const std::vector<std::string>& envs,
+    std::shared_ptr<include_processor::Result> req) {
+  pImpl->ComputeIncludes(exec_id, cwd, args, envs, req);
+}
+
+IncludeProcessor::~IncludeProcessor() = default;
 
 }  // namespace include_processor

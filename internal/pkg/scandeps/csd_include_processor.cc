@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include_processor.h"
-
 #include <glog/logging.h>
 
 #include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/DependencyScanning/DependencyScanningTool.h"
-#include "internal/pkg/scandeps/csdutils/adjust_cmd.h"
-#include "internal/pkg/scandeps/csdutils/parse_deps.h"
-#include "internal/pkg/scandeps/csdutils/parse_env.h"
-#include "internal/pkg/version/version.h"
+#include "csdutils/adjust_cmd.h"
+#include "csdutils/parse_deps.h"
+#include "csdutils/parse_env.h"
+#include "include_processor.h"
 
 // Some of reclient's use cases require ubuntu 16.04, which is only shipped
 // with GLIBC 2.23 at the latest, by default (or so is the ubuntu:16.04 docker
@@ -81,9 +78,9 @@ class SingleCommandCompilationDatabase
   clang::tooling::CompileCommand Command;
 };
 
-class DependencyScanner final : public include_processor::IncludeProcessor {
+class include_processor::IncludeProcessor::impl {
  public:
-  DependencyScanner()
+  impl()
       : Service(clang::tooling::dependencies::DependencyScanningService(
             clang::tooling::dependencies::ScanningMode::
                 DependencyDirectivesScan,
@@ -91,6 +88,8 @@ class DependencyScanner final : public include_processor::IncludeProcessor {
             true)),
         PluginsToIgnore(csdutils::ParsePluginsToIgnore(
             std::getenv("RBE_clang_depscan_ignored_plugins"))) {}
+  impl(const impl& other) = delete;
+  impl& operator=(const impl& other) = delete;
 
   void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
                        const std::vector<std::string>& args,
@@ -150,8 +149,21 @@ class DependencyScanner final : public include_processor::IncludeProcessor {
   std::set<std::string> PluginsToIgnore;
 };
 
-namespace include_processor {
-std::unique_ptr<include_processor::IncludeProcessor> NewDepsScanner() {
-  return std::make_unique<DependencyScanner>();
+const bool include_processor::IncludeProcessor::caching = false;
+const bool include_processor::IncludeProcessor::expects_resource_dir = true;
+
+include_processor::IncludeProcessor::IncludeProcessor(const char* process_name,
+                                                      const char* cache_dir,
+                                                      const char* log_dir,
+                                                      int cache_file_max_mb,
+                                                      bool use_deps_cache)
+    : pImpl{std::make_unique<impl>()} {}
+
+void include_processor::IncludeProcessor::ComputeIncludes(
+    const std::string& exec_id, const std::string& cwd,
+    const std::vector<std::string>& args, const std::vector<std::string>& envs,
+    std::shared_ptr<include_processor::Result> req) {
+  pImpl->ComputeIncludes(exec_id, cwd, args, envs, req);
 }
-}  // namespace include_processor
+
+include_processor::IncludeProcessor::~IncludeProcessor() = default;

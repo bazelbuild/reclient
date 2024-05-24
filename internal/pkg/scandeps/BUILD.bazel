@@ -1,0 +1,82 @@
+cc_library(
+    name = "include_processor",
+    srcs = ["include_processor.h"] + select({
+        "//:goma_input_processor_config": ["goma_include_processor.cc"],
+        "//:clangscandeps_input_processor_config": ["csd_include_processor.cc"],
+    }),
+    copts = select({
+        "@platforms//os:windows": [
+            "/O2",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-fPIC",
+        ],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-Wl,--wrap=glob",
+        ],
+        "//conditions:default": [],
+    }),
+    tags = [
+        "manual",
+    ],
+    visibility = ["//visibility:public"],
+    deps = select({
+        "//:goma_input_processor_config": [
+            "@goma//:absl",
+            "@goma//:base",
+            "@goma//:chromium_base",
+            "@goma//:client",
+            "@goma//:gtest",
+            "@goma//:json",
+            "@goma//:lib",
+            "@goma//:protobuf",
+            "@goma//:root",
+            "@goma//:zlib",
+            "//internal/pkg/version:version_cc",
+            "//goma:goma_input_processor",
+        ],
+        "//:clangscandeps_input_processor_config": [
+            "//internal/pkg/scandeps/csdutils:adjust_cmd",
+            "//internal/pkg/scandeps/csdutils:parse_deps",
+            "//internal/pkg/scandeps/csdutils:parse_env",
+            "@llvm-project//clang:tooling_dependency_scanning",
+        ],
+    }) + select({
+        "@platforms//os:windows": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//:clangscandeps_input_processor_config": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//conditions:default": [
+            "@goma//:glog",
+        ],
+    }),
+)
+
+cc_library(
+    name = "scandeps",
+    srcs = ["scandeps.cc"],
+    hdrs = ["scandeps.h"],
+    tags = ["manual"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/scandeps:scandeps_cc",
+        "//internal/pkg/version:version_cc",
+        ":include_processor",
+        "@com_github_grpc_grpc//:grpc++",
+    ] + select({
+        "//:goma_input_processor_config_windows": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//:clangscandeps_input_processor_config": [
+            "@com_github_google_glog//:glog",
+        ],
+        "//conditions:default": [
+            "@goma//:glog",
+        ],
+    }),
+)
