@@ -1,0 +1,65 @@
+cc_library(
+    name = "adjust_cmd",
+    srcs = [
+        "adjust_cmd.cc",
+        "adjust_cmd.h",
+    ],
+    hdrs = [
+        "adjust_cmd.h",
+    ],
+    visibility = ["//internal/pkg:__subpackages__"],
+)
+
+cc_test(
+    name = "adjust_cmd_test",
+    size = "small",
+    srcs = ["adjust_cmd_test.cc"],
+    deps = [
+        ":adjust_cmd",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "parse_deps",
+    srcs = [
+        "parse_deps.cc",
+        "parse_deps.h",
+    ],
+    hdrs = [
+        "parse_deps.h",
+    ],
+    visibility = ["//internal/pkg:__subpackages__"],
+)
+
+cc_test(
+    name = "parse_deps_test",
+    size = "small",
+    srcs = ["parse_deps_test.cc"],
+    deps = [
+        ":parse_deps",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "parse_env",
+    srcs = [
+        "parse_env.cc",
+        "parse_env.h",
+    ],
+    hdrs = [
+        "parse_env.h",
+    ],
+    visibility = ["//internal/pkg:__subpackages__"],
+)
+
+cc_test(
+    name = "parse_env_test",
+    size = "small",
+    srcs = ["parse_env_test.cc"],
+    deps = [
+        ":parse_env",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

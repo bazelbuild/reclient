@@ -34,9 +34,9 @@ bool IsClangClCommand(const std::string_view exec) {
 }
 
 // Adjusts the given command to be compatible with clangscandeps.
-void clangscandeps::AdjustCmd(std::vector<std::string>& cmd,
-                              const std::string filename,
-                              const std::set<std::string>& ignoredPlugins) {
+void csdutils::AdjustCmd(std::vector<std::string>& cmd,
+                         const std::string filename,
+                         const std::set<std::string>& ignoredPlugins) {
   if (cmd.empty()) {
     return;
   }

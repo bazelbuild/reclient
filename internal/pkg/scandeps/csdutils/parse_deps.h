@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INTERNAL_PKG_CLANGSCANDEPSIPSERVICE_ADJUST_CMD_H_
-#define INTERNAL_PKG_CLANGSCANDEPSIPSERVICE_ADJUST_CMD_H_
+#ifndef INTERNAL_PKG_SCANDEPS_CSDUTILS_PARSE_DEPS_H_
+#define INTERNAL_PKG_SCANDEPS_CSDUTILS_PARSE_DEPS_H_
 #include <set>
 #include <string>
-#include <vector>
+#include <string_view>
 
-namespace clangscandeps {
-// Adjusts the given command to be compatible with clangscandeps.
-void AdjustCmd(std::vector<std::string>& cmd, std::string filename,
-               const std::set<std::string>& ignoredPlugins);
-}  // namespace clangscandeps
+namespace csdutils {
+// deps format
+// <output>: <input> ...
+// <input> is space sparated
+// '\'+newline is space
+// '\'+space is an escaped space (not separater)
+std::set<std::string> ParseDeps(std::string_view depsStr);
+}  // namespace csdutils
 
-#endif  // INTERNAL_PKG_CLANGSCANDEPSIPSERVICE_ADJUST_CMD_H_
+#endif  // INTERNAL_PKG_SCANDEPS_CSDUTILS_PARSE_DEPS_H_

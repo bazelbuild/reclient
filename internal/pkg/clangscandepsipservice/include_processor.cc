@@ -21,10 +21,12 @@
 #include <string>
 #include <vector>
 
-#include "adjust_cmd.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/DependencyScanning/DependencyScanningTool.h"
+#include "internal/pkg/scandeps/csdutils/adjust_cmd.h"
+#include "internal/pkg/scandeps/csdutils/parse_deps.h"
+#include "internal/pkg/scandeps/csdutils/parse_env.h"
 #include "internal/pkg/version/version.h"
 
 // Some of reclient's use cases require ubuntu 16.04, which is only shipped
@@ -79,70 +81,6 @@ class SingleCommandCompilationDatabase
   clang::tooling::CompileCommand Command;
 };
 
-// deps format
-// <output>: <input> ...
-// <input> is space sparated
-// '\'+newline is space
-// '\'+space is an escaped space (not separater)
-std::set<std::string> ParseDeps(std::string depsStr) {
-  std::set<std::string> dependencies;
-
-  // Skip until ':'
-  size_t start = depsStr.find_first_of(":");
-  if (start < 0) {
-    return dependencies;
-  }
-  std::string deps = depsStr.substr(start + 1);
-
-  std::string dependency;
-  for (int i = 0; i < deps.length(); i++) {
-    char c = deps[i];
-
-    // Skip spaces and append dependency.
-    if (c == ' ' || c == '\t' || c == '\n') {
-      if (dependency.length() > 0) {
-        dependencies.insert(dependency);
-      }
-      dependency.clear();
-      continue;
-    }
-
-    // \\ followed by \n is a space. Skip this character.
-    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == '\n') {
-      continue;
-    }
-
-    // \\ followed by a ' ' is not an escape character. Only append ' '.
-    if (c == '\\' && i + 1 < deps.length() && deps[i + 1] == ' ') {
-      dependency += ' ';
-      i++;
-    } else {
-      dependency += c;
-    }
-  }
-
-  if (dependency.length() > 0) {
-    dependencies.insert(dependency);
-  }
-
-  return dependencies;
-}
-
-std::set<std::string> ParsePluginsToIgnore() {
-  const char* envVal = std::getenv("RBE_clang_depscan_ignored_plugins");
-  if (envVal == NULL || *envVal == '\0') {
-    return {};
-  }
-  std::stringstream ss(envVal);
-  std::set<std::string> result;
-  while (ss.good()) {
-    std::string substr;
-    getline(ss, substr, ',');
-    result.insert(substr);
-  }
-  return result;
-};
-
 class DependencyScanner final : public include_processor::IncludeProcessor {
  public:
   DependencyScanner()
@@ -151,7 +89,8 @@ class DependencyScanner final : public include_processor::IncludeProcessor {
                 DependencyDirectivesScan,
             clang::tooling::dependencies::ScanningOutputFormat::Make, true,
             true)),
-        PluginsToIgnore(ParsePluginsToIgnore()) {}
+        PluginsToIgnore(csdutils::ParsePluginsToIgnore(
+            std::getenv("RBE_clang_depscan_ignored_plugins"))) {}
 
   void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
                        const std::vector<std::string>& args,
@@ -175,7 +114,7 @@ class DependencyScanner final : public include_processor::IncludeProcessor {
   llvm::Expected<std::set<std::string>> computeIncludes(
       std::string Filename, std::string Directory,
       std::vector<std::string> CommandLine) {
-    clangscandeps::AdjustCmd(CommandLine, Filename, PluginsToIgnore);
+    csdutils::AdjustCmd(CommandLine, Filename, PluginsToIgnore);
 
     clang::tooling::CompileCommand command(Directory, Filename, CommandLine,
                                            llvm::StringRef());
@@ -203,7 +142,7 @@ class DependencyScanner final : public include_processor::IncludeProcessor {
     if (!DependencyScanningRes) {
       return DependencyScanningRes.takeError();
     }
-    return ParseDeps(DependencyScanningRes.get());
+    return csdutils::ParseDeps(*DependencyScanningRes);
   }
 
  private:
