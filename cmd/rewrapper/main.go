@@ -151,6 +151,12 @@ func main() {
 	}
 
 	ctx := context.Background()
+
+	if !ipc.Exists(serverAddr) {
+		fmt.Fprintf(os.Stderr, "Reproxy is not running at %v, start it or run rewrapper with --offline to run in offline mode.", serverAddr)
+		os.Exit(1)
+	}
+
 	conn, err := ipc.DialContext(ctx, serverAddr)
 	if err != nil {
 		log.Exitf("Fail to dial %s: %v", serverAddr, err)

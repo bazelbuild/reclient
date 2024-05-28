@@ -68,6 +68,26 @@ func dialPipe(ctx context.Context, pipe string, opts ...grpc.DialOption) (*grpc.
 		}))...)
 }
 
+// Exists returns true if there is a pipe at the given address.  If
+// it's a TCP address, it will just continue and try connecting the normal
+// way.
+func Exists(address string) bool {
+	if strings.HasPrefix(address, pipeProtocol) {
+		address = pipePrefix + strings.TrimPrefix(address, pipeProtocol)
+		fullName, err := syscall.UTF16PtrFromString(address)
+		if err != nil {
+			return false
+		}
+		fHandle, err := syscall.CreateFile(fullName, syscall.GENERIC_READ, 0, nil, syscall.OPEN_EXISTING, 0, 0)
+		if err != nil {
+			return false
+		}
+		defer syscall.CloseHandle(fHandle)
+		return true
+	}
+	return true
+}
+
 // GetAllReproxySockets returns all windows pipes where an reproxy service is listening.
 func GetAllReproxySockets(ctx context.Context) ([]string, error) {
 	pidToName, err := getProcessNameMap()

@@ -18,6 +18,7 @@ package ipc
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -52,6 +53,21 @@ func GetAllReproxySockets(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return parseSockets(lsofOutput), nil
+}
+
+// Exists returns true if there is a UDS socket at the given address.  If
+// it's a TCP address, it will just continue and try connecting the normal
+// way.
+func Exists(address string) bool {
+	if strings.HasPrefix(address, "unix://") {
+		address := strings.TrimPrefix(address, "unix://")
+		if _, err := os.Stat(address); err != nil {
+			// An error on stat indicates it doesn't exist.
+			return false
+		}
+		return true
+	}
+	return true
 }
 
 func parseSockets(lsofOutput string) []string {
