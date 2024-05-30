@@ -79,6 +79,7 @@ func (p *Parser) VerifyDepsFile(dFilePath string, rec *logger.LogRecord) (bool, 
 	defer func() {
 		rec.RecordEventTime(event.LERCVerifyDeps, st)
 	}()
+	log.V(1).Infof("Verifying .deps contents for: %v", dFilePath)
 	buf, err := os.ReadFile(filepath.Join(p.ExecRoot, dFilePath+".deps"))
 	if err != nil {
 		return false, err
@@ -86,23 +87,27 @@ func (p *Parser) VerifyDepsFile(dFilePath string, rec *logger.LogRecord) (bool, 
 	matches := depsFileParser.FindAllStringSubmatch(string(buf), -1)
 	for _, match := range matches {
 		if len(match) < 3 {
-			return false, fmt.Errorf(".deps file has an invalid format in line %v", match[0])
+			return false, fmt.Errorf("deps file %v.deps has an invalid format in line %v", dFilePath, match[0])
 		}
 		md := p.DigestStore.Get(filepath.Join(p.ExecRoot, p.WorkingDir, match[1]))
 		if match[2] == notFoundMarker {
 			if md.Err == nil {
+				log.V(1).Infof("deps file %v.deps entry %v has a not-found marker but local version exists", dFilePath, match[1])
 				return false, nil
 			}
 			continue
 		}
 		dg, err := digest.NewFromString(match[2])
 		if err != nil {
+			log.V(1).Infof("deps file %v.deps entry %v digest %v had parsing error %v", dFilePath, match[1], match[2], err)
 			return false, err
 		}
 		if md.Digest != dg {
+			log.V(1).Infof("deps file %v.deps entry %v has mismatched digests with local file deps:%v vs file:%v", dFilePath, match[1], dg, md.Digest)
 			return false, nil
 		}
 	}
+	log.V(1).Infof("Contents of %v.deps matches", dFilePath)
 	return true, nil
 }
 
