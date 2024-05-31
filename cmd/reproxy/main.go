@@ -514,7 +514,7 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter
 			Timeout:    *bqTimeout,
 		}
 	} else {
-		log.Infof("If you want to collect LogRecords for each action to bigquery table, please set the --bq_project_id, --bq_table_spec flags.")
+		log.Infof("If you want to collect LogRecords for each action to a bigquery table, please set the --bq_project, --bq_table flags.")
 	}
 	if len(proxyLogDir) > 0 {
 		format, err := logger.ParseFormat(*logFormat)
