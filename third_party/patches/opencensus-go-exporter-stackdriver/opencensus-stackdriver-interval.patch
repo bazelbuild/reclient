@@ -46,3 +46,4 @@ index 902b776..edebc93 100644
 +	mpt.Interval = toValidTimeIntervalpb(*startTime, pt.Time)
  	return mpt, nil
  }
+ 
