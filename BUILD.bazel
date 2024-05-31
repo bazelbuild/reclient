@@ -92,8 +92,6 @@ config_setting(
     constraint_values = ["@platforms//os:linux"],
     flag_values = {
         ":use_android_glibc": "True",
-        # TODO(b/330510996) validate if this works for goma scandeps
-        ":include_scanner": "clangscandeps",
     },
 )
 
