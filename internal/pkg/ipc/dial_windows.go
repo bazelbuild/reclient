@@ -24,6 +24,7 @@ import (
 	"unsafe"
 
 	winio "github.com/Microsoft/go-winio"
+	"golang.org/x/sys/windows"
 	"google.golang.org/grpc"
 )
 
@@ -79,9 +80,10 @@ func Exists(address string) bool {
 			return false
 		}
 		fHandle, err := syscall.CreateFile(fullName, syscall.GENERIC_READ, 0, nil, syscall.OPEN_EXISTING, 0, 0)
-		if err != nil {
+		if err != nil && err != windows.ERROR_PIPE_BUSY {
 			return false
 		}
+
 		defer syscall.CloseHandle(fHandle)
 		return true
 	}
