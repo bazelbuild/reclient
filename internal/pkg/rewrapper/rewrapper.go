@@ -98,6 +98,7 @@ type CommandOptions struct {
 	NumRetriesIfMismatched       int
 	NumLocalReruns               int
 	NumRemoteReruns              int
+	FailOnMismatch               bool
 	LocalWrapper                 string
 	RemoteWrapper                string
 	PreserveSymlink              bool
@@ -210,7 +211,7 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 				Wrapper:      opts.LocalWrapper,
 			},
 			LogEnvironment:   opts.LogEnvironment,
-			IncludeActionLog: opts.ActionLog != "",
+			IncludeActionLog: opts.ActionLog != "" || (opts.Compare && opts.FailOnMismatch),
 		},
 		ToolchainInputs: opts.ToolchainInputs,
 		Metadata:        md,

@@ -82,6 +82,7 @@ func initFlags() {
 	flag.IntVar(&cOpts.NumRetriesIfMismatched, "num_retries_if_mismatched", 0, "Deprecated: Number of times the action should be remotely executed to identify determinism. Used only when compare is set to true.")
 	flag.IntVar(&cOpts.NumLocalReruns, "num_local_reruns", 0, "Number of times the action should be rerun locally.")
 	flag.IntVar(&cOpts.NumRemoteReruns, "num_remote_reruns", 0, "Number of times the action should be rerun remotely.")
+	flag.BoolVar(&cOpts.FailOnMismatch, "fail_on_mismatch", false, "Whether to fail the action if compare mode results in a mismatch.")
 	flag.BoolVar(&cOpts.RemoteAcceptCache, "remote_accept_cache", true, "Boolean indicating whether to accept remote cache hits. Default is true.")
 	flag.BoolVar(&cOpts.RemoteUpdateCache, "remote_update_cache", true, "Boolean indicating whether to cache the command result remotely. Default is true.")
 	flag.BoolVar(&cOpts.DownloadOutputs, "download_outputs", true, "Boolean indicating whether to download outputs after the command is executed. Default is true. If download_regex is set, this flag will be ignored.")
@@ -145,6 +146,10 @@ func main() {
 	if !execStrategyValid() {
 		flag.Usage()
 		log.Exitf("No exec_strategy provided, must be one of %v", execStrategies)
+	}
+	if cOpts.FailOnMismatch && !cOpts.Compare {
+		flag.Usage()
+		log.Exitf("Compare mode needs to be enabled to fail on mismatch")
 	}
 	if serverAddr == "" {
 		log.Exit("-server_address cannot be empty")
@@ -211,6 +216,13 @@ func main() {
 	if cOpts.ActionLog != "" && resp.ActionLog != nil {
 		if err := os.WriteFile(cOpts.ActionLog, []byte(protoencoding.TextWithIndent.Format(resp.ActionLog)), 0644); err != nil {
 			log.Errorf("Failed to write reproxy action log %v", cOpts.ActionLog)
+		}
+	}
+	if cOpts.FailOnMismatch {
+		if resp.ActionLog == nil {
+			log.Errorf("Action log expected to be retrieved when FailOnMismatch is set, got nil")
+		} else if resp.ActionLog.GetLocalMetadata().GetVerification().GetTotalMismatches() > 0 {
+			log.Exitf("Found mismatch in compare mode. Please check rpl/rrpl log files.")
 		}
 	}
 	os.Stdout.Write(resp.GetStdout())
