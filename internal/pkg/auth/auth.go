@@ -98,7 +98,6 @@ func (m Mechanism) String() string {
 }
 
 const (
-
 	// CredshelperPathFlag is the path to the credentials helper binary.
 	CredshelperPathFlag = "experimental_credentials_helper"
 	// CredshelperArgsFlag is the flag used to pass in the arguments to the credentials helper binary.
@@ -348,38 +347,6 @@ func (c *Credentials) UpdateStatus() (int, error) {
 		c.refreshExp = exp
 	}
 	return 0, nil
-}
-
-// ReproxyAuthenticationFlags retrieves the auth flags to use to start reproxy.
-func (m Mechanism) ReproxyAuthenticationFlags() []string {
-	bm := make(map[string]bool, len(boolAuthFlags))
-	sm := make(map[string]string, len(stringAuthFlags))
-	for _, f := range boolAuthFlags {
-		bm[f] = false
-	}
-	for _, f := range stringAuthFlags {
-		sm[f] = ""
-	}
-	switch m {
-	case GCE:
-		bm[UseGCECredsFlag] = true
-	case ADC:
-		bm[UseAppDefaultCredsFlag] = true
-	case CredentialFile:
-		if f := flag.Lookup(CredentialFileFlag); f != nil {
-			sm[CredentialFileFlag] = f.Value.String()
-		}
-	case None:
-		bm[ServiceNoAuthFlag] = true
-	}
-	vals := make([]string, 0, len(boolAuthFlags)+len(stringAuthFlags))
-	for _, f := range boolAuthFlags {
-		vals = append(vals, fmt.Sprintf("--%v=%v", f, bm[f]))
-	}
-	for _, f := range stringAuthFlags {
-		vals = append(vals, fmt.Sprintf("--%v=%v", f, sm[f]))
-	}
-	return vals
 }
 
 // Mechanism returns the authentication mechanism of the credentials object.
