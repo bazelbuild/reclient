@@ -1,5 +1,4 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@exec_properties//:constants.bzl", "NETWORK_ON")
 
 genrule(
     name = "reproxytool_ui_tar_gen",
@@ -12,7 +11,7 @@ genrule(
                "echo \"Installing angular...\" ; cd internal/pkg/logrecordserver/ui/app ; $$ROOT/$(NPM_PATH) ci ;" +
                "echo \"Building app\" ; node_modules/.bin/ng build ;" +
                "cd $$ROOT ; tar cvf $(OUTS) internal/pkg/logrecordserver/ui/app/dist/reproxyui/browser",
-    exec_properties = NETWORK_ON,
+    exec_properties = {"dockerNetwork": "standard"},
     target_compatible_with = select({
         "@platforms//os:linux": [],
         "//conditions:default": ["@platforms//:incompatible"],

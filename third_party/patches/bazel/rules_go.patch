@@ -1,8 +1,6 @@
-diff --git a/go/private/rules/binary.bzl b/go/private/rules/binary.bzl
-index 51530b04..88d2d0a9 100644
---- a/go/private/rules/binary.bzl
-+++ b/go/private/rules/binary.bzl
-@@ -442,9 +442,12 @@ def _go_tool_binary_impl(ctx):
+--- go/private/rules/binary.bzl	2024-06-04 15:30:43.511943305 +0000
++++ go/private/rules/binary.bzl.new	2024-06-04 15:30:30.391960478 +0000
+@@ -461,9 +461,12 @@
              output = bat,
              content = cmd,
          )
@@ -14,6 +12,6 @@ index 51530b04..88d2d0a9 100644
 +            executable = "cmd",
 +            arguments = [bargs],
 +            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go] + [bat],
-             outputs = [out, gopath, gocache],
+             outputs = [out, gotmp],
              mnemonic = "GoToolchainBinaryBuild",
          )

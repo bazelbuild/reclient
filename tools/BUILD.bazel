@@ -1,4 +1,69 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@io_bazel_rules_go//go:def.bzl", "nogo")
+
 exports_files([
     "diff_gen_vs_workspace.sh",
     "copy_to_workspace.sh",
 ])
+
+# Copied from @io_bazel_rules_go//go:def.bzl so that some can be commented out.
+# TODO(b/303263153): Uncomment skipped analysis passes below and either fix the errors or skip specific files in a config.json.
+TOOLS_NOGO = [
+    "@org_golang_x_tools//go/analysis/passes/asmdecl:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/assign:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/atomic:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/atomicalign:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/bools:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/buildssa:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/buildtag:go_default_library",
+    # "@org_golang_x_tools//go/analysis/passes/composite:go_default_library", # Re-enable when unkeyed fields are fixed
+    # "@org_golang_x_tools//go/analysis/passes/copylock:go_default_library", # Re-enable when lock copying is fixed in action.go
+    "@org_golang_x_tools//go/analysis/passes/ctrlflow:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/deepequalerrors:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/errorsas:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/findcall:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/httpresponse:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/ifaceassert:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/inspect:go_default_library",
+    # "@org_golang_x_tools//go/analysis/passes/loopclosure:go_default_library", # Re-enable when all loop variables are captured correctly
+    # "@org_golang_x_tools//go/analysis/passes/lostcancel:go_default_library", # Re-enable when all cancels are called correctly
+    "@org_golang_x_tools//go/analysis/passes/nilfunc:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/nilness:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/pkgfact:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/printf:go_default_library",
+    # "@org_golang_x_tools//go/analysis/passes/shadow:go_default_library", # err is shadowed everywhere
+    "@org_golang_x_tools//go/analysis/passes/shift:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/sortslice:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/stdmethods:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/stringintconv:go_default_library",
+    # "@org_golang_x_tools//go/analysis/passes/structtag:go_default_library", # Re-enable when bad struct tags are fixed
+    # "@org_golang_x_tools//go/analysis/passes/testinggoroutine:go_default_library", # Re-enable when all test fails are called from test goroutine
+    "@org_golang_x_tools//go/analysis/passes/tests:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/unmarshal:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/unreachable:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/unsafeptr:go_default_library",
+    "@org_golang_x_tools//go/analysis/passes/unusedresult:go_default_library",
+]
+
+bool_flag(
+    name = "no_nogo",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "no_nogo_true",
+    flag_values = {
+        ":no_nogo": "True",
+    },
+)
+
+nogo(
+    name = "nogo",
+    # See https://github.com/bazelbuild/rules_go/blob/master/go/nogo.rst#configuring-analyzers for the format of nogo_config.json
+    config = "nogo_config.json",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "//conditions:default": TOOLS_NOGO,
+        ":no_nogo_true": [],
+    }),
+)

@@ -116,7 +116,7 @@ Status ScandepsService::ProcessInputs(ServerContext* context,
     if (experimental_segfault_ > 0) {
       if (--experimental_segfault_ == 0) {
         LOG(WARNING) << "Service will abort now.";
-        google::FlushLogFiles(0);
+        google::FlushLogFiles(google::GLOG_INFO);
         std::abort();
       }
     }
@@ -128,7 +128,7 @@ Status ScandepsService::ProcessInputs(ServerContext* context,
       if (--experimental_deadlock_ == 0) {
         // Infinite loop to simulate a deadlock
         LOG(WARNING) << "Service will deadlock now.";
-        google::FlushLogFiles(0);
+        google::FlushLogFiles(google::GLOG_INFO);
         exp_lock.unlock();  // but we don't want to cause an actual deadlock
         while (true);
       }

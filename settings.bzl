@@ -13,13 +13,3 @@ include_scanner_rule = rule(
     implementation = _impl,
     build_setting = config.string(flag = True),
 )
-
-# Refer to go/rbe/dev/x/playbook/upgrading_clang_scan_deps
-# to update clang-scan-deps version.
-LLVM_COMMIT = "82e851a407c52d65ce65e7aa58453127e67d42a0"
-LLVM_SHA256 = "c45d3e776d8f54362e05d4d5da8b559878077241d84c81f69ed40f11c0cdca8f"
-
-SDK_COMMIT = "f9558a721826483075348126a6617d226de86ee5"
-PROTOC_GEN_BQ_SCHEMA_VERSION = "v0.0.0-20190119112626-026f9fcdf705"
-GO_GRPC_VERSION = "v1.56.2"
-GO_PROTO_VERSION = "v1.25.0"

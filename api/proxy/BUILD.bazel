@@ -1,9 +1,9 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("//tools:build_defs.bzl", "go_proto_checkedin_test")
 
-# gazelle:resolve proto go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command:command_proto
+# gazelle:resolve proto go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command:cmd_proto
 # gazelle:resolve proto go go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command
 
 go_proto_checkedin_test(
@@ -22,7 +22,7 @@ proto_library(
     deps = [
         "//api/log:log_proto",
         "//api/stats:stats_proto",
-        "@com_github_bazelbuild_remote_apis_sdks//go/api/command:command_proto",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command:cmd_proto",
         "@com_google_protobuf//:timestamp_proto",
     ],
 )

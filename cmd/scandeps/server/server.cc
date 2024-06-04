@@ -87,7 +87,7 @@ bool ScandepsServer::RunServer(const char *process_name) {
     return false;
   }
   LOG(INFO) << "Server listening on " << server_address_;
-  google::FlushLogFiles(0);
+  google::FlushLogFiles(google::GLOG_INFO);
 
 #if !defined(__linux__) || __GLIBC_NEW__
   // Use C++ threads

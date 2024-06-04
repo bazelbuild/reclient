@@ -1,3 +1,5 @@
+exports_files(["version"])
+
 filegroup(
     name = "srcs",
     srcs = glob(["**"]),

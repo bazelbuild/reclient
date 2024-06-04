@@ -21,6 +21,3 @@ if ! grep -q scripts/precommit.sh .git/hooks/pre-commit; then
   echo scripts/precommit.sh >> .git/hooks/pre-commit
 fi
 chmod +x .git/hooks/pre-commit
-
-# pre-commit hooks requires golint
-go install golang.org/x/lint/golint@latest

@@ -32,10 +32,7 @@ find $OUTDIR/obj/client -name "*.o" -print > $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/third_party/glog -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/lib -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/base -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
-find $OUTDIR/obj/third_party/abseil/abseil -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
-find $OUTDIR/obj/third_party/abseil/abseil_internal -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/third_party/chromium_base -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
-find $OUTDIR/obj/third_party/protobuf/protobuf_full -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/third_party/jsoncpp -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/third_party/boringssl -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp
 find $OUTDIR/obj/third_party/zlib -name "*.o" -print >> $INSTALLDIR/lib/lib.rsp

@@ -24,8 +24,9 @@ if command -v go &>/dev/null; then
     export PATH="$PATH:$(go env GOPATH)/bin"
 fi
 
-# Run go_mod_tidy for api package
-bazelisk run //api:go_mod_tidy
+# Run go mod tidy
+bazelisk run @io_bazel_rules_go//go -- mod tidy
+bazelisk mod tidy
 
 GAZELLEPASS=true
 echo Running Gazelle...
@@ -36,13 +37,6 @@ fi
 LINTPASS=true
 echo Running gofmt...
 bazelisk run --ui_event_filters=-info,-stderr --noshow_progress //linters:gofmt -- -w .
-echo Running golint...
-if ! bazelisk run --ui_event_filters=-info,-stderr --noshow_progress //linters:golint -- "-set_exit_status" ./...;  then
-  printf "\t\033[31mgolint\033[0m \033[0;30m\033[41mFAILURE!\033[0m\n"
-  LINTPASS=false
-else
-  printf "\t\033[32mgolint\033[0m \033[0;30m\033[42mpass\033[0m\n"
-fi
 STAGED_CPP_FILES="$(git diff --cached --name-only --diff-filter=d | grep "\.cc$\|\.h$")"
 if [ -n "$STAGED_CPP_FILES" ]; then
   echo Running clang-format...

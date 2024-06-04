@@ -35,13 +35,11 @@ shopt -s globstar
 # The order in which the libs show up in the archive should be preserved.
 echo /out:$INSTALLDIR/lib/goma_input_processor.lib > $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/client/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
+ls $OUTDIR/obj/third_party/glog/*.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/lib/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/base/base/*.obj >> $INSTALLDIR/lib/vslib.rsp
-ls $OUTDIR/obj/third_party/abseil/abseil/*.obj >> $INSTALLDIR/lib/vslib.rsp
-ls $OUTDIR/obj/third_party/abseil/abseil_internal/*.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/third_party/chromium_base/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/third_party/jsoncpp/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
-ls $OUTDIR/obj/third_party/boringssl/**/*.obj | grep -v bcm.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/third_party/zlib/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/third_party/zlib_x86_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp
 ls $OUTDIR/obj/third_party/zlib_adler32_simd/**/*.obj >> $INSTALLDIR/lib/vslib.rsp

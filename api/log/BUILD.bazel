@@ -1,12 +1,12 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("//tools:build_defs.bzl", "go_proto_checkedin_test")
 
-# gazelle:resolve proto go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command:command_proto
+# gazelle:resolve proto go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command:cmd_proto
 # gazelle:resolve proto go go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command
-# gazelle:resolve proto bq_table.proto @protoc_gen_bq_schema//:bq_proto
-# gazelle:resolve proto go bq_table.proto @protoc_gen_bq_schema//:bq_go_proto
+# gazelle:resolve proto bq_table.proto @com_github_googlecloudplatform_protoc_gen_bq_schema//:protos_proto
+# gazelle:resolve proto go bq_table.proto @com_github_googlecloudplatform_protoc_gen_bq_schema//:protos_go_proto
 
 go_proto_checkedin_test(
     name = "proto_test",
@@ -19,8 +19,8 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/stat:stat_proto",
-        "@com_github_bazelbuild_remote_apis_sdks//go/api/command:command_proto",
-        "@protoc_gen_bq_schema//:bq_proto",
+        "@com_github_bazelbuild_remote_apis_sdks//go/api/command:cmd_proto",
+        "@com_github_googlecloudplatform_protoc_gen_bq_schema//:protos_proto",
     ],
 )
 
@@ -32,7 +32,7 @@ go_proto_library(
     deps = [
         "//api/stat",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
-        "@protoc_gen_bq_schema//:bq_go_proto",
+        "@com_github_googlecloudplatform_protoc_gen_bq_schema//:protos_go_proto",
     ],
 )
 

@@ -8,8 +8,8 @@ cc_library(
     tags = ["manual"],
     visibility = ["//:__subpackages__"],
     deps = [
-        "//internal/pkg/scandeps",
         "//api/scandeps:scandeps_cc",
+        "//internal/pkg/scandeps",
         "@com_github_grpc_grpc//:grpc++",
     ] + select({
         "//:goma_input_processor_config_windows": [

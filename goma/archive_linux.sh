@@ -24,7 +24,7 @@
 
 shopt -s globstar
 # OUTDIR is the output location of the goma build with ninja.
-OUTDIR=$1
+OUTDIR=`pwd`/$1
 
 # INSTALLDIR is the destination directory where archives and
 # generated headers should be written.
@@ -36,13 +36,8 @@ ls $OUTDIR/obj/third_party/glog/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/lib/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/base/base/*.o >> $INSTALLDIR/lib/lib.rsp
 
-ls $OUTDIR/obj/third_party/abseil/abseil/*.o | grep -v "symbolize.o" >> $INSTALLDIR/lib/lib.rsp
-
-ls $OUTDIR/obj/third_party/abseil/abseil_internal/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/chromium_base/**/*.o >> $INSTALLDIR/lib/lib.rsp
-ls $OUTDIR/obj/third_party/protobuf/protobuf_full/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/jsoncpp/**/*.o >> $INSTALLDIR/lib/lib.rsp
-ls $OUTDIR/obj/third_party/boringssl/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/zlib/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/zlib_x86_simd/**/*.o >> $INSTALLDIR/lib/lib.rsp
 ls $OUTDIR/obj/third_party/zlib_adler32_simd/**/*.o >> $INSTALLDIR/lib/lib.rsp

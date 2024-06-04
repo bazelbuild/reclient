@@ -1,12 +1,10 @@
-diff --git a/foreign_cc/ninja.bzl b/foreign_cc/ninja.bzl
-index 49ffeed..5853c91 100644
---- a/foreign_cc/ninja.bzl
-+++ b/foreign_cc/ninja.bzl
-@@ -51,7 +51,11 @@ def _create_ninja_script(configureParameters):
+--- foreign_cc/ninja.bzl	2024-06-04 15:36:26.027523988 +0000
++++ foreign_cc/ninja.bzl.new	2024-06-04 15:35:50.507565367 +0000
+@@ -51,7 +51,11 @@
      script = []
  
      root = detect_root(ctx.attr.lib_source)
--    script.append("##symlink_contents_to_dir## $$EXT_BUILD_ROOT$$/{} $$BUILD_TMPDIR$$".format(root))
+-    script.append("##symlink_contents_to_dir## $$EXT_BUILD_ROOT$$/{} $$BUILD_TMPDIR$$ False".format(root))
 +
 +    script.append("TMP_EXT=${EXT_BUILD_ROOT//\\\\/\\/}")
 +    script.append("TMP_TMP=${BUILD_TMPDIR//\\\\/\\/}")

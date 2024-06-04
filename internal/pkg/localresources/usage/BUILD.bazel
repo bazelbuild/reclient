@@ -7,7 +7,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "@com_github_golang_glog//:glog",
-        "@com_github_shirou_gopsutil//process",
+        "@com_github_shirou_gopsutil_v3//process",
     ],
 )
 
@@ -18,6 +18,6 @@ go_test(
     deps = [
         "@com_github_google_go_cmp//cmp",
         "@com_github_google_go_cmp//cmp/cmpopts",
-        "@com_github_shirou_gopsutil//process",
+        "@com_github_shirou_gopsutil_v3//process",
     ],
 )

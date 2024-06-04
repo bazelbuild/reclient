@@ -35,9 +35,7 @@ _android_prebuilts_repostitory = repository_rule(
 )
 
 def _android_toolchain_repostitory_rule(ctx):
-    # We cannot just pass in @...//:android_prebuilts as a label as that doesnt get correctly detected as a directory
-    # https://github.com/bazelbuild/bazel/issues/3901
-    ctx.symlink(ctx.path(ctx.attr.prebuilts_repo).dirname.get_child("android_prebuilts"), "android_prebuilts")
+    ctx.symlink(ctx.path(ctx.attr.prebuilts_repo), "android_prebuilts")
     ctx.symlink(Label("@//configs/linux/cc:cc_toolchain_config.bzl"), "cc_toolchain_config.bzl")
     ctx.template("BUILD.bazel", Label("@//third_party/android_toolchain:BUILD.androidtoolchain"), {
         "{repo_name}": ctx.name,
@@ -55,17 +53,29 @@ _android_toolchain_repostitory = repository_rule(
     },
 )
 
-def android_toolchain_repostitory(name, clang_url, clang_sha256, glibc_url, glibc_sha256, parent_platform = "@local_config_platform//:host"):
-    _android_prebuilts_repostitory(
-        name = name + "_android_prebuilts",
-        clang_url = clang_url,
-        clang_sha256 = clang_sha256,
-        glibc_url = glibc_url,
-        glibc_sha256 = glibc_sha256,
-    )
-    _android_toolchain_repostitory(
-        name = name,
-        prebuilts_repo = "@@" + name + "_android_prebuilts//:BUILD.bazel",
-        parent_platform = parent_platform,
-    )
+def _android_toolchain_extension_impl(ctx):
+    for mod in ctx.modules:
+        for tc in mod.tags.toolchain:
+            _android_prebuilts_repostitory(
+                name = tc.name + "_android_prebuilts",
+                clang_url = tc.clang_url,
+                clang_sha256 = tc.clang_sha256,
+                glibc_url = tc.glibc_url,
+                glibc_sha256 = tc.glibc_sha256,
+            )
+            _android_toolchain_repostitory(
+                name = tc.name,
+                parent_platform = tc.parent_platform,
+                prebuilts_repo = "@" + tc.name + "_android_prebuilts//:android_prebuilts",
+            )
 
+_toolchain = tag_class(attrs = {
+        "name": attr.string(),
+        "clang_url": attr.string(),
+        "clang_sha256": attr.string(),
+        "glibc_url": attr.string(),
+        "glibc_sha256": attr.string(),
+        "parent_platform": attr.string(default = "@local_config_platform//:host"),
+    })
+
+android_toolchain_extension = module_extension(implementation = _android_toolchain_extension_impl, tag_classes = {"toolchain": _toolchain})

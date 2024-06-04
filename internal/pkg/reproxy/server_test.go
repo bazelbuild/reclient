@@ -4631,7 +4631,7 @@ func TestRacingRemoteWins(t *testing.T) {
 		cmdArgs = []string{"cmd", "/c", fmt.Sprintf("mkdir %s && sleep 10 && echo hello>%s && echo Done", abPath, abOutPath)}
 		wantOutput = []byte("hello\r\n")
 	} else {
-		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprint("mkdir -p %s && sleep 10 && echo hello > %s && echo Done", abPath, abOutPath)}
+		cmdArgs = []string{"/bin/bash", "-c", fmt.Sprintf("mkdir -p %s && sleep 10 && echo hello > %s && echo Done", abPath, abOutPath)}
 		wantOutput = []byte("hello\n")
 	}
 	ctx := context.Background()

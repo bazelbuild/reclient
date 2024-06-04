@@ -1,0 +1,13 @@
+diff --git a/utils/bazel/llvm-project-overlay/clang-tools-extra/clang-tidy/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang-tools-extra/clang-tidy/BUILD.bazel
+index bbabc5397e98..317863de3b36 100644
+--- a/utils/bazel/llvm-project-overlay/clang-tools-extra/clang-tidy/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/clang-tools-extra/clang-tidy/BUILD.bazel
+@@ -57,7 +57,7 @@ genrule(
+     srcs = ["misc/ConfusableTable/confusables.txt"],
+     outs = ["Confusables.inc"],
+     cmd = "$(location :confusable_table_builder) $(SRCS) $(OUTS)",
+-    exec_tools = [":confusable_table_builder"],
++    tools = [":confusable_table_builder"],
+     visibility = ["//visibility:private"],
+ )
+ 

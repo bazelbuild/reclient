@@ -25,6 +25,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = select({
         "//:goma_input_processor_config": [
+            "//goma:goma_input_processor",
+            "//internal/pkg/version:version_cc",
+            "@com_google_protobuf//:protobuf",
             "@goma//:absl",
             "@goma//:base",
             "@goma//:chromium_base",
@@ -32,11 +35,8 @@ cc_library(
             "@goma//:gtest",
             "@goma//:json",
             "@goma//:lib",
-            "@goma//:protobuf",
             "@goma//:root",
             "@goma//:zlib",
-            "//internal/pkg/version:version_cc",
-            "//goma:goma_input_processor",
         ],
         "//:clangscandeps_input_processor_config": [
             "//internal/pkg/scandeps/csdutils:adjust_cmd",
@@ -45,9 +45,6 @@ cc_library(
             "@llvm-project//clang:tooling_dependency_scanning",
         ],
     }) + select({
-        "@platforms//os:windows": [
-            "@com_github_google_glog//:glog",
-        ],
         "//:clangscandeps_input_processor_config": [
             "@com_github_google_glog//:glog",
         ],
@@ -64,9 +61,9 @@ cc_library(
     tags = ["manual"],
     visibility = ["//:__subpackages__"],
     deps = [
+        ":include_processor",
         "//api/scandeps:scandeps_cc",
         "//internal/pkg/version:version_cc",
-        ":include_processor",
         "@com_github_grpc_grpc//:grpc++",
     ] + select({
         "//:goma_input_processor_config_windows": [

@@ -1,5 +1,5 @@
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
-load("//:settings.bzl", "LLVM_COMMIT")
+load("@llvm_version//:defs.bzl", "LLVM_COMMIT")
 
 # Refer to go/rbe/dev/x/playbook/upgrading_clang_scan_deps if you are
 # running into a missing file error in this library when upgrading

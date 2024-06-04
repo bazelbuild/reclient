@@ -1,0 +1,8 @@
+{
+    "_base": {
+        "description": "Base config that all subsequent analyzers, even unspecified will inherit.",
+        "exclude_files": {
+            "third_party/": "exclude all third_party code for all analyzers"
+        }
+    }
+}

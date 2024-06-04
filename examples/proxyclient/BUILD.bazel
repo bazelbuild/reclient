@@ -10,7 +10,7 @@ go_library(
     deps = [
         "//api/proxy",
         "@com_github_bazelbuild_remote_apis_sdks//go/api/command",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
     ],
 )
 

@@ -1,6 +1,6 @@
-load("//transitions:defs.bzl", "cc_platform_binary", "dbg_target")
-load("@bazel_skylib//rules:select_file.bzl", "select_file")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@bazel_skylib//rules:select_file.bzl", "select_file")
+load("//transitions:defs.bzl", "cc_platform_binary", "dbg_target")
 
 cc_library(
     name = "scandeps_lib",
@@ -9,9 +9,9 @@ cc_library(
     deps = [
         "//api/scandeps:scandeps_cc",
         "//cmd/scandeps/server:scandeps_server_lib",
+        "//internal/pkg/version:version_cc",
         "@com_github_gflags_gflags//:gflags",
         "@com_github_grpc_grpc//:grpc++",
-        "//internal/pkg/version:version_cc",
     ] + select({
         "@platforms//os:windows": [
             "@com_github_google_glog//:glog",
@@ -48,10 +48,7 @@ cc_platform_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":scandeps_lib",
-    ] + select({
-        "//:goma_input_processor_config": ["//internal/pkg/scandeps:include_processor"],
-        "//conditions:default": [],
-    }),
+    ],
 )
 
 dbg_target(

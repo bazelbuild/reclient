@@ -54,7 +54,7 @@ def _checkout(ctx):
     __execute(ctx, __prefix(ctx, "git") + ["checkout", ctx.attr.revision], wd = ctx.attr.base_dir)
 
 def _sync(ctx):
-    __execute(ctx, __prefix(ctx, "gclient") + ["sync"])
+    __execute(ctx, __prefix(ctx, "gclient") + ["sync", "--no-history"])
 
 def _copy(ctx):
     __execute(ctx, __prefix(ctx, "cp") + ["-rf", ctx.attr.local_path, "."])

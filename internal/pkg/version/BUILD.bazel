@@ -1,6 +1,5 @@
-load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//:settings.bzl", "SDK_COMMIT")
 load("//:version.bzl", "VERSION_MAJOR", "VERSION_MINOR", "VERSION_PATCH")
 
 # gazelle:exclude *.h
@@ -26,20 +25,25 @@ genrule(
     visibility = ["//visibility:public"],
 )
 
+copy_file(
+    name = "go_mod_txt",
+    src = "//:go.mod",
+    out = "go.mod.txt",
+)
+
 go_library(
     name = "version",
     srcs = ["version.go"],
-    embedsrcs = ["version.txt"],
+    embedsrcs = [
+        "version.txt",
+        "go.mod.txt",
+    ],
     importpath = "github.com/bazelbuild/reclient/internal/pkg/version",
     visibility = ["//visibility:public"],
-    # x_defs attribute substitutes the string with given values.
-    # Refer to https://github.com/bazelbuild/rules_go/blob/master/go/core.rst#defines-and-stamping.
-    x_defs = {
-        "github.com/bazelbuild/reclient/internal/pkg/version.sdkVersionSHA": SDK_COMMIT,
-    },
     deps = [
         "//internal/pkg/rbeflag",
         "@com_github_golang_glog//:glog",
+        "@org_golang_x_mod//modfile",
     ],
 )
 

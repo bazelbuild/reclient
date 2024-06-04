@@ -1,5 +1,5 @@
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "ninja")
 load("@bazel_skylib//rules:select_file.bzl", "select_file")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "ninja")
 
 ninja(
     name = "goma_input_processor",
@@ -7,6 +7,7 @@ ninja(
         "-j",
         "14",
     ],
+    build_data = ["@goma//:version"],
     data = select({
         "@platforms//os:linux": [
             "archive_linux.sh",
@@ -16,12 +17,12 @@ ninja(
         "//conditions:default": [],
     }),
     directory = select({
-        "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64",
-        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg",
-        "//conditions:default": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out",
+        "@io_bazel_rules_go//go/platform:darwin_arm64": "client/client/out_arm64",
+        "//:goma_input_processor_config_windows_dbg": "client/client/out_dbg",
+        "//conditions:default": "client/client/out",
     }),
     env = {
-        "COMPILER_PROXY_REVISION_NUMBER_FILE": "$$EXT_BUILD_ROOT$$/external/goma/version",
+        "COMPILER_PROXY_REVISION_NUMBER_FILE": "$$EXT_BUILD_ROOT$$/$(location @goma//:version)",
     },
     lib_source = "@goma//:srcs",
     out_static_libs = select({
@@ -33,11 +34,11 @@ ninja(
         ],
     }),
     postfix_script = select({
-        "@platforms//os:linux": "$$EXT_BUILD_ROOT$$/goma/archive_linux.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
-        "//:goma_input_processor_config_windows": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
-        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg $$INSTALLDIR$$",
-        "@io_bazel_rules_go//go/platform:darwin_amd64": "$$EXT_BUILD_ROOT$$/goma/archive_macosx.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out $$INSTALLDIR$$",
-        "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/goma/archive_macosx.sh $$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64 $$INSTALLDIR$$",
+        "@platforms//os:linux": "$$EXT_BUILD_ROOT$$/goma/archive_linux.sh client/client/out $$INSTALLDIR$$",
+        "//:goma_input_processor_config_windows": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh client/client/out $$INSTALLDIR$$",
+        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/goma/archive_windows.sh client/client/out_dbg $$INSTALLDIR$$",
+        "@io_bazel_rules_go//go/platform:darwin_amd64": "$$EXT_BUILD_ROOT$$/goma/archive_macosx.sh client/client/out $$INSTALLDIR$$",
+        "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/goma/archive_macosx.sh client/client/out_arm64 $$INSTALLDIR$$",
         "//conditions:default": "",
     }),
     tags = [
@@ -54,16 +55,16 @@ ninja(
         "14",
     ],
     directory = select({
-        "@io_bazel_rules_go//go/platform:darwin_arm64": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64",
-        "//:goma_input_processor_config_windows_dbg": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg",
-        "//conditions:default": "$$EXT_BUILD_ROOT$$/external/goma/client/client/out",
+        "@io_bazel_rules_go//go/platform:darwin_arm64": "client/client/out_arm64",
+        "//:goma_input_processor_config_windows_dbg": "client/client/out_dbg",
+        "//conditions:default": "client/client/out",
     }),
     lib_source = "@goma//:srcs",
     out_binaries = ["dump_syms"],
     postfix_script = select({
-        "@io_bazel_rules_go//go/platform:darwin_arm64": "cp $$EXT_BUILD_ROOT$$/external/goma/client/client/out_arm64/dump_syms $$INSTALLDIR$$/bin/dump_syms",
-        "//:goma_input_processor_config_windows_dbg": "cp $$EXT_BUILD_ROOT$$/external/goma/client/client/out_dbg/dump_syms $$INSTALLDIR$$/bin/dump_syms",
-        "//conditions:default": "cp $$EXT_BUILD_ROOT$$/external/goma/client/client/out/dump_syms $$INSTALLDIR$$/bin/dump_syms",
+        "@io_bazel_rules_go//go/platform:darwin_arm64": "cp client/client/out_arm64/dump_syms $$INSTALLDIR$$/bin/dump_syms",
+        "//:goma_input_processor_config_windows_dbg": "cp client/client/out_dbg/dump_syms $$INSTALLDIR$$/bin/dump_syms",
+        "//conditions:default": "cp client/client/out/dump_syms $$INSTALLDIR$$/bin/dump_syms",
     }),
     tags = [
         "manual",

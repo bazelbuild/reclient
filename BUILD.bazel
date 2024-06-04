@@ -1,15 +1,18 @@
-load("@bazel_gazelle//:def.bzl", "gazelle")
-load("//:settings.bzl", "include_scanner_rule")
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@gazelle//:def.bzl", "gazelle")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
 load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files", "strip_prefix")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("//:settings.bzl", "include_scanner_rule")
+
+exports_files(["go.mod"])
 
 # gazelle:prefix github.com/bazelbuild/reclient
 # gazelle:exclude docker
 # gazelle:exclude **/*.pb.go
 gazelle(
     name = "gazelle",
+    build_tags = ["goma"],
 )
 
 platform(

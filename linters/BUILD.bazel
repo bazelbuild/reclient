@@ -14,21 +14,6 @@ sh_binary(
 )
 
 sh_binary(
-    name = "golint",
-    srcs = ["run_in_workspace.sh"],
-    args = [
-        "$(location @org_golang_x_lint//golint:golint)",
-    ],
-    data = [
-        "@org_golang_x_lint//golint",
-    ],
-    tags = [
-        "local",
-        "manual",
-    ],
-)
-
-sh_binary(
     name = "clang-format",
     srcs = ["run_in_workspace.sh"],
     args = [
