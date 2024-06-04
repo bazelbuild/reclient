@@ -75,6 +75,10 @@ func TestItemSave(t *testing.T) {
 				TotalInputBytes:     4,
 				CommandDigest:       "abc/10",
 				ActionDigest:        "def/2",
+				OutputFileDigests: map[string]string{
+					"obj/buildtools/third_party/libc++/libc++/exception.o":   "8b001ac1a6c58572f9ccc8958435182885fa6ce9223313a1903a8c916b3b158f/9560",
+					"obj/buildtools/third_party/libc++/libc++/exception.o.d": "639ee908f559ff1ff190cae1c4b16cc1e08c4fef8b1b7e94be19724ee986d3f0/264",
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				ValidCacheHit:   true,
@@ -161,7 +165,15 @@ func TestItemSave(t *testing.T) {
 			"stderr_digest":            "",
 			"stdout_digest":            "",
 			"output_directory_digests": []map[string]bigquery.Value{},
-			"output_file_digests":      []map[string]bigquery.Value{},
+			"output_file_digests": []map[string]bigquery.Value{
+				{
+					"key":   string("obj/buildtools/third_party/libc++/libc++/exception.o"),
+					"value": string("8b001ac1a6c58572f9ccc8958435182885fa6ce9223313a1903a8c916b3b158f/9560"),
+				}, {
+					"key":   string("obj/buildtools/third_party/libc++/libc++/exception.o.d"),
+					"value": string("639ee908f559ff1ff190cae1c4b16cc1e08c4fef8b1b7e94be19724ee986d3f0/264"),
+				},
+			},
 			"result": map[string]bigquery.Value{
 				"exit_code": int32(42),
 				"msg":       "message",

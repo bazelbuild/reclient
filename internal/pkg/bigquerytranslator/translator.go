@@ -155,7 +155,7 @@ func collectRemoteMetadata(rm *lpb.RemoteMetadata) (map[string]bigquery.Value, e
 
 	outputFileDigests := []map[string]bigquery.Value{}
 	keys = nil
-	for _, k := range rm.GetOutputFileDigests() {
+	for k := range rm.GetOutputFileDigests() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -170,7 +170,7 @@ func collectRemoteMetadata(rm *lpb.RemoteMetadata) (map[string]bigquery.Value, e
 
 	outputDirectoryDigests := []map[string]bigquery.Value{}
 	keys = nil
-	for _, k := range rm.GetOutputDirectoryDigests() {
+	for k := range rm.GetOutputDirectoryDigests() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -231,7 +231,7 @@ func collectLocalMetadata(lm *lpb.LocalMetadata) (map[string]bigquery.Value, err
 
 	environment := []map[string]bigquery.Value{}
 	keys = nil
-	for _, k := range lm.GetEnvironment() {
+	for k := range lm.GetEnvironment() {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
