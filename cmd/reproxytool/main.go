@@ -19,20 +19,29 @@
 //
 // bazelisk run //cmd/reproxytool:reproxytool -- --help
 //
-// Example Invocation:
-//
+// Example Invocation 1:
 // Convert reproxy.INFO log to usage CSV:
 //
 //	bazelisk run //cmd/reproxytool:reproxytool -- \
 //	  --operation=usage_to_csv --log_path=/tmp/reproxy.INFO \
 //	  --alsologtostderr
 //
-// Example Invocation to show an action:
+// Example Invocation 2:
+// Fetch and action from RBE and display it:
 //
 //	bazelisk run //cmd/reproxytool:reproxytool -- \
 //	  --operation show_action --instance=<instance> \
 //	  --service <service> --alsologtostderr --v 1 \
 //	  --use_application_default_credentials=true --digest <digest>
+//
+// Example Invocation 3:
+// Start a UI page with an RRPL file:
+//
+//		bazelisk run //cmd/reproxytool:reproxytool -- \
+//		  --operation server --instance=<instance> \
+//		  --service <service> --alsologtostderr --v 1 \
+//		  --use_application_default_credentials=true \
+//	   --log_path text://`pwd`/test.rrpl
 package main
 
 import (
@@ -60,8 +69,9 @@ var (
 )
 
 var (
-	operation = flag.String("operation", "", fmt.Sprintf("Specifies the operation to perform. Supported values: %v", supportedOps))
-	logPath   = flag.String("log_path", "", "Path to log file. E.g., /tmp/reproxy.INFO")
+	operation  = flag.String("operation", "", fmt.Sprintf("Specifies the operation to perform. Supported values: %v", supportedOps))
+	logPath    = flag.String("log_path", "", "Path to log file. E.g., /tmp/reproxy.INFO")
+	listenAddr = flag.String("listen_addr", "0.0.0.0:9080", "Address to listen on. E.g., 0.0.0.0:9080")
 )
 
 func addOps() {
@@ -74,7 +84,7 @@ func addOps() {
 	remotetool.RemoteToolOperations[server] = func(ctx context.Context, c *remotetool.Client) {
 		lr := &logrecordserver.Server{}
 		lr.LoadLogRecords(getLogPathFlag())
-		logrecordserver.Start(lr)
+		lr.Start(*listenAddr)
 	}
 }
 

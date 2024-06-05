@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tarfs",
+    srcs = ["tarfs.go"],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/tarfs",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_golang_glog//:glog"],
+)
+
+go_test(
+    name = "tarfs_test",
+    srcs = ["tarfs_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":tarfs"],
+)

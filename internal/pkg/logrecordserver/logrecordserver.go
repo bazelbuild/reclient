@@ -18,10 +18,13 @@ package logrecordserver
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/http"
 	"sync"
 
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
+	"github.com/bazelbuild/reclient/internal/pkg/logrecordserver/ui"
+	"github.com/bazelbuild/reclient/internal/pkg/tarfs"
 	"github.com/gorilla/mux"
 
 	lpb "github.com/bazelbuild/reclient/api/log"
@@ -79,7 +82,7 @@ func (lr *Server) logRecords(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.V(1).Infof("Received request to get API data...")
+	log.V(3).Infof("Received request to get API data, numRecords=%v", len(lr.records))
 	if lr.loadError() != nil {
 		http.Error(w, lr.loadError().Error(), http.StatusInternalServerError)
 		return
@@ -114,8 +117,24 @@ func (lr *Server) loadError() error {
 }
 
 // Start starts up the log records server.
-func Start(lr *Server) {
+func (lr *Server) Start(listenAddr string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/data", lr.logRecords).Methods("GET")
-	http.ListenAndServe("localhost:9080", r)
+
+	// Untar the embedded angular app in-memory and serve it at root path.
+	tarAngularApp := ui.ReproxyUITarBytes()
+	tarfs, err := tarfs.NewTarFSFromBytes(tarAngularApp)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.V(1).Infof("Loaded JS app from embedded tar file (size=%v)", len(tarAngularApp))
+	indexFS, _ := fs.Sub(tarfs, "internal/pkg/logrecordserver/ui/app/dist/reproxyui/browser")
+	fs := http.FileServer(http.FS(indexFS))
+	r.PathPrefix("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fs.ServeHTTP(w, r)
+	})).Methods("GET")
+	log.V(1).Infof("Serving angular app at address %v", listenAddr)
+	if err := http.ListenAndServe(listenAddr, r); err != nil {
+		log.Exitf("Failed to start server at addr %q, err=%v", listenAddr, err)
+	}
 }

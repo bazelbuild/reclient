@@ -1,3 +1,4 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@exec_properties//:constants.bzl", "NETWORK_ON")
 
 genrule(
@@ -12,7 +13,6 @@ genrule(
                "echo \"Building app\" ; node_modules/.bin/ng build ;" +
                "cd $$ROOT ; tar cvf $(OUTS) internal/pkg/logrecordserver/ui/app/dist/reproxyui/browser",
     exec_properties = NETWORK_ON,
-    output_to_bindir = True,
     target_compatible_with = select({
         "@platforms//os:linux": [],
         "//conditions:default": ["@platforms//:incompatible"],
@@ -28,4 +28,14 @@ genrule(
         "@nodejs_toolchains//:resolved_toolchain",
     ],
     visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "ui",
+    srcs = ["ui.go"],
+    embedsrcs = [
+        "reproxytool_ui.tar",
+    ],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/logrecordserver/ui",
+    visibility = ["//:__subpackages__"],
 )
