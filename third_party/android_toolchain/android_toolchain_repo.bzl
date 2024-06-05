@@ -48,6 +48,7 @@ def _android_toolchain_repostitory_rule(ctx):
         "{clang_short_version}": _get_clang_major_version(ctx),
         "{glibc_dir}": GLIBC_DIR,
         "{clang_dir}": CLANG_DIR,
+        "{parent_platform}": ctx.attr.parent_platform,
     })
 
 
@@ -55,10 +56,11 @@ _android_toolchain_repostitory = repository_rule(
     implementation = _android_toolchain_repostitory_rule,
     attrs = {
         "prebuilts_repo": attr.label(),
+        "parent_platform": attr.string(),
     },
 )
 
-def android_toolchain_repostitory(name, clang_url, clang_sha256, glibc_url, glibc_sha256):
+def android_toolchain_repostitory(name, clang_url, clang_sha256, glibc_url, glibc_sha256, parent_platform = "@local_config_platform//:host"):
     _android_prebuilts_repostitory(
         name = name + "_android_prebuilts",
         clang_url = clang_url,
@@ -69,5 +71,6 @@ def android_toolchain_repostitory(name, clang_url, clang_sha256, glibc_url, glib
     _android_toolchain_repostitory(
         name = name,
         prebuilts_repo = "@" + name + "_android_prebuilts//:BUILD.bazel",
+        parent_platform = parent_platform,
     )
 
