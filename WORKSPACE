@@ -586,3 +586,24 @@ http_archive(
 load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
 
 rules_pkg_dependencies()
+
+http_archive(
+    name = "rules_nodejs",
+    sha256 = "3e8369256ad63197959d2253c473a9dcc57c2841d176190e59b91d25d4fe9e67",
+    strip_prefix = "rules_nodejs-6.1.1",
+    url = "https://github.com/bazelbuild/rules_nodejs/releases/download/v6.1.1/rules_nodejs-v6.1.1.tar.gz",
+)
+
+load("@rules_nodejs//nodejs:repositories.bzl", "nodejs_register_toolchains")
+
+nodejs_register_toolchains(
+    node_version = "20.13.1",
+)
+
+load("@bazel_toolchains//rules/exec_properties:exec_properties.bzl", "rbe_exec_properties")
+
+# rbe_exec_properties defines a local repository named "exec_properties"
+# which defines constants such as "NETWORK_ON"
+rbe_exec_properties(
+  name = "exec_properties",
+)
