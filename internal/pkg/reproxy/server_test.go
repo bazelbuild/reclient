@@ -179,7 +179,7 @@ func TestRemote(t *testing.T) {
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := []byte("stderr")
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", true})
 	for i := 0; i < 2; i++ {
 		got, err := server.RunCommand(ctx, req)
 		if err != nil {
@@ -225,6 +225,9 @@ func TestRemote(t *testing.T) {
 			TotalOutputBytes:    12, // "output" + "stderr"
 			OutputFileDigests: map[string]string{
 				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+			OutputFileIsExecutable: map[string]bool{
+				abOutPath: true,
 			},
 		},
 		LocalMetadata: &lpb.LocalMetadata{
@@ -385,6 +388,9 @@ func TestRemote_CanonicalWorkingDir(t *testing.T) {
 			TotalOutputBytes:    12, // "output" + "stderr"
 			OutputFileDigests: map[string]string{
 				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+			OutputFileIsExecutable: map[string]bool{
+				abOutPath: false,
 			},
 		},
 		LocalMetadata: &lpb.LocalMetadata{
@@ -554,6 +560,9 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 			TotalOutputBytes:    12, // "output" + "stderr"
 			OutputFileDigests: map[string]string{
 				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+			OutputFileIsExecutable: map[string]bool{
+				abOutPath: false,
 			},
 		},
 		LocalMetadata: &lpb.LocalMetadata{
@@ -846,6 +855,9 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 						OutputFileDigests: map[string]string{
 							tc.testFile: digest.NewFromBlob([]byte(tc.wantOutput)).String(),
 						},
+						OutputFileIsExecutable: map[string]bool{
+							tc.testFile: false,
+						},
 						LogicalBytesDownloaded: int64(wantBytes),
 					},
 				},
@@ -943,6 +955,9 @@ func TestRemoteWithSingleActionLog(t *testing.T) {
 			TotalOutputBytes:    12, // "output" + "stderr"
 			OutputFileDigests: map[string]string{
 				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+			OutputFileIsExecutable: map[string]bool{
+				abOutPath: false,
 			},
 		},
 		LocalMetadata: &lpb.LocalMetadata{
@@ -1138,6 +1153,9 @@ func TestLERCNoDeps(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -1157,6 +1175,9 @@ func TestLERCNoDeps(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				ValidCacheHit: true,
@@ -1299,6 +1320,9 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -1318,6 +1342,9 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				ValidCacheHit: true,
@@ -1485,6 +1512,9 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg1.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -1502,6 +1532,9 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg2.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -1644,6 +1677,9 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -1663,6 +1699,9 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				ValidCacheHit: true,
@@ -1897,6 +1936,9 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -1915,6 +1957,9 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 				NumOutputFiles:      1,
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests:   map[string]string{filepath.Clean(abOutPath): outDg.String()},
+				OutputFileIsExecutable: map[string]bool{
+					filepath.Clean(abOutPath): false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -2070,6 +2115,10 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 				OutputFileDigests: map[string]string{
 					"foo.d": fooDdigest.String(),
 					"foo.o": fooOdigest.String(),
+				},
+				OutputFileIsExecutable: map[string]bool{
+					"foo.d": false,
+					"foo.o": false,
 				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
@@ -2386,6 +2435,11 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 					"foo.o":      fooOdigest.String(),
 					"foo.d.deps": fooDepsdigest.String(),
 				},
+				OutputFileIsExecutable: map[string]bool{
+					"foo.d":      false,
+					"foo.o":      false,
+					"foo.d.deps": false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				ValidCacheHit: true,
@@ -2546,6 +2600,11 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 					"foo.o":      fooOdigest.String(),
 					"foo.d.deps": fooDepsdigest.String(),
 				},
+				OutputFileIsExecutable: map[string]bool{
+					"foo.d":      false,
+					"foo.o":      false,
+					"foo.d.deps": false,
+				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
 				Result:          &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
@@ -2570,6 +2629,11 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 					"foo.d":      fooDdigest.String(),
 					"foo.o":      fooOdigest.String(),
 					"foo.d.deps": fooDepsdigest.String(),
+				},
+				OutputFileIsExecutable: map[string]bool{
+					"foo.d":      false,
+					"foo.o":      false,
+					"foo.d.deps": false,
 				},
 			},
 			LocalMetadata: &lpb.LocalMetadata{
@@ -2977,6 +3041,9 @@ func TestNumRetriesIfMismatched(t *testing.T) {
 				OutputFileDigests: map[string]string{
 					abOutPath: wantRemoteFileDg,
 				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
+				},
 				OutputDirectoryDigests: map[string]string{
 					abPath: wantRemoteDirDg,
 				},
@@ -3169,7 +3236,7 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 	setPlatformOSFamily(cmd)
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(cmd, executionOptions, res, &fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput)}, &fakes.OutputDir{Path: abPath})
+	env.Set(cmd, executionOptions, res, &fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, &fakes.OutputDir{Path: abPath})
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -3206,6 +3273,9 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 				NumOutputDirectories: 1,
 				OutputFileDigests: map[string]string{
 					abOutPath: wantFileDg,
+				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
 				},
 				OutputDirectoryDigests: map[string]string{
 					abPath: wantDirDg,
@@ -3374,6 +3444,9 @@ func TestCompareWithReruns(t *testing.T) {
 				NumOutputDirectories: 1,
 				OutputFileDigests: map[string]string{
 					abOutPath: wantRemoteFileDg,
+				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
 				},
 				OutputDirectoryDigests: map[string]string{
 					abPath: wantRemoteDirDg,
@@ -3621,6 +3694,9 @@ func TestNoRerunWhenNoCompareMode(t *testing.T) {
 				NumOutputDirectories: 1,
 				OutputFileDigests: map[string]string{
 					abOutPath: wantFileDg,
+				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
 				},
 				OutputDirectoryDigests: map[string]string{
 					abPath: wantRemoteDirDg,
@@ -4510,6 +4586,9 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 				OutputFileDigests: map[string]string{
 					abOutPath: digest.NewFromBlob(wantOutput).String(),
 				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
+				},
 			},
 		},
 	}
@@ -4626,6 +4705,9 @@ func TestRacingRemoteWins(t *testing.T) {
 				TotalOutputBytes:    int64(len(wantOutput) + len("Done")),
 				OutputFileDigests: map[string]string{
 					abOutPath: digest.NewFromBlob(wantOutput).String(),
+				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
 				},
 			},
 		},
@@ -5276,6 +5358,9 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 				OutputFileDigests: map[string]string{
 					abOutPath: digest.NewFromBlob(wantOutput).String(),
 				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
+				},
 			},
 		},
 	}
@@ -5618,6 +5703,9 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 				OutputFileDigests: map[string]string{
 					abOutPath: digest.NewFromBlob(wantOutput).String(),
 				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
+				},
 			},
 		},
 	}
@@ -5752,6 +5840,9 @@ func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
 				OutputFileDigests: map[string]string{
 					abOutPath: digest.NewFromBlob(wantOutput).String(),
 				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
+				},
 			},
 		},
 	}
@@ -5874,6 +5965,9 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 				TotalOutputBytes:    int64(len(wantOutput)),
 				OutputFileDigests: map[string]string{
 					abOutPath: digest.NewFromBlob(wantOutput).String(),
+				},
+				OutputFileIsExecutable: map[string]bool{
+					abOutPath: false,
 				},
 			},
 		},
@@ -6498,6 +6592,9 @@ func TestCacheSilo(t *testing.T) {
 			TotalOutputBytes:    12, // "output" + "stderr"
 			OutputFileDigests: map[string]string{
 				abOutPath: digest.NewFromBlob([]byte("output")).String(),
+			},
+			OutputFileIsExecutable: map[string]bool{
+				abOutPath: false,
 			},
 		},
 		LocalMetadata: &lpb.LocalMetadata{

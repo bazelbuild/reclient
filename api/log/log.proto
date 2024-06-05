@@ -192,6 +192,11 @@ message RemoteMetadata {
   // The auxiliary metadata returned by the remote execution service.
   map<string, string> auxiliary_metadata = 22;
 
+  // Output File executable bit. In compare mode where
+  // numRetriesIfMismatched > 1, this will be the exec bit from the first
+  // remote-execution run.
+  map<string, bool> output_file_is_executable = 23;
+
   reserved 12;
 }
 

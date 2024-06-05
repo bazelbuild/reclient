@@ -736,6 +736,10 @@ func CommandRemoteMetadataToProto(r *command.Metadata) *lpb.RemoteMetadata {
 	for path, d := range r.OutputFileDigests {
 		res.OutputFileDigests[path] = d.String()
 	}
+	res.OutputFileIsExecutable = make(map[string]bool)
+	for path, e := range r.OutputFileIsExecutable {
+		res.OutputFileIsExecutable[path] = e
+	}
 	res.OutputDirectoryDigests = make(map[string]string)
 	for path, d := range r.OutputDirectoryDigests {
 		res.OutputDirectoryDigests[path] = d.String()
