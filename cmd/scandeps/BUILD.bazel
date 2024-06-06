@@ -85,22 +85,12 @@ select_file(
     target_compatible_with = ["@platforms//os:windows"],
 )
 
-# Copying is required as :scandeps_server_dbg_pdb will be under the dbg execroot
-# due to the transition applied by dbg_target
-copy_file(
-    name = "scandeps_server_pdb",
-    src = ":scandeps_server_dbg_pdb",
-    out = "scandeps_server.pdb",
-    tags = ["manual"],
-    target_compatible_with = ["@platforms//os:windows"],
-)
-
 # Always provide the .pdb file with the .sym file on windows as it is required
 # when symbolizing stack traces.
 filegroup(
     name = "scandeps_server_sym",
     srcs = [":scandeps_server_sym_gen"] + select({
-        "@platforms//os:windows": [":scandeps_server_pdb"],
+        "@platforms//os:windows": [":scandeps_server_dbg_pdb"],
         "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],
