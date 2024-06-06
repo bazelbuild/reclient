@@ -31,6 +31,7 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/auth"
 	"github.com/bazelbuild/reclient/internal/pkg/bootstrap"
 	"github.com/bazelbuild/reclient/internal/pkg/event"
+	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/loghttp"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
@@ -331,6 +332,9 @@ func bootstrapReproxy(args []string, startTime time.Time) (string, int) {
 }
 
 func credsFilePath() (string, error) {
+	if !features.GetConfig().EnableCredentialCache {
+		return "", nil
+	}
 	dir := os.TempDir()
 	if *cacheDir != "" {
 		dir = *cacheDir

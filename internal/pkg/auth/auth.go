@@ -435,16 +435,18 @@ func NewExternalCredentials(credshelper string, credshelperArgs []string, credsF
 		credshelper = credshelperPath
 	}
 	credsHelperCmd := newResubaleCmd(credshelper, credshelperArgs)
-	creds, err := loadCredsFromDisk(credsFile, credsHelperCmd)
-	if err != nil {
-		log.Warningf("Failed to use cached credentials: %v", err)
-		tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
-		if err != nil {
-			return nil, err
+	if credsFile != "" {
+		creds, err := loadCredsFromDisk(credsFile, credsHelperCmd)
+		if err == nil {
+			return creds, nil
 		}
-		return buildExternalCredentials(cachedCredentials{token: tk, refreshExp: rexp}, credsFile, credsHelperCmd), nil
+		log.Warningf("Failed to load cached credentials, will fetch fresh credentials: %v", err)
 	}
-	return creds, err
+	tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
+	if err != nil {
+		return nil, err
+	}
+	return buildExternalCredentials(cachedCredentials{token: tk, refreshExp: rexp}, credsFile, credsHelperCmd), nil
 }
 
 func runCredsHelperCmd(credsHelperCmd *reusableCmd) (*oauth2.Token, time.Time, error) {
