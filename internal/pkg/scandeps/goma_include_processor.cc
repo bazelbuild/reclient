@@ -127,7 +127,8 @@ class IncludeProcessor::impl {
   void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
                        const std::vector<std::string>& args,
                        const std::vector<std::string>& envs,
-                       std::shared_ptr<Result> req);
+                       const std::string filename,
+                       std::function<void(std::unique_ptr<Result>)> callback);
   impl(impl&&) = delete;
   impl(const impl& other) = delete;
   impl& operator=(impl&&) = delete;
@@ -191,19 +192,22 @@ class IncludeProcessor::impl {
     bool depscache_used_ = false;
     set<string> required_files_;
     string err_;
-    shared_ptr<Result> res_;
+    const string filename_;
+    std::function<void(std::unique_ptr<Result>)> callback_;
 
     impl* processor_;
     CompilerTypeSpecific* compiler_type_specific_;
     ScopedCompilerInfoState compiler_info_state_;
     std::unique_ptr<FileStatCache> input_file_stat_cache_;
     Request(const string exec_id, const string cwd, const vector<string>& args,
-            const vector<string>& env, impl* processor, shared_ptr<Result> res)
+            const vector<string>& env, const string filename, impl* processor,
+            std::function<void(std::unique_ptr<Result>)> callback)
         : exec_id_(exec_id),
           cwd_(cwd),
           args_(args),
           env_(env),
-          res_(res),
+          filename_(filename),
+          callback_(callback),
           processor_(processor) {}
 
    private:
@@ -526,35 +530,34 @@ void IncludeProcessor::impl::StartInputProcessing(unique_ptr<Request> req) {
 
 void IncludeProcessor::impl::ComputeIncludesDone(unique_ptr<Request> request) {
   VLOG(1) << request->exec_id_ << ": Started ComputeIncludesDone";
-  std::unique_lock<std::mutex> result_lock(request->res_->result_mutex);
-  request->res_->dependencies = request->required_files_;
+  auto res = std::make_unique<Result>();
+  res->dependencies = request->required_files_;
 
   // Add resources to dependencies set, but only gcc install marker types
   // (crtbegin.o)
   for (auto r : request->compiler_info_state_.get()->info().resource()) {
     if (r.IsValid() &&
         r.type == CompilerInfoData::CLANG_GCC_INSTALLATION_MARKER) {
-      request->res_->dependencies.insert(r.name);
+      res->dependencies.insert(r.name);
     }
   }
 
-  request->res_->dependencies.insert(request->res_->filename);
-  request->res_->used_cache = request->depscache_used_;
-  request->res_->error = request->err_;
-  request->res_->result_complete = true;
-  request->res_->result_condition.notify_all();
+  res->dependencies.insert(request->filename_);
+  res->used_cache = request->depscache_used_;
+  res->error = request->err_;
+  request->callback_(std::move(res));
   SaveToDepsCache(std::move(request));
 }
 
-void IncludeProcessor::impl::ComputeIncludes(const string& exec_id,
-                                             const string& cwd,
-                                             const vector<string>& args,
-                                             const vector<string>& envs,
-                                             shared_ptr<Result> res) {
+void IncludeProcessor::impl::ComputeIncludes(
+    const string& exec_id, const string& cwd, const vector<string>& args,
+    const vector<string>& envs, const std::string filename,
+    std::function<void(std::unique_ptr<Result>)> callback) {
   wm_->RunClosureInPool(
       FROM_HERE, request_pool_,
       NewCallback(StartInputProcessing,
-                  make_unique<Request>(exec_id, cwd, args, envs, this, res)),
+                  make_unique<Request>(exec_id, cwd, args, envs, filename, this,
+                                       callback)),
       WorkerThread::PRIORITY_MED);
 }
 
@@ -664,8 +667,9 @@ IncludeProcessor::IncludeProcessor(const char* process_name,
 void include_processor::IncludeProcessor::ComputeIncludes(
     const std::string& exec_id, const std::string& cwd,
     const std::vector<std::string>& args, const std::vector<std::string>& envs,
-    std::shared_ptr<include_processor::Result> req) {
-  pImpl->ComputeIncludes(exec_id, cwd, args, envs, req);
+    const std::string filename, const std::string directory,
+    std::function<void(std::unique_ptr<Result>)> callback) {
+  pImpl->ComputeIncludes(exec_id, cwd, args, envs, filename, callback);
 }
 
 IncludeProcessor::~IncludeProcessor() = default;

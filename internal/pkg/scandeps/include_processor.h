@@ -17,6 +17,7 @@
 
 #include <condition_variable>
 #include <ctime>
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -32,9 +33,6 @@ struct Result {
   std::set<std::string> dependencies;
   bool used_cache = false;
   std::string error;
-  std::condition_variable result_condition;
-  std::mutex result_mutex;
-  bool result_complete = false;
 };
 
 class IncludeProcessor {
@@ -42,7 +40,8 @@ class IncludeProcessor {
   void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
                        const std::vector<std::string>& args,
                        const std::vector<std::string>& envs,
-                       std::shared_ptr<Result> req);
+                       const std::string filename, const std::string directory,
+                       std::function<void(std::unique_ptr<Result>)> Callback);
   IncludeProcessor(const char* process_name, const char* cache_dir,
                    const char* log_dir, int cache_file_max_mb,
                    bool use_deps_cache);

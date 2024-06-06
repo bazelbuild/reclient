@@ -94,19 +94,20 @@ class include_processor::IncludeProcessor::impl {
   void ComputeIncludes(const std::string& exec_id, const std::string& cwd,
                        const std::vector<std::string>& args,
                        const std::vector<std::string>& envs,
-                       std::shared_ptr<include_processor::Result> req) {
-    auto deps = computeIncludes(req->filename, req->directory, args);
+                       const std::string filename, const std::string directory,
+                       std::function<void(std::unique_ptr<Result>)> callback) {
+    auto deps = computeIncludes(filename, directory, args);
+    auto res = std::make_unique<Result>();
     if (deps) {
-      req->dependencies = deps.get();
+      res->dependencies = deps.get();
     } else {
       std::string err;
       llvm::handleAllErrors(deps.takeError(), [&err](llvm::StringError& Err) {
         err += Err.getMessage();
       });
-      req->error = err;
+      res->error = err;
     }
-    req->result_complete = true;
-    req->result_condition.notify_all();
+    callback(std::move(res));
   }
 
  private:
@@ -162,8 +163,10 @@ include_processor::IncludeProcessor::IncludeProcessor(const char* process_name,
 void include_processor::IncludeProcessor::ComputeIncludes(
     const std::string& exec_id, const std::string& cwd,
     const std::vector<std::string>& args, const std::vector<std::string>& envs,
-    std::shared_ptr<include_processor::Result> req) {
-  pImpl->ComputeIncludes(exec_id, cwd, args, envs, req);
+    const std::string filename, const std::string directory,
+    std::function<void(std::unique_ptr<Result>)> callback) {
+  pImpl->ComputeIncludes(exec_id, cwd, args, envs, filename, directory,
+                         callback);
 }
 
 include_processor::IncludeProcessor::~IncludeProcessor() = default;

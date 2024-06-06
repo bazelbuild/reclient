@@ -32,7 +32,9 @@
 
 #include "internal/pkg/version/version.h"
 
+using grpc::CallbackServerContext;
 using grpc::ServerContext;
+using grpc::ServerUnaryReactor;
 using grpc::Status;
 using grpc::StatusCode;
 
@@ -103,9 +105,9 @@ ScandepsService::~ScandepsService() {
 #endif
 }
 
-Status ScandepsService::ProcessInputs(ServerContext* context,
-                                      const CPPProcessInputsRequest* request,
-                                      CPPProcessInputsResponse* response) {
+ServerUnaryReactor* ScandepsService::ProcessInputs(
+    CallbackServerContext* context, const CPPProcessInputsRequest* request,
+    CPPProcessInputsResponse* response) {
   (void)context;
 
   // Count an action
@@ -146,39 +148,34 @@ Status ScandepsService::ProcessInputs(ServerContext* context,
     }
   }
 
-  auto result = std::make_shared<include_processor::Result>();
-  result->directory = request->directory();
-  result->filename = request->filename();
-  std::unique_lock<std::mutex> result_lock(result->result_mutex);
+  auto* reactor = context->DefaultReactor();
   deps_scanner_cache_->ComputeIncludes(
       request->exec_id(), request->directory(),
       std::vector<std::string>(request->command().begin(),
                                request->command().end()),
       std::vector<std::string>(request->cmd_env().begin(),
                                request->cmd_env().end()),
-      result);
-  result->result_condition.wait(
-      result_lock, [&result]() { return result->result_complete; });
+      request->filename(), request->directory(),
+      [reactor, request, response, this](std::unique_ptr<Result> res) {
+        if (res->error.size() > 0) {
+          std::ostringstream command;
+          std::copy(request->command().begin(), request->command().end(),
+                    std::ostream_iterator<std::string>(command, " "));
+          LOG(ERROR) << INPUT_PROCESSOR
+              " encountered the following error processing a command: \""
+                     << res->error << "\"; Command: [" << command.str() << "]";
+        }
 
-  if (result->error.size() > 0) {
-    std::ostringstream command;
-    std::copy(request->command().begin(), request->command().end(),
-              std::ostream_iterator<std::string>(command, " "));
-    LOG(ERROR) << INPUT_PROCESSOR
-        " encountered the following error processing a command: \""
-               << result->error << "\"; Command: [" << command.str() << "]";
-  }
-  response->set_error(result->error);
-  response->set_used_cache(result->used_cache);
-  for (auto dependency : result->dependencies) {
-    response->add_dependencies(dependency);
-  }
-
-  // TODO b/268656738: refactor this to common service code
-  // Count the action as complete
-  --current_actions_;
-  ++completed_actions_;
-  return grpc::Status::OK;
+        response->set_error(res->error);
+        response->set_used_cache(res->used_cache);
+        for (auto dependency : res->dependencies) {
+          response->add_dependencies(dependency);
+        }
+        --current_actions_;
+        ++completed_actions_;
+        reactor->Finish(Status::OK);
+      });
+  return reactor;
 }
 
 Status ScandepsService::Status(ServerContext* context,

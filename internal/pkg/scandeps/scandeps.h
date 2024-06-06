@@ -28,7 +28,9 @@
 
 namespace include_processor {
 
-class ScandepsService final : public scandeps::CPPDepsScanner::Service {
+class ScandepsService final
+    : public scandeps::CPPDepsScanner::WithCallbackMethod_ProcessInputs<
+          scandeps::CPPDepsScanner::Service> {
  public:
   ScandepsService(std::function<void()> shutdown_server,
                   const char* process_name, std::string cache_dir,
@@ -38,9 +40,9 @@ class ScandepsService final : public scandeps::CPPDepsScanner::Service {
   ScandepsService(const ScandepsService& other) = delete;
   ScandepsService& operator=(const ScandepsService& other) = delete;
   ~ScandepsService();
-  grpc::Status ProcessInputs(grpc::ServerContext*,
-                             const scandeps::CPPProcessInputsRequest*,
-                             scandeps::CPPProcessInputsResponse*) override;
+  grpc::ServerUnaryReactor* ProcessInputs(
+      grpc::CallbackServerContext*, const scandeps::CPPProcessInputsRequest*,
+      scandeps::CPPProcessInputsResponse*) override;
   grpc::Status Status(grpc::ServerContext*, const google::protobuf::Empty*,
                       scandeps::StatusResponse*) override;
   grpc::Status Shutdown(grpc::ServerContext*, const google::protobuf::Empty*,
