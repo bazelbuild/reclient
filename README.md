@@ -56,14 +56,38 @@ This is not an officially supported Google product.
 
 Once you've installed Bazel, and are in the re-client repo:
 
+## Build the code
+
+To build a complete set of binaries for reclient with a clangscandeps deps scanner:
+
+```shell
+$ bazelisk build --config=clangscandeps //:artifacts_tar
+[...]
+Target //:artifacts_tar up-to-date:
+  bazel-bin/artifacts.tar
 ```
 
-# Build the code
-$ bazelisk build --config=clangscandeps //cmd/...
-# You should now have binaries for 'bootstrap', 'dumpstats', 'reproxy',
-# 'rewrapper'.
+To build a complete set of binaries for reclient with a goma deps scanner:
+
+```shell
+$ bazelisk build --config=goma //:artifacts_tar
+[...]
+Target //:artifacts_tar up-to-date:
+  bazel-bin/artifacts.tar
+```
+
+## Install binaries (linux and mac only)
+
+To install all binaries to a `$BINDIR`
+
+```shell
+$ bazelisk run --config=goma //:artifacts_install -- --destdir $BINDIR
+[...]
+INFO: Running command line: bazel-bin/artifacts_install --destdir $BINDIR
+```
 
 # Run unit tests
+```
 $ bazelisk test //pkg/... //internal/...
 [...]
 INFO: Elapsed time: 77.166s, Critical Path: 30.24s
@@ -93,8 +117,8 @@ Reclient can be built to use Goma's input processor. Goma's input processor is
 3x faster than clang-scan-deps for a typical compile action in Chrome. Build as
 follows:
 
-```
-bazelisk build //cmd/... --config=goma
+```shell
+bazelisk build //:artifacts_tar --config=goma
 ```
 
 
