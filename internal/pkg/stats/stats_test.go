@@ -1138,7 +1138,7 @@ func TestWriteFromRecords(t *testing.T) {
 			WriteFromRecords(tt.args.recs, tt.args.pInfo, gotDir)
 			got := fileContent(t, filepath.Join(gotDir, "rbe_metrics.txt"))
 			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("TestAggregateRecordsToFiles generate diff in file content: (-want +got)\n", diff)
+				t.Errorf("TestAggregateRecordsToFiles generate diff in file content: (-want +got)\n%v", diff)
 			}
 		})
 	}

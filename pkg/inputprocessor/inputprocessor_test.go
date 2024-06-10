@@ -1105,7 +1105,7 @@ func TestNoFileCache(t *testing.T) {
 	// A and B should be different
 	if diff := cmp.Diff(gotIOA, gotIOB, strSliceCmp); diff == "" {
 		// If both cached, expect the results to be the same
-		t.Errorf("ProcessInputs(%v) returned identical results on both executions, expected different: %s", opts, gotIOA)
+		t.Errorf("ProcessInputs(%v) returned identical results on both executions, expected different: %v", opts, gotIOA)
 	}
 	// But B should still have everything we want
 	if diff := cmp.Diff(wantIO, gotIOB, strSliceCmp); diff != "" {

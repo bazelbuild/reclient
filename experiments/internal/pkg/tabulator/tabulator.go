@@ -17,6 +17,7 @@ package tabulator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,7 +47,7 @@ func RunExperimentResultCollector(resBucket string, expName string,
 	ctx := context.Background()
 	configs, err := gcs.List(ctx, fmt.Sprintf("gs://%v/%v", resBucket, expName))
 	if err != nil {
-		return fmt.Errorf("Failed to find directory for experiment %v: %v", expName, err)
+		return fmt.Errorf("Failed to find directory for experiment %v: %w", expName, err)
 	}
 	exp := &epb.Results{Name: expName}
 	for _, c := range configs {
@@ -58,30 +59,30 @@ func RunExperimentResultCollector(resBucket string, expName string,
 	}
 	client, err := bigquery.NewClient(ctx, gcpProject)
 	if err != nil {
-		return fmt.Errorf("Failed to create bigquery client: %v", err)
+		return fmt.Errorf("Failed to create bigquery client: %w", err)
 	}
 	schema, err := bigquery.InferSchema(epb.Results{})
 	if err != nil {
-		return fmt.Errorf("Failed to generate schema: %v", err)
+		return fmt.Errorf("Failed to generate schema: %w", err)
 	}
 	schema = schema.Relax()
 	t := client.Dataset(dataset).Table(table)
 	if _, err := t.Metadata(ctx); err != nil {
 		if err := t.Create(ctx, &bigquery.TableMetadata{Schema: schema}); err != nil {
-			return fmt.Errorf("Failed to create table: %v", err)
+			return fmt.Errorf("Failed to create table: %w", err)
 		}
 	}
 	if err := t.Uploader().Put(ctx, exp); err != nil {
-		return fmt.Errorf("Failed to insert experiment: %v", err)
 		if multiError, ok := err.(bigquery.PutMultiError); ok {
+			errs := []error{}
 			for _, err1 := range multiError {
 				for _, err2 := range err1.Errors {
-					return fmt.Errorf("Failed to insert: %v", err2)
+					errs = append(errs, err2)
 				}
 			}
-		} else {
-			return fmt.Errorf("Failed to insert: %v", err)
+			return fmt.Errorf("Failed to insert experiment: %w", errors.Join(errs...))
 		}
+		return fmt.Errorf("Failed to insert experiment: %w", err)
 	}
 	fmt.Printf("Results uploaded to bigquery. You can query bigquery as follows: \n"+
 		"SELECT * FROM `%v.%v.%v` WHERE name='%v'\n"+

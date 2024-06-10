@@ -148,10 +148,10 @@ func TestMultipleLabels(t *testing.T) {
 
 	m, err := f.PercentileDownloadLatency(actions[0], 50)
 	if err != nil {
-		t.Errorf("PercentileDownloadLatency(%v,50) returned error: %v", err)
+		t.Errorf("PercentileDownloadLatency(%v,50) returned error: %v", lbls, err)
 	}
 	if m != 3*time.Millisecond {
-		t.Errorf("PercentileDownloadLatency(%v,50) = %v, want 3ms", m)
+		t.Errorf("PercentileDownloadLatency(%v,50) = %v, want 3ms", lbls, m)
 	}
 
 	m, err = f.PercentileDownloadLatency(actions2[0], 50)

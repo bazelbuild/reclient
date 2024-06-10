@@ -175,7 +175,7 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 		client.Close()
 		return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
 	case err := <-client.ch:
-		return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err)
+		return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err.Err)
 	case c := <-connectCh:
 		if c.err != nil {
 			return nil, fmt.Errorf("Failed to connect to dependency scanner service: %w", c.err)

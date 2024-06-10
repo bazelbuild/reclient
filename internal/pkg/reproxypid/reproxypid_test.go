@@ -57,11 +57,11 @@ func TestFile(t *testing.T) {
 			t.Parallel()
 			err := WriteFile(tc.serverAddr, tc.pid)
 			if err != nil {
-				t.Errorf("WriteFile(%v,%v) returned unexpected error: %w", tc.serverAddr, tc.pid, err)
+				t.Errorf("WriteFile(%v,%v) returned unexpected error: %v", tc.serverAddr, tc.pid, err)
 			}
 			pf, err := ReadFile(tc.serverAddr)
 			if err != nil {
-				t.Errorf("ReadFile(%v) returned unexpected error: %w", tc.serverAddr, err)
+				t.Errorf("ReadFile(%v) returned unexpected error: %v", tc.serverAddr, err)
 			}
 			if pf.Pid != tc.pid {
 				t.Errorf("ReadFile(%v) returned wrong PID, wanted %v, got %v", tc.serverAddr, tc.pid, pf.Pid)
@@ -95,7 +95,7 @@ func TestPollForDeath(t *testing.T) {
 	cmd := exec.Command(args[0], args[1:]...)
 	err := cmd.Start()
 	if err != nil {
-		t.Fatalf("Error staring subprocess: %w", err)
+		t.Fatalf("Error staring subprocess: %v", err)
 	}
 	pid := cmd.Process.Pid
 	go func() {
@@ -103,11 +103,11 @@ func TestPollForDeath(t *testing.T) {
 	}()
 	err = WriteFile(serverAddr, pid)
 	if err != nil {
-		t.Errorf("WriteFile(%v,%v) returned unexpected error: %w", serverAddr, pid, err)
+		t.Errorf("WriteFile(%v,%v) returned unexpected error: %v", serverAddr, pid, err)
 	}
 	pf, err := ReadFile(serverAddr)
 	if err != nil {
-		t.Errorf("ReadFile(%v) returned unexpected error: %w", serverAddr, err)
+		t.Errorf("ReadFile(%v) returned unexpected error: %v", serverAddr, err)
 	}
 	deadCh := make(chan error)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -116,7 +116,7 @@ func TestPollForDeath(t *testing.T) {
 	select {
 	case err := <-deadCh:
 		if err != nil {
-			t.Errorf("PollForDeath returned an unexpected error: %w", err)
+			t.Errorf("PollForDeath returned an unexpected error: %v", err)
 		}
 	case <-ctx.Done():
 		t.Errorf("Timed out after 10s waiting for process %d to die", pid)

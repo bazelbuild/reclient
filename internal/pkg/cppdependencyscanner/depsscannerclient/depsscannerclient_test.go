@@ -390,13 +390,13 @@ func TestStopService_Success(t *testing.T) {
 
 	wg.Wait()
 	if err != nil {
-		t.Error("Unexpected error shutting down service: %v", err)
+		t.Errorf("Unexpected error shutting down service: %v", err)
 	}
 	if stubClient.shutdownCalled != 1 {
-		t.Error("Expected Shutdown to be called exactly once; called %v times", stubClient.shutdownCalled)
+		t.Errorf("Expected Shutdown to be called exactly once; called %v times", stubClient.shutdownCalled)
 	}
 	if terminateCalled != 0 {
-		t.Error("Terminate called %v times; expected 0 (clean shutdown)", terminateCalled)
+		t.Errorf("Terminate called %v times; expected 0 (clean shutdown)", terminateCalled)
 	}
 }
 
@@ -430,10 +430,10 @@ func TestStopService_Failure(t *testing.T) {
 		t.Error("Error expected while shutting down; received none")
 	}
 	if stubClient.shutdownCalled != 1 {
-		t.Error("Expected Shutdown to be called exactly once; called %v times", stubClient.shutdownCalled)
+		t.Errorf("Expected Shutdown to be called exactly once; called %v times", stubClient.shutdownCalled)
 	}
 	if terminateCalled != 1 {
-		t.Error("Terminate called %v times; expected 1 (forced shutdown)", terminateCalled)
+		t.Errorf("Terminate called %v times; expected 1 (forced shutdown)", terminateCalled)
 	}
 }
 
