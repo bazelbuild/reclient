@@ -22,7 +22,7 @@
 
 set -eux
 
-for r in $(bazelisk query "filter('_copy_pbgo_files', kind(sh_binary, //api/...))")
+for r in $(bazelisk query "filter('_copy_pbgo_files', kind(sh_binary, @@//...))")
 do
   bazelisk run "$r"
 done
