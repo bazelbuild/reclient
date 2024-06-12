@@ -94,7 +94,7 @@ test:windows --test_env=APPDATA
 build:windows --features=static_link_msvcrt
 
 build:clangscandeps --//:include_scanner=clangscandeps
-build:clangscandeps --@llvm_zlib//:llvm_enable_zlib=false
+build --@llvm_zlib//:llvm_enable_zlib=false
 
 build:goma --//:include_scanner=goma
 
