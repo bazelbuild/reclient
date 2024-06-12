@@ -42,8 +42,10 @@ import (
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/credshelper"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"
+	grpcOauth "google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -82,6 +84,8 @@ var (
 	logHTTPCalls                      = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 	experimentalCredentialsHelper     = flag.String(auth.CredshelperPathFlag, "", "Path to the credentials helper binary. If given execrel://, looks for the `credshelper` binary in the same folder as bootstrap")
 	experimentalCredentialsHelperArgs = flag.String(auth.CredshelperArgsFlag, "", "Arguments for the experimental credentials helper, separated by space.")
+	credentialsHelper                 = flag.String(credshelper.CredshelperPathFlag, "", "Path to the credentials helper binary. If given execrel://, looks for the `credshelper` binary in the same folder as bootstrap")
+	credentialsHelperArgs             = flag.String(credshelper.CredshelperArgsFlag, "", "Arguments for the credentials helper, separated by space.")
 )
 
 func main() {
@@ -138,15 +142,34 @@ func main() {
 	if err != nil {
 		log.Exitf("Failed to determine the token cache file name: %v", err)
 	}
+	var chCreds *credshelper.Credentials
 	var creds *auth.Credentials
+	var ts *grpcOauth.TokenSource
 	if !*remoteDisabled {
-		creds = newCreds(cf)
-		status, err := creds.UpdateStatus()
-		if err != nil {
-			log.Errorf("Error obtaining credentials: %v", err)
-			os.Exit(status)
+		if *credentialsHelper != "" {
+			c, err := credshelper.NewExternalCredentials(*credentialsHelper, strings.Fields(*credentialsHelperArgs), cf)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Credentials helper failed. Please try again or use application default credentials:%v", err)
+				os.Exit(auth.ExitCodeExternalTokenAuth)
+			}
+			err = c.RefreshStatus()
+			if err != nil {
+				log.Exitf("Error obtaining credentials: %v", err)
+			}
+			c.SaveToDisk()
+			chCreds = c
+			ts = c.TokenSource()
+		} else {
+			c := newCreds(cf)
+			status, err := c.UpdateStatus()
+			if err != nil {
+				log.Errorf("Error obtaining credentials: %v", err)
+				os.Exit(status)
+			}
+			c.SaveToDisk()
+			creds = c
+			ts = c.TokenSource()
 		}
-		creds.SaveToDisk()
 	}
 
 	if *shutdown {
@@ -196,7 +219,7 @@ func main() {
 				uploaderArgs = append(uploaderArgs, "--cfg="+cfg.Value.String())
 			}
 		}
-		if ts := creds.TokenSource(); ts != nil {
+		if ts != nil {
 			if t, err := ts.Token(); err == nil {
 				uploaderArgs = append(uploaderArgs, "--oauth_token="+t.AccessToken, "--use_external_auth_token=true")
 			}
@@ -228,9 +251,8 @@ func main() {
 		args = append(args, "--wait_for_shutdown_rpc=true")
 	}
 
-	log.V(3).Infof("Trying to authenticate with %s", creds.Mechanism().String())
 	currArgs := args[:]
-	if *experimentalCredentialsHelper != "" {
+	if *experimentalCredentialsHelper != "" || *credentialsHelper != "" {
 		currArgs = append(currArgs, "--use_external_auth_token=true")
 	}
 	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
@@ -238,6 +260,7 @@ func main() {
 		fmt.Println(msg)
 	} else {
 		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\nCredentials cache file was deleted. Please try again. If this continues to fail, please file a bug.\n", msg)
+		chCreds.RemoveFromDisk()
 		creds.RemoveFromDisk()
 	}
 	log.Flush()

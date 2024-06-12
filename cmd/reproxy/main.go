@@ -54,6 +54,7 @@ import (
 
 	"cloud.google.com/go/profiler"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/credshelper"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/rexec"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
@@ -66,6 +67,7 @@ import (
 	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/moreflag"
 	log "github.com/golang/glog"
+	grpcOauth "google.golang.org/grpc/credentials/oauth"
 )
 
 var (
@@ -273,14 +275,28 @@ func main() {
 	grpcServer := grpc.NewServer(opts...)
 
 	ctx := context.Background()
-	var c *auth.Credentials
+	var ts *grpcOauth.TokenSource
 	if !*remoteDisabled {
-		c = mustBuildCredentials()
-		defer c.SaveToDisk()
+		chFlag := flag.Lookup(credshelper.CredshelperPathFlag)
+		credentialsHelperPath := chFlag.Value.String()
+		if credentialsHelperPath != "" {
+			credentialsHelperArgs := flag.Lookup(credshelper.CredshelperArgsFlag).Value.String()
+			c, err := credshelper.NewExternalCredentials(credentialsHelperPath, strings.Fields(credentialsHelperArgs), *credsFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Credentials helper failed. Please try again or use application default credentials:%v", err)
+				os.Exit(auth.ExitCodeExternalTokenAuth)
+			}
+			defer c.SaveToDisk()
+			ts = c.TokenSource()
+		} else {
+			c := mustBuildCredentials()
+			defer c.SaveToDisk()
+			ts = c.TokenSource()
+		}
 	}
 	var e *monitoring.Exporter
 	if *metricsProject != "" {
-		e, err = newExporter(c)
+		e, err = newExporter(ts)
 		if err != nil {
 			log.Warningf("Failed to initialize cloud monitoring: %v", err)
 		} else {
@@ -369,7 +385,7 @@ func main() {
 			client.UseBatchOps(*useBatches),
 			client.CompressedBytestreamThreshold(*compressionThreshold),
 		}
-		if ts := c.TokenSource(); ts != nil {
+		if ts != nil {
 			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
 		}
 		go func() {
@@ -378,7 +394,7 @@ func main() {
 			if err != nil {
 				log.Errorf("Failed to initialize SDK client: %+v", err)
 				if ce, ok := err.(*client.InitError); ok {
-					err = formatAuthError(c.Mechanism(), ce)
+					err = formatAuthError(ce)
 				}
 				server.SetStartupErr(err)
 				cancelInit()
@@ -444,7 +460,7 @@ func main() {
 	wg.Wait()
 }
 
-func formatAuthError(m auth.Mechanism, ce *client.InitError) error {
+func formatAuthError(ce *client.InitError) error {
 	if errors.Is(ce.Err, context.Canceled) {
 		return ce.Err
 	}
@@ -537,11 +553,11 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter
 	return nil, nil
 }
 
-func newExporter(creds *auth.Credentials) (*monitoring.Exporter, error) {
+func newExporter(ts *grpcOauth.TokenSource) (*monitoring.Exporter, error) {
 	if err := monitoring.SetupViews(labels); err != nil {
 		return nil, err
 	}
-	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, creds.TokenSource())
+	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, ts)
 }
 
 func getLogDir() string {
