@@ -1006,9 +1006,9 @@ func BenchmarkProtoSaver(b *testing.B) {
 			To:   timestamppb.New(testNow.Add(time.Duration(i+1) * time.Minute)),
 		}
 		flags[fmt.Sprintf("flag_%d", i)] = fmt.Sprintf("value_%d", i)
-		metrics[fmt.Sprintf("flag_%d_bool", i)] = &lpb.Metric{Value: &lpb.Metric_BoolValue{i%2 == 0}}
-		metrics[fmt.Sprintf("flag_%d_double", i)] = &lpb.Metric{Value: &lpb.Metric_DoubleValue{float64(i) + 0.5}}
-		metrics[fmt.Sprintf("flag_%d_int64", i)] = &lpb.Metric{Value: &lpb.Metric_Int64Value{int64(i)}}
+		metrics[fmt.Sprintf("flag_%d_bool", i)] = &lpb.Metric{Value: &lpb.Metric_BoolValue{BoolValue: i%2 == 0}}
+		metrics[fmt.Sprintf("flag_%d_double", i)] = &lpb.Metric{Value: &lpb.Metric_DoubleValue{DoubleValue: float64(i) + 0.5}}
+		metrics[fmt.Sprintf("flag_%d_int64", i)] = &lpb.Metric{Value: &lpb.Metric_Int64Value{Int64Value: int64(i)}}
 		statArr = append(statArr, &stpb.Stat{
 			Name:         "a",
 			Count:        int64(6 * i),

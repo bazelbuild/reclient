@@ -435,7 +435,7 @@ func (l *Logger) AddMetricIntToProxyInfo(key string, value int64) {
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_Int64Value{value}}
+	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_Int64Value{Int64Value: value}}
 }
 
 // summarize the latest OS resource usage stats as protobuf messages.
@@ -491,7 +491,7 @@ func (l *Logger) IncrementMetricIntToProxyInfo(key string, delta int64) {
 		}
 		im.Int64Value += delta
 	} else {
-		l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_Int64Value{delta}}
+		l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_Int64Value{Int64Value: delta}}
 	}
 }
 
@@ -503,7 +503,7 @@ func (l *Logger) AddMetricDoubleToProxyInfo(key string, value float64) {
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_DoubleValue{value}}
+	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_DoubleValue{DoubleValue: value}}
 }
 
 // AddMetricBoolToProxyInfo will add an reproxy level event to the ProxyInfo object.
@@ -514,7 +514,7 @@ func (l *Logger) AddMetricBoolToProxyInfo(key string, value bool) {
 	// A call to this function should be very rare so locking should be ok.
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_BoolValue{value}}
+	l.info.Metrics[key] = &lpb.Metric{Value: &lpb.Metric_BoolValue{BoolValue: value}}
 }
 
 // AddFlagStringToProxyInfo will add an reproxy flag to the ProxyInfo object.

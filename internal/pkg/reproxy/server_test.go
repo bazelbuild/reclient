@@ -179,7 +179,11 @@ func TestRemote(t *testing.T) {
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := []byte("stderr")
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", true})
+	env.Set(
+		wantCmd, command.DefaultExecutionOptions(), res,
+		fakes.StdErr(wantStdErr),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: true},
+	)
 	for i := 0; i < 2; i++ {
 		got, err := server.RunCommand(ctx, req)
 		if err != nil {
@@ -336,7 +340,12 @@ func TestRemote_CanonicalWorkingDir(t *testing.T) {
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := []byte("stderr")
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(
+		wantCmd,
+		command.DefaultExecutionOptions(), res,
+		fakes.StdErr(wantStdErr),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: false},
+	)
 
 	// Run requests
 	for i := 0; i < 2; i++ {
@@ -508,7 +517,12 @@ func TestRemote_WinCross_CanonicalWorkingDir(t *testing.T) {
 	}
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := []byte("stderr")
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(
+		wantCmd,
+		command.DefaultExecutionOptions(), res,
+		fakes.StdErr(wantStdErr),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: false},
+	)
 
 	// Run requests
 	for i := 0; i < 2; i++ {
@@ -795,7 +809,10 @@ func TestRemoteWithPreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			setPlatformOSFamily(wantCmd)
 			res := &command.Result{Status: command.SuccessResultStatus}
-			env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{tc.testFile, tc.wantOutput, false})
+			env.Set(
+				wantCmd, command.DefaultExecutionOptions(), res,
+				&fakes.OutputFile{Path: tc.testFile, Contents: tc.wantOutput, IsExecutable: false},
+			)
 			var oldDigest digest.Digest
 			var oldMtime time.Time
 			if tc.origOutput != "" {
@@ -941,7 +958,9 @@ func TestRemoteWithSingleActionLog(t *testing.T) {
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := []byte("stderr")
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: false},
+	)
 
 	wantRec := &lpb.LogRecord{
 		Command:          command.ToProto(wantCmd),
@@ -2077,7 +2096,11 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 	dFileContent := getDFileContents(t, "foo.o", "foo.h", "bar.h")
 	fooDdigest := digest.NewFromBlob([]byte(dFileContent))
 	fooOdigest := digest.NewFromBlob([]byte("foo.o"))
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{"foo.d", dFileContent, false}, &fakes.OutputFile{"foo.o", "foo.o", false})
+	env.Set(
+		wantCmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: "foo.d", Contents: dFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.o", Contents: "foo.o", IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -2395,7 +2418,11 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 	depsFileContent := getDepsFileContents(t, env.ExecRoot, fmc, false, "foo.o", nil, "foo.h", "bar.h")
 	fooDepsdigest := digest.NewFromBlob([]byte(depsFileContent))
 	fooOdigest := digest.NewFromBlob([]byte("foo.o"))
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{"foo.d", dFileContent, false}, &fakes.OutputFile{"foo.d.deps", depsFileContent, false}, &fakes.OutputFile{"foo.o", "foo.o", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: "foo.d", Contents: dFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.d.deps", Contents: depsFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.o", Contents: "foo.o", IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -2533,7 +2560,11 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 	dFileContent := getDFileContents(t, "foo.o", "foo.h", "bar.h")
 	fooDdigest := digest.NewFromBlob([]byte(dFileContent))
 	fooOdigest := digest.NewFromBlob([]byte("foo.o"))
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{"foo.d", dFileContent, false}, &fakes.OutputFile{"foo.d.deps", depsFileContent, false}, &fakes.OutputFile{"foo.o", "foo.o", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: "foo.d", Contents: dFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.d.deps", Contents: depsFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.o", Contents: "foo.o", IsExecutable: false},
+	)
 
 	t.Logf("Invalidate the hidden bar.h input")
 	time.Sleep(time.Second) // Hack to let mtime catch up.
@@ -2739,7 +2770,11 @@ func TestLERCMismatches(t *testing.T) {
 	fooORemoteDigest := digest.NewFromBlob([]byte("surprize!"))
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(wantCmd, executionOptions, res, &fakes.OutputFile{"foo.d", dFileContent, false}, &fakes.OutputFile{"foo.d.deps", depsFileContent, false}, &fakes.OutputFile{"foo.o", "surprize!", false})
+	env.Set(wantCmd, executionOptions, res,
+		&fakes.OutputFile{Path: "foo.d", Contents: dFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.d.deps", Contents: depsFileContent, IsExecutable: false},
+		&fakes.OutputFile{Path: "foo.o", Contents: "surprize!", IsExecutable: false},
+	)
 
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
@@ -2902,7 +2937,9 @@ func TestCompareStashRestore(t *testing.T) {
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(wantCmd, executionOptions, res, &fakes.OutputFile{"inout", "bar", false})
+	env.Set(wantCmd, executionOptions, res,
+		&fakes.OutputFile{Path: "inout", Contents: "bar", IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -3000,7 +3037,10 @@ func TestNumRetriesIfMismatched(t *testing.T) {
 	setPlatformOSFamily(cmd)
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(cmd, executionOptions, res, &fakes.OutputFile{abOutPath, "fake-output", false}, &fakes.OutputDir{abPath})
+	env.Set(cmd, executionOptions, res,
+		&fakes.OutputFile{Path: abOutPath, Contents: "fake-output", IsExecutable: false},
+		&fakes.OutputDir{Path: abPath},
+	)
 	os.RemoveAll(filepath.Join(env.ExecRoot, abPath))
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
@@ -3236,7 +3276,8 @@ func TestCompareWithRerunsNoMismatches(t *testing.T) {
 	setPlatformOSFamily(cmd)
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(cmd, executionOptions, res, &fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, &fakes.OutputDir{Path: abPath})
+	env.Set(cmd, executionOptions, res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, &fakes.OutputDir{Path: abPath})
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -3403,7 +3444,9 @@ func TestCompareWithReruns(t *testing.T) {
 	setPlatformOSFamily(cmd)
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(cmd, executionOptions, res, &fakes.OutputFile{abOutPath, "fake-output", false}, &fakes.OutputDir{abPath})
+	env.Set(cmd, executionOptions, res,
+		&fakes.OutputFile{Path: abOutPath, Contents: "fake-output", IsExecutable: false}, &fakes.OutputDir{Path: abPath},
+	)
 	os.RemoveAll(filepath.Join(env.ExecRoot, abPath))
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
@@ -3657,7 +3700,9 @@ func TestNoRerunWhenNoCompareMode(t *testing.T) {
 
 	executionOptions := command.DefaultExecutionOptions()
 	executionOptions.DoNotCache = true
-	env.Set(cmd, executionOptions, res, &fakes.OutputFile{abOutPath, string(wantOutput), false}, &fakes.OutputDir{abPath})
+	env.Set(cmd, executionOptions, res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, &fakes.OutputDir{Path: abPath},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -4521,7 +4566,9 @@ func TestRacingRemoteWinsCopyWorksOnTmpFs(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.SuccessResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false}, fakes.StdOut("Done"))
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, fakes.StdOut("Done"),
+	)
 
 	tmpfsdir, err := os.MkdirTemp("/dev/shm", "reproxytesttmp")
 	if err != nil {
@@ -4661,7 +4708,9 @@ func TestRacingRemoteWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.SuccessResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false}, fakes.StdOut("Done"))
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, fakes.StdOut("Done"),
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -4778,7 +4827,9 @@ func TestRacingRemoteFailsLocalWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.NonZeroExitResultStatus, ExitCode: -1}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false}, fakes.StdOut(wantStdout))
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, fakes.StdOut(wantStdout),
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -4886,7 +4937,9 @@ func TestRacingRemoteFailsWhileLocalQueuedLocalWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.NonZeroExitResultStatus, ExitCode: -1}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false}, fakes.StdOut(wantStdout))
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, fakes.StdOut(wantStdout),
+	)
 	release, err := resMgr.Lock(context.Background(), math.MaxInt64, math.MaxInt64)
 	if err != nil {
 		t.Fatalf("Unable to lock all resources: %v", err)
@@ -5049,7 +5102,9 @@ func TestRacing_DownloadOutputs(t *testing.T) {
 			}
 			setPlatformOSFamily(wantCmd)
 			res := &command.Result{Status: command.SuccessResultStatus}
-			env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abPath, wantOutput, false})
+			env.Set(wantCmd, command.DefaultExecutionOptions(), res,
+				&fakes.OutputFile{Path: abPath, Contents: wantOutput, IsExecutable: false},
+			)
 			oldDigest, err := digest.NewFromFile(testFilePath)
 			if err != nil {
 				t.Fatalf("digest.NewFromFile(%v) returned error: %v", testFilePath, err)
@@ -5215,7 +5270,9 @@ func TestRacingRemoteWins_PreserveUnchangedOutputMtime(t *testing.T) {
 			}
 			setPlatformOSFamily(wantCmd)
 			res := &command.Result{Status: command.SuccessResultStatus}
-			env.Set(wantCmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{tc.testFile, wantOutput, false})
+			env.Set(wantCmd, command.DefaultExecutionOptions(), res,
+				&fakes.OutputFile{Path: tc.testFile, Contents: wantOutput, IsExecutable: false},
+			)
 			time.Sleep(time.Second) // Wait for mtime to catch up
 			oldDigest, oldMtime := getFileInfo(t, path)
 			if _, err := server.RunCommand(ctx, req); err != nil {
@@ -5313,7 +5370,9 @@ func TestRacingRemoteWins_RelativeWorkingDir(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.SuccessResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false}, fakes.StdOut("Done"))
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false}, fakes.StdOut("Done"),
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -5433,7 +5492,9 @@ func TestRacingLocalWinsIfStarted(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.SuccessResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false},
+	)
 	cCtx, cancel := context.WithCancel(ctx)
 	breCtx := context.WithValue(ctx, testOnlyBlockRemoteExecKey, func() { <-cCtx.Done() })
 	breCtx = context.WithValue(breCtx, testOnlyBlockLocalExecKey, func() { cancel() })
@@ -5544,7 +5605,9 @@ func TestRacingemoteWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.SuccessResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false},
+	)
 	cCtx, cancel := context.WithCancel(ctx)
 	breCtx := context.WithValue(ctx, testOnlyBlockRemoteExecKey, func() { <-cCtx.Done() })
 	got, err := server.RunCommand(breCtx, req)
@@ -5659,7 +5722,9 @@ func TestRacingHoldoffCacheWins(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -5796,7 +5861,9 @@ func TestRacingHoldoffCacheWins_CanonicalWorkingDir(t *testing.T) {
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	opts := command.DefaultExecutionOptions()
 	opts.DownloadOutputs = false
-	env.Set(cmd, opts, res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, opts, res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -5922,7 +5989,9 @@ func TestRacingHoldoffQuickDownload(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -6053,7 +6122,8 @@ func TestRacingHoldoffLongDownload(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false})
 	got, err := server.RunCommand(breCtx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -6166,7 +6236,9 @@ func TestRacingHoldoffVeryLongDownloadClamped(t *testing.T) {
 	}
 	setPlatformOSFamily(cmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
-	env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, string(wantOutput), false})
+	env.Set(cmd, command.DefaultExecutionOptions(), res,
+		&fakes.OutputFile{Path: abOutPath, Contents: string(wantOutput), IsExecutable: false},
+	)
 	got, err := server.RunCommand(breCtx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -6257,7 +6329,9 @@ func TestDupOutputs(t *testing.T) {
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := []byte("stderr")
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: false},
+	)
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -6381,7 +6455,9 @@ func TestRemoteRacingFinishInReasonableTimeDuration(t *testing.T) {
 			}
 			setPlatformOSFamily(cmd)
 			res := &command.Result{Status: tc.cmdResultStatus}
-			env.Set(cmd, command.DefaultExecutionOptions(), res, &fakes.OutputFile{abOutPath, "", false})
+			env.Set(cmd, command.DefaultExecutionOptions(), res,
+				&fakes.OutputFile{Path: abOutPath, Contents: "", IsExecutable: false},
+			)
 			startTime := time.Now()
 			server.RunCommand(breCtx, req)
 			elapsed := time.Now().Sub(startTime)
@@ -6569,7 +6645,9 @@ func TestCacheSilo(t *testing.T) {
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
 	wantStdErr := "stderr"
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr(wantStdErr),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: false},
+	)
 
 	if _, err := server.RunCommand(ctx, req); err != nil {
 		t.Errorf("RunCommand() returned error: %v", err)
@@ -6668,7 +6746,9 @@ func TestRemoteDisabled(t *testing.T) {
 	}
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
-	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr("remoteStderr"), &fakes.OutputFile{abOutPath, "output", false})
+	env.Set(wantCmd, command.DefaultExecutionOptions(), res, fakes.StdErr("remoteStderr"),
+		&fakes.OutputFile{Path: abOutPath, Contents: "output", IsExecutable: false},
+	)
 
 	got, err := server.RunCommand(ctx, req)
 	if err != nil {

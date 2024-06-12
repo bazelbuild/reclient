@@ -194,11 +194,11 @@ func attrValue(v interface{}) *tpb.AttributeValue {
 	switch v := v.(type) {
 	case string:
 		return &tpb.AttributeValue{
-			Value: &tpb.AttributeValue_StringValue{truncatableString(v, 256)},
+			Value: &tpb.AttributeValue_StringValue{StringValue: truncatableString(v, 256)},
 		}
 	case bool:
 		return &tpb.AttributeValue{
-			Value: &tpb.AttributeValue_BoolValue{v},
+			Value: &tpb.AttributeValue_BoolValue{BoolValue: v},
 		}
 	case int:
 		iv = int64(v)
@@ -222,7 +222,7 @@ func attrValue(v interface{}) *tpb.AttributeValue {
 		iv = int64(v)
 	}
 	return &tpb.AttributeValue{
-		Value: &tpb.AttributeValue_IntValue{iv},
+		Value: &tpb.AttributeValue_IntValue{IntValue: iv},
 	}
 }
 

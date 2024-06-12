@@ -111,13 +111,13 @@ func TestProxyInfo(t *testing.T) {
 			},
 			Metrics: map[string]*lpb.Metric{
 				event.DepsCacheLoadCount: &lpb.Metric{
-					Value: &lpb.Metric_Int64Value{1000},
+					Value: &lpb.Metric_Int64Value{Int64Value: 1000},
 				},
 				event.DepsCacheWriteCount: &lpb.Metric{
-					Value: &lpb.Metric_Int64Value{2000},
+					Value: &lpb.Metric_Int64Value{Int64Value: 2000},
 				},
 				event.GomaInputProcessorRestart: &lpb.Metric{
-					Value: &lpb.Metric_Int64Value{9},
+					Value: &lpb.Metric_Int64Value{Int64Value: 9},
 				},
 			},
 			Flags: map[string]string{

@@ -352,7 +352,7 @@ func main() {
 	}()
 
 	if *remoteDisabled {
-		server.SetREClient(&rexec.Client{st, nil}, func() {})
+		server.SetREClient(&rexec.Client{FileMetadataCache: st, GrpcClient: nil}, func() {})
 	} else {
 		// Backward compatibility until useUnifiedCASOps is deprecated:
 		if *useUnifiedCASOps {
@@ -384,7 +384,7 @@ func main() {
 				cancelInit()
 			} else {
 				log.Infof("Finished setting up SDK client")
-				server.SetREClient(&rexec.Client{st, grpcClient}, func() { grpcClient.Close() })
+				server.SetREClient(&rexec.Client{FileMetadataCache: st, GrpcClient: grpcClient}, func() { grpcClient.Close() })
 			}
 		}()
 	}

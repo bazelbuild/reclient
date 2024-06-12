@@ -137,7 +137,7 @@ func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEn
 		}()
 	}
 	for _, r := range logs {
-		items <- &bigquerytranslator.Item{r}
+		items <- &bigquerytranslator.Item{LogRecord: r}
 	}
 	close(items)
 

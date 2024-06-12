@@ -16,7 +16,7 @@ TOOLS_NOGO = [
     "@org_golang_x_tools//go/analysis/passes/bools:go_default_library",
     "@org_golang_x_tools//go/analysis/passes/buildssa:go_default_library",
     "@org_golang_x_tools//go/analysis/passes/buildtag:go_default_library",
-    # "@org_golang_x_tools//go/analysis/passes/composite:go_default_library", # Re-enable when unkeyed fields are fixed
+    "@org_golang_x_tools//go/analysis/passes/composite:go_default_library",
     # "@org_golang_x_tools//go/analysis/passes/copylock:go_default_library", # Re-enable when lock copying is fixed in action.go
     "@org_golang_x_tools//go/analysis/passes/ctrlflow:go_default_library",
     "@org_golang_x_tools//go/analysis/passes/deepequalerrors:go_default_library",

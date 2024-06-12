@@ -44,7 +44,7 @@ func parseFlags(ctx context.Context, command []string, workingDir, execRoot stri
 			"--output":        1,
 		},
 		Joined: []args.PrefixOption{
-			{"--main-dex-list=", 0},
+			{Prefix: "--main-dex-list=", NumArgs: 0},
 		},
 	}
 	for s.HasNext() {

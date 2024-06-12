@@ -47,8 +47,8 @@ func parseFlags(ctx context.Context, command []string, workingDir, execRoot stri
 			"-s":             1,
 		},
 		Joined: []args.PrefixOption{
-			{"--system=", 0},
-			{"-Aroom.schemaLocation=", 0},
+			{Prefix: "--system=", NumArgs: 0},
+			{Prefix: "-Aroom.schemaLocation=", NumArgs: 0},
 		},
 	}
 	for s.HasNext() {

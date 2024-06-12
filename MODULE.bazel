@@ -219,8 +219,8 @@ use_repo(
 
 ## LLVM Dependenices
 
-llvm = use_extension("//module_extensions:llvm.bzl", "llvm_extension")
-use_repo(llvm, "llvm", "llvm_version")
+llvm_ext = use_extension("//module_extensions:llvm.bzl", "llvm_extension")
+use_repo(llvm_ext, "llvm", "llvm_version")
 
 # Apply the overlay to produce llvm-project.
 llvm_project = use_extension("//module_extensions:llvm_project.bzl", "llvm_project")

@@ -42,6 +42,7 @@ cc_library(
 
 cc_library(
     name = "malloc",
+    tags = ["manual"],
 )
 
 filegroup(
