@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/bazelbuild/reclient/internal/pkg/deps"
 	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
@@ -934,10 +936,6 @@ func (a *action) duplicate(n int) []*action {
 	for i := 0; i < n; i++ {
 		tcmd := a.duplicateCmd(i)
 
-		var tforecast Forecast
-		if a.forecast != nil {
-			tforecast = Forecast(*(a.forecast))
-		}
 		trec := logger.NewLogRecord()
 		if a.rec != nil {
 			trec.LocalMetadata = &lpb.LocalMetadata{
@@ -948,23 +946,23 @@ func (a *action) duplicate(n int) []*action {
 				Labels:      a.rec.LocalMetadata.GetLabels(),
 			}
 		}
-		var trOpt ppb.RemoteExecutionOptions
+		trOpt := &ppb.RemoteExecutionOptions{}
 		if a.rOpt != nil {
-			trOpt = ppb.RemoteExecutionOptions(*(a.rOpt))
+			trOpt = proto.Clone(a.rOpt).(*ppb.RemoteExecutionOptions)
 		}
 
-		var tlOpt ppb.LocalExecutionOptions
+		tlOpt := &ppb.LocalExecutionOptions{}
 		if a.lOpt != nil {
-			tlOpt = ppb.LocalExecutionOptions(*(a.lOpt))
+			tlOpt = proto.Clone(a.lOpt).(*ppb.LocalExecutionOptions)
 		}
 
 		newAction := &action{}
 		*newAction = *a
 		newAction.cmd = tcmd
-		newAction.forecast = &tforecast
+		newAction.forecast = &Forecast{}
 		newAction.rec = trec
-		newAction.rOpt = &trOpt
-		newAction.lOpt = &tlOpt
+		newAction.rOpt = trOpt
+		newAction.lOpt = tlOpt
 		newAction.oe = outerr.NewRecordingOutErr()
 		res = append(res, newAction)
 	}
