@@ -20,6 +20,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gosuri/uilive v0.0.4
+	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/karrick/godirwalk v1.17.0
 	github.com/pkg/xattr v0.4.4
 	github.com/shirou/gopsutil/v3 v3.24.4
@@ -60,7 +61,6 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
-	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
