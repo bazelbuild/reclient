@@ -173,11 +173,9 @@ func main() {
 	if err != nil {
 		log.Exitf("Failed to get current working directory: %v", err)
 	}
-	if wd == "/proc/self/cwd" {
-		wd, err = os.Readlink(wd)
-		if err != nil {
-			log.Exitf("Failed to get current true directory: %v", err)
-		}
+	wd, err = filepath.EvalSymlinks(wd)
+	if err != nil {
+		log.Exitf("Failed to get current true directory: %v", err)
 	}
 	if cOpts.ExecRoot == "" {
 		cOpts.ExecRoot = wd
