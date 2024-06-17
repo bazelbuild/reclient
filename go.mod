@@ -11,7 +11,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240604181334-f9558a721826
+	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240611200427-4706165dcb54
 	github.com/bazelbuild/rules_go v0.48.0
 	github.com/fatih/color v1.17.0
 	github.com/golang/glog v1.1.0
