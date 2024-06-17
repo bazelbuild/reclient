@@ -32,11 +32,11 @@ func TestSetGet(t *testing.T) {
 	er, cleanup := execroot.Setup(t, nil)
 	defer cleanup()
 	files := map[string][]byte{
-		filepath.Join(er, "foo"): []byte("foo"),
-		filepath.Join(er, "bar"): []byte("bar"),
+		filepath.Join(er, "foo"): []byte("#foo"),
+		filepath.Join(er, "bar"): []byte("#bar"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New(filemetadata.NewSingleFlightCache())
+	dc := New()
 	dc.LoadFromDir(er)
 	k := Key{
 		CommandDigest: "hash/123",
@@ -60,11 +60,11 @@ func TestSetGetBeforeLoaded(t *testing.T) {
 	er, cleanup := execroot.Setup(t, nil)
 	defer cleanup()
 	files := map[string][]byte{
-		filepath.Join(er, "foo"): []byte("foo"),
-		filepath.Join(er, "bar"): []byte("bar"),
+		filepath.Join(er, "foo"): []byte("#foo"),
+		filepath.Join(er, "bar"): []byte("#bar"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New(filemetadata.NewSingleFlightCache())
+	dc := New()
 	k := Key{
 		CommandDigest: "hash/123",
 		SrcFilePath:   filepath.Join(er, "foo"),
@@ -86,19 +86,23 @@ func TestWriteLoad(t *testing.T) {
 	barPath := filepath.Join(er, "bar")
 	bazPath := filepath.Join(er, "baz")
 	quxPath := filepath.Join(er, "qux")
+	chaPath := filepath.Join(er, "cha")
 	files := map[string][]byte{
 		// Below files will not change between instances of deps cache.
-		fooPath: []byte("foo"),
-		barPath: []byte("bar"),
+		fooPath: []byte("#foo"),
+		barPath: []byte("#bar"),
 		// Below file will change between instance of deps cache in a way
 		// that affects dependencies (minimized header changes).
-		bazPath: []byte("baz"),
+		bazPath: []byte("#baz"),
 		// Below file will change between instances of deps cache but not
 		// affect dependencies (minimized header doesn't change).
-		quxPath: []byte("qux"),
+		quxPath: []byte("#qux"),
+		// Below file will change in a way that affects dependencies via
+		// a multi-line directive.
+		chaPath: []byte("#cha \\\nbuz"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New(filemetadata.NewSingleFlightCache())
+	dc := New()
 	dc.LoadFromDir(er)
 	k1 := Key{
 		CommandDigest: "hash/123",
@@ -124,10 +128,19 @@ func TestWriteLoad(t *testing.T) {
 	if err != nil {
 		t.Errorf("SetDeps(k3) returned error: %v", err)
 	}
+	k4 := Key{
+		CommandDigest: "hash4/123",
+		SrcFilePath:   chaPath,
+	}
+	err = dc.SetDeps(k4, []string{chaPath})
+	if err != nil {
+		t.Errorf("SetDeps(k4) returned error: %v", err)
+	}
 	dc.WriteToDisk(er)
 	time.Sleep(1 * time.Second)
-	execroot.AddFileWithContent(t, bazPath, []byte("baz2"))
-	execroot.AddFileWithContent(t, quxPath, []byte("qux"))
+	execroot.AddFileWithContent(t, bazPath, []byte("#baz2"))
+	execroot.AddFileWithContent(t, quxPath, []byte("#qux\ncomment"))
+	execroot.AddFileWithContent(t, chaPath, []byte("#cha \\\nbop"))
 	// Update mtime to sometime in the past to check whether we erroneously rely on stale
 	// mtime of modified files.
 	if err := os.Chtimes(bazPath, time.Now().Add(-1*time.Hour), time.Now().Add(-1*time.Hour)); err != nil {
@@ -135,7 +148,7 @@ func TestWriteLoad(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 	filemetadata.ResetGlobalCache()
-	dc = New(filemetadata.NewSingleFlightCache())
+	dc = New()
 	dc.LoadFromDir(er)
 	deps, ok := dc.GetDeps(k1)
 	if !ok {
@@ -155,6 +168,10 @@ func TestWriteLoad(t *testing.T) {
 	if diff := cmp.Diff([]string{quxPath}, deps); diff != "" {
 		t.Errorf("GetDeps(k3) returned diff, (-want +got): %s", diff)
 	}
+	deps, ok = dc.GetDeps(k4)
+	if ok || deps != nil {
+		t.Errorf("GetDeps(k4) returned %v, %v, want nil, false", deps, ok)
+	}
 }
 
 func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
@@ -163,11 +180,11 @@ func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 	fooPath := filepath.Join(er, "foo")
 	barPath := filepath.Join(er, "bar")
 	files := map[string][]byte{
-		fooPath: []byte("foo"),
-		barPath: []byte("bar"),
+		fooPath: []byte("#foo"),
+		barPath: []byte("#bar"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New(filemetadata.NewSingleFlightCache())
+	dc := New()
 	dc.LoadFromDir(er)
 	k1 := Key{
 		CommandDigest: "hash/123",
@@ -187,10 +204,10 @@ func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 	}
 	dc.WriteToDisk(er)
 	time.Sleep(1 * time.Second)
-	execroot.AddFileWithContent(t, barPath, []byte("bar2"))
+	execroot.AddFileWithContent(t, barPath, []byte("#bar2"))
 	time.Sleep(1 * time.Second)
 	filemetadata.ResetGlobalCache()
-	dc = New(filemetadata.NewSingleFlightCache())
+	dc = New()
 	dc.LoadFromDir(er)
 	// bar has changed, we should not get a cache hit.
 	deps, ok := dc.GetDeps(k1)
@@ -206,7 +223,7 @@ func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 	dc.WriteToDisk(er)
 	time.Sleep(1 * time.Second)
 	filemetadata.ResetGlobalCache()
-	dc = New(filemetadata.NewSingleFlightCache())
+	dc = New()
 	dc.LoadFromDir(er)
 	deps, ok = dc.GetDeps(k2)
 	// k2 should still get a cache miss because it refers to the old version of bar.
@@ -223,13 +240,13 @@ func TestEviction(t *testing.T) {
 	bazPath := filepath.Join(er, "baz")
 	quxPath := filepath.Join(er, "qux")
 	files := map[string][]byte{
-		fooPath: []byte("foo"),
-		barPath: []byte("bar"),
-		bazPath: []byte("baz"),
-		quxPath: []byte("qux"),
+		fooPath: []byte("#foo"),
+		barPath: []byte("#bar"),
+		bazPath: []byte("#baz"),
+		quxPath: []byte("#qux"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New(filemetadata.NewSingleFlightCache())
+	dc := New()
 	dc.LoadFromDir(er)
 	k1 := Key{
 		CommandDigest: "hash/123",
@@ -253,7 +270,7 @@ func TestEviction(t *testing.T) {
 	}
 	dc.WriteToDisk(er)
 	filemetadata.ResetGlobalCache()
-	dc = New(filemetadata.NewSingleFlightCache())
+	dc = New()
 	dc.MaxEntries = 2
 	dc.LoadFromDir(er)
 	wg := sync.WaitGroup{}
@@ -276,7 +293,7 @@ func TestEviction(t *testing.T) {
 	}
 	wg.Wait()
 	dc.WriteToDisk(er)
-	dc = New(filemetadata.NewSingleFlightCache())
+	dc = New()
 	dc.LoadFromDir(er)
 	wantKeys := []Key{privateKey(dc, k1), privateKey(dc, k3)}
 	gotKeys := make([]Key, 0)

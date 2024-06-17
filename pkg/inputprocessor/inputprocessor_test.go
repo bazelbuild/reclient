@@ -166,7 +166,7 @@ func TestCppWithDepsCache(t *testing.T) {
 	resMgr := localresources.NewDefaultManager()
 	fmc := filemetadata.NewSingleFlightCache()
 	ip := newInputProcessor(ds, dsTimeout, false, nil, resMgr, fmc, nil)
-	ip.depsCache, cleanup = newDepsCache(fmc, er, nil)
+	ip.depsCache, cleanup = newDepsCache(er, nil)
 
 	cmd := []string{"clang++", "-c", "-o", "test.o",
 		"-Xclang", "-add-plugin", "-Xclang", "bar",

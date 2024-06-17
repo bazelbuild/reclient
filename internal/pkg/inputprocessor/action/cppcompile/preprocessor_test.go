@@ -172,13 +172,14 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 	c := &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(filemetadata.NewSingleFlightCache()),
+		DepsCache:        depscache.New(),
 	}
 
 	existingFiles := []string{
 		filepath.Clean("bin/clang++"),
 		filepath.Clean("src/test.cpp"),
 		filepath.Clean("include/foo/a"),
+		filepath.Clean("include/foo.h"),
 		filepath.Clean("out/dummy"),
 	}
 	er, cleanup := execroot.Setup(t, existingFiles)
@@ -200,6 +201,7 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 	want := &command.InputSpec{
 		Inputs: []string{
 			filepath.Clean("src/test.cpp"),
+			filepath.Clean("include/foo.h"),
 			filepath.Clean("bin/clang++"),
 		},
 		VirtualInputs: []*command.VirtualInput{
@@ -214,7 +216,7 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 	c = &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(filemetadata.NewSingleFlightCache()),
+		DepsCache:        depscache.New(),
 	}
 	c.DepsCache.LoadFromDir(er)
 	got, err = inputprocessor.Compute(c, opts)
@@ -244,7 +246,7 @@ func TestComputeSpecWithDepsCache_ResourceDirChanged(t *testing.T) {
 			FileMetadataCache: fmc,
 			Executor:          &stubExecutor{outStr: "/first/resource/dir"},
 		},
-		DepsCache: depscache.New(filemetadata.NewSingleFlightCache()),
+		DepsCache: depscache.New(),
 	}
 
 	existingFiles := []string{
@@ -292,7 +294,7 @@ func TestComputeSpecWithDepsCache_ResourceDirChanged(t *testing.T) {
 			FileMetadataCache: fmc,
 			Executor:          &stubExecutor{outStr: "/second/resource/dir"},
 		},
-		DepsCache: depscache.New(filemetadata.NewSingleFlightCache()),
+		DepsCache: depscache.New(),
 	}
 	c.DepsCache.LoadFromDir(er)
 	got, err = inputprocessor.Compute(c, opts)
@@ -602,13 +604,14 @@ func TestComputeSpecEventTimes(t *testing.T) {
 	c := &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(filemetadata.NewSingleFlightCache()),
+		DepsCache:        depscache.New(),
 	}
 
 	existingFiles := []string{
 		filepath.Clean("bin/clang++"),
 		filepath.Clean("src/test.cpp"),
 		filepath.Clean("include/foo/a"),
+		filepath.Clean("include/foo.h"),
 		filepath.Clean("out/dummy"),
 	}
 	er, cleanup := execroot.Setup(t, existingFiles)
@@ -641,7 +644,7 @@ func TestComputeSpecEventTimes(t *testing.T) {
 	c = &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(filemetadata.NewSingleFlightCache()),
+		DepsCache:        depscache.New(),
 	}
 	c.DepsCache.LoadFromDir(er)
 	wg.Add(1)

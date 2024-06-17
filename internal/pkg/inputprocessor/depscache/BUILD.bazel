@@ -3,17 +3,19 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "depscache",
     srcs = [
-        "cppfilecache.go",
         "depscache.go",
+        "minimalfilecache.go",
     ],
     importpath = "github.com/bazelbuild/reclient/internal/pkg/inputprocessor/depscache",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/proxy",
         "//internal/pkg/event",
+        "//internal/pkg/features",
         "//internal/pkg/logger",
         "//internal/pkg/version",
-        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/cache",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
         "@com_github_golang_glog//:glog",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",

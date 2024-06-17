@@ -36,6 +36,10 @@ type Config struct {
 	// clangscandeps
 	ExperimentalGomaDepsCache bool
 
+	// ExperimentalGomaDepsCacheSize is the maximum number of elements to
+	// be stored in the cache.
+	ExperimentalGomaDepsCacheSize int
+
 	// ExperimentalSysrootDoNotUpload disables upload of the files/directories
 	// under the directory specified by the --sysroot flag.
 	ExperimentalSysrootDoNotUpload bool
@@ -66,4 +70,5 @@ func init() {
 	flag.BoolVar(&GetConfig().ExperimentalGomaDepsCache, "experimental_goma_deps_cache", false, "Use go deps cache with goma instead of goma's deps cache")
 	flag.BoolVar(&GetConfig().ExperimentalExitOnStuckActions, "experimental_exit_on_stuck_actions", false, "Stops reproxy with exit_code=1 if the command didn't finish within 2*reclient_timeout")
 	flag.BoolVar(&GetConfig().EnableCredentialCache, "enable_creds_cache", true, "If false, disables the credentials cache even if used auth mechanism supports it")
+	flag.IntVar(&GetConfig().ExperimentalGomaDepsCacheSize, "experimental_goma_deps_cache_size", 300000, "Maximum number of entries to hold in the experimental deps cache.")
 }

@@ -146,7 +146,7 @@ func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localreso
 	ip := newInputProcessor(depScanner, opt.IPTimeout, opt.CppLinkDeepScan, executor, resMgr, fmc, l)
 	cleanup := func() {}
 	if useDepsCache && (!depScanner.Capabilities().GetCaching() || features.GetConfig().ExperimentalGomaDepsCache) {
-		ip.depsCache, cleanup = newDepsCache(fmc, opt.CacheDir, l)
+		ip.depsCache, cleanup = newDepsCache(opt.CacheDir, l)
 	}
 	return ip, onceFunc(func() {
 		cleanup()
@@ -173,8 +173,8 @@ func newInputProcessor(ds cppcompile.CPPDependencyScanner, depScanTimeout time.D
 	}
 }
 
-func newDepsCache(fmc filemetadata.Cache, depsCacheDir string, l *logger.Logger) (*depscache.Cache, func()) {
-	dc := depscache.New(fmc)
+func newDepsCache(depsCacheDir string, l *logger.Logger) (*depscache.Cache, func()) {
+	dc := depscache.New()
 	dc.Logger = l
 	go dc.LoadFromDir(depsCacheDir)
 	return dc, func() {

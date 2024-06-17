@@ -25,9 +25,9 @@ import (
 
 	ppb "github.com/bazelbuild/reclient/api/proxy"
 	"github.com/bazelbuild/reclient/internal/pkg/event"
+	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/version"
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	log "github.com/golang/glog"
 	"google.golang.org/protobuf/proto"
 
@@ -52,7 +52,7 @@ type Cache struct {
 	Logger     *logger.Logger
 	depsCache  map[Key][]*ppb.FileInfo
 	depsMu     sync.RWMutex
-	filesCache cppFileCache
+	filesCache minimalFileCache
 	// last use time of a key
 	lutByKey map[Key]time.Time
 	lutMu    sync.Mutex
@@ -62,13 +62,12 @@ type Cache struct {
 }
 
 // New creates a new empty deps cache.
-func New(fmc filemetadata.Cache) *Cache {
+func New() *Cache {
 	return &Cache{
-		MaxEntries: 100000,
+		MaxEntries: features.GetConfig().ExperimentalGomaDepsCacheSize,
 		depsCache:  make(map[Key][]*ppb.FileInfo),
 		lutByKey:   make(map[Key]time.Time),
-		filesCache: cppFileCache{
-			fmc:   fmc,
+		filesCache: minimalFileCache{
 			files: make(map[string]fileInfo),
 		},
 	}
