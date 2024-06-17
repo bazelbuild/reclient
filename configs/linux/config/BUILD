@@ -41,7 +41,7 @@ platform(
         "@bazel_tools//tools/cpp:clang",
     ],
     exec_properties = {
-        "container-image": "docker://us-central1-docker.pkg.dev/kokoro-container-bakery/re-client/reclient-builder@sha256:25298ab3dc830c33251161c69eedcf8316b0e2ecbf7650fdbfd6acfc2b02abeb",
+        "container-image": "docker://us-central1-docker.pkg.dev/kokoro-container-bakery/re-client/reclient-builder@sha256:5db05259554bd3059697b8a9e459a63ae2d1d08de08091b22dc91e05cb73a781",
         "OSFamily": "Linux",
     },
     parents = ["@local_config_platform//:host"],
