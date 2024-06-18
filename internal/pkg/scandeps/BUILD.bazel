@@ -27,8 +27,8 @@ cc_library(
         "//:goma_input_processor_config": [
             "//goma:goma_input_processor",
             "//internal/pkg/version:version_cc",
+            "@com_google_absl//absl/container:node_hash_map",
             "@com_google_protobuf//:protobuf",
-            "@goma//:absl",
             "@goma//:base",
             "@goma//:chromium_base",
             "@goma//:client",
