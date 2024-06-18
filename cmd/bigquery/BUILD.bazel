@@ -6,7 +6,9 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/cmd/bigquery",
     visibility = ["//visibility:private"],
     deps = [
+        "//api/log",
         "//internal/pkg/bigquery",
+        "//internal/pkg/bigquerytranslator",
         "//internal/pkg/logger",
         "//internal/pkg/rbeflag",
         "@com_github_golang_glog//:glog",

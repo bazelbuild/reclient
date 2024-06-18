@@ -185,6 +185,7 @@ go_deps.module(
 use_repo(
     go_deps,
     "com_github_bazelbuild_remote_apis_sdks",
+    "com_github_eapache_go_resiliency",
     "com_github_fatih_color",
     "com_github_golang_glog",
     "com_github_google_go_cmp",

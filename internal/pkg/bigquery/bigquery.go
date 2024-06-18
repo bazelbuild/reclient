@@ -16,19 +16,24 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	lpb "github.com/bazelbuild/reclient/api/log"
 	"github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator"
+	"github.com/eapache/go-resiliency/retrier"
 	log "github.com/golang/glog"
-	"golang.org/x/sync/errgroup"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/protobuf/encoding/protojson"
 )
+
+const MaxUploadSize = 8 * 1000 * 1000 // slightly less than 10MB to compensate overhead.
 
 // parseResourceSpec parses spec as per the bq command-line tool format described
 // here: https://cloud.google.com/bigquery/docs/reference/bq-cli-reference#resource_specification.
@@ -74,75 +79,141 @@ func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *o
 
 // BQSpec defines which bigquery table the LogRecords will be saved.
 type BQSpec struct {
-	ProjectID  string
-	TableSpec  string
-	BatchSize  int
-	Concurrent int
-	Timeout    time.Duration
+	Err         atomic.Pointer[error]
+	ProjectID   string
+	TableSpec   string
+	BatchSizeMB int
+	Client      *bigquery.Inserter
+	CleanUp     func() error
+	Ctx         context.Context
+	Cancel      context.CancelFunc
 }
 
-// InsertRows inserts a slice of LogRecords into a BigQuery table and returns
-// the number of rows that failed to insert, along with any associated errors.
-func InsertRows(ctx context.Context, logs []*lpb.LogRecord, bqSpec BQSpec, logEnabled bool) (int32, error) {
-	processed := int32(0)
-	total := int32(len(logs))
-	var failed atomic.Int32
-	startTime := time.Now()
-
-	defer func() {
-		elapsedTime := time.Since(startTime)
-		log.Infof("Uploading %v rows of LogRecords to bigquery, %v failed to insert, elapsed time: %v", total, failed.Load(), elapsedTime)
-	}()
-
-	//No items to load to bigquery.
-	if total < 1 {
-		return failed.Load(), nil
+// batch fetches LogRecords from a channel, groups and saves them in batches.
+func batch(items <-chan *bigquerytranslator.Item, batches chan<- []*bigquerytranslator.Item, batchSizeMB int) {
+	var buffer []*bigquerytranslator.Item
+	batchSizeBytes := batchSizeMB * 1000 * 1000
+	if batchSizeBytes > MaxUploadSize {
+		batchSizeBytes = MaxUploadSize
 	}
+	bufferSize := 0
+	for {
+		select {
+		case data, ok := <-items:
+			if !ok {
+				batches <- buffer
+				buffer = []*bigquerytranslator.Item{}
+				bufferSize = 0
+				close(batches)
+				return
+			}
+			bytes, err := protojson.Marshal(*data)
+			if err != nil {
+				log.Errorf("marshal LogRecord error: %v", err)
+				continue
+			}
+			size := len(bytes)
+			if size > batchSizeBytes {
+				log.Errorf("single log record size (%v Bytes) is larger than the max batch size (%v Bytes)", size, batchSizeBytes)
+				continue
+			}
+			if size+bufferSize > batchSizeBytes {
+				batches <- buffer
+				buffer = []*bigquerytranslator.Item{}
+				bufferSize = 0
+			}
+			buffer = append(buffer, data)
+			bufferSize += size
+		}
+	}
+}
 
-	inserter, cleanup, err := NewInserter(ctx, bqSpec.TableSpec, bqSpec.ProjectID, nil)
-	defer cleanup()
+// upload uploads batches of LogRecord to bigquery and updates the status.
+func upload(bqSpec *BQSpec, batches <-chan []*bigquerytranslator.Item, successful *int32, failed *int32) {
+	var wg sync.WaitGroup
+	for {
+		select {
+		case items, ok := <-batches:
+			if !ok {
+				wg.Wait()
+				return
+			} else {
+				wg.Add(1)
+				go func(bqSpec *BQSpec, items []*bigquerytranslator.Item, successful *int32, failed *int32) {
+					uploadWithRetry(bqSpec, items, successful, failed)
+					wg.Done()
+				}(bqSpec, items, successful, failed)
+			}
+		}
+	}
+}
+
+// BQClassifier can classify bigquery related Errors for a Retrier.
+// This Classifier interface is defined in
+// https://github.com/eapache/go-resiliency/blob/main/retrier/classifier.go#L15
+type BQClassifier struct {
+	bQSpec *BQSpec
+}
+
+// Classify makes BQClassifier implements the Classifier interface, it
+// classifies 400-level error codes as non-retryable.
+func (b BQClassifier) Classify(err error) retrier.Action {
+	if err == nil {
+		return retrier.Succeed
+	}
+	var apiError *googleapi.Error
+	errors.As(err, &apiError)
+	// For errors, such as no permission, wrong project name, wrong dataset/table name,
+	// they are considered as non-retryable errors.
+	if apiError.Code >= 400 {
+		fatalErr := fmt.Errorf("non retryable error occurred in uploading LogRecords to BigQuery: %v", err)
+		b.bQSpec.Err.Store(&fatalErr)
+		return retrier.Fail
+	}
+	return retrier.Retry
+}
+
+func uploadWithRetry(bqSpec *BQSpec, items []*bigquerytranslator.Item, successful *int32, failed *int32) {
+	r := retrier.New(retrier.ExponentialBackoff(3, 1*time.Second), BQClassifier{bqSpec})
+	start := time.Now()
+	// From experiments, uploading 10M LogRecords takes about 1s, setting
+	// timeout here for 1 minute should be more than enough, and we will not retry
+	// if this function runs more than 1 minute.
+	ctx, cancel := context.WithTimeout(bqSpec.Ctx, 1*time.Minute)
+	defer cancel()
+	err := r.RunCtx(ctx, func(ctx context.Context) error {
+		return bqSpec.Client.Put(ctx, items)
+	})
+
+	elapsed := time.Since(start)
 	if err != nil {
-		return failed.Load(), fmt.Errorf("bigquery.NewInserter: %v", err)
+		atomic.AddInt32(failed, int32(len(items)))
+		log.Errorf("%v records failed to be uploaded to BigQuery in %v: %v", len(items), elapsed, err)
+		return
 	}
+	atomic.AddInt32(successful, int32(len(items)))
+	// TODO: add the elapsed time to RRPL log so we can get aggregated data.
+	log.Infof("%v records successfully uploaded to BigQuery in %v", len(items), elapsed)
+	return
+}
 
-	items := make(chan *bigquerytranslator.Item, bqSpec.BatchSize)
-
-	g, _ := errgroup.WithContext(context.Background())
-
-	for i := 0; i < bqSpec.Concurrent; i++ {
-		g.Go(func() error {
-			for item := range items {
-				if err := inserter.Put(ctx, item); err != nil {
-					// In case of error (gpaste/6313679673360384), retrying the job with
-					// back-off as described in BigQuery Service Level Agreement
-					// https://cloud.google.com/bigquery/sla
-					time.Sleep(1 * time.Second)
-					if err := inserter.Put(ctx, item); err != nil {
-						failed.Add(1)
-						return err
-					}
-				}
-				atomic.AddInt32(&processed, 1)
-			}
-			return nil
-		})
-	}
-	if logEnabled {
-		t := time.NewTicker(2 * time.Second)
-		defer t.Stop()
-		go func() {
-			for range t.C {
-				log.Infof("Finished %v/%v items...", atomic.LoadInt32(&processed), total)
-			}
-		}()
-	}
-	for _, r := range logs {
-		items <- &bigquerytranslator.Item{LogRecord: r}
-	}
-	close(items)
-
-	if err := g.Wait(); err != nil {
-		log.Errorf("%v rows having error while uploading to bigquery: %v", failed.Load(), err)
-	}
-	return failed.Load(), nil
+// LogRecordsToBigQuery batches LogRecords, and uploads each batch to bigquery.
+func LogRecordsToBigQuery(bqSpec *BQSpec, items <-chan *bigquerytranslator.Item, successful *int32, failed *int32) {
+	var wg sync.WaitGroup
+	batches := make(chan []*bigquerytranslator.Item, 100)
+	// A goroutine to batch, and upload from the channel, this should block the main thread.
+	wg.Add(1)
+	go func() {
+		batch(items, batches, bqSpec.BatchSizeMB)
+		wg.Done()
+	}()
+	// A goroutine to analysis the result, updating how many successful and failed uploads.
+	wg.Add(1)
+	go func() {
+		upload(bqSpec, batches, successful, failed)
+		wg.Done()
+	}()
+	wg.Wait()
+	bqSpec.CleanUp()
+	bqSpec.Cancel()
 }

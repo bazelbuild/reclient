@@ -106,8 +106,8 @@ type Logger struct {
 	// fields used for upload data to bigquery
 	items     chan *bigquerytranslator.Item
 	bqSpec    *bigquery.BQSpec
-	bqSuccess atomic.Int32
-	bqFailed  atomic.Int32
+	bqSuccess int32
+	bqFailed  int32
 }
 
 type logEvent interface {
@@ -153,7 +153,7 @@ func (e *endActionEvent) apply(l *Logger) {
 	// Process any mismatches to be ignored for this log record.
 	l.mi.ProcessLogRecord(e.lr.LogRecord)
 	l.stats.AddRecord(e.lr.LogRecord)
-	if l.bqSpec != nil {
+	if l.bqSpec != nil && l.bqSpec.Err.Load() == nil {
 		l.items <- &bigquerytranslator.Item{LogRecord: toBigQueryRecords(e.lr.LogRecord)}
 	}
 	e.lr.open = false
@@ -353,7 +353,7 @@ func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ig
 		open:             true,
 		completedActions: make(map[lpb.CompletionStatus]int32),
 		u:                u,
-		items:            make(chan *bigquerytranslator.Item),
+		items:            make(chan *bigquerytranslator.Item, 1000),
 		bqSpec:           bqSpec,
 	}
 	l.startBackgroundProcess()
@@ -371,9 +371,13 @@ func (l *Logger) startBackgroundProcess() {
 		go l.processUsageData(ctx)
 	}
 	if l.bqSpec != nil {
+		// This uploader register itself in logger's wait group. logger will close
+		// the log records channel (l.items) once all the build actions are done,
+		// and this will eventually gracefully terminate this uploader. Reproxy and
+		// logger will both be blocked until the uploader is done.
 		l.wg.Add(1)
 		go func() {
-			l.processLogRecords()
+			bigquery.LogRecordsToBigQuery(l.bqSpec, l.items, &l.bqSuccess, &l.bqFailed)
 			l.wg.Done()
 		}()
 	}
@@ -625,8 +629,11 @@ func (l *Logger) CloseAndAggregate() *spb.Stats {
 	l.wg.Wait()
 	l.info.Stats = append(l.info.Stats, summarize(l.resourceUsage)...)
 	l.info.BqStats = map[string]int32{
-		"success_bq_uploads": l.bqSuccess.Load(),
-		"failed_bq_uploads":  l.bqFailed.Load(),
+		"success_bq_uploads": l.bqSuccess,
+		"failed_bq_uploads":  l.bqFailed,
+	}
+	if l.bqSpec != nil {
+		l.bqSpec.CleanUp()
 	}
 	l.writeProxyInfo()
 	l.stats.FinalizeAggregate([]*lpb.ProxyInfo{l.info})
@@ -653,35 +660,6 @@ func (l *Logger) processUsageData(ctx context.Context) {
 			return
 		case <-ticker.C:
 			l.collectResourceUsageSamples(usage.Sample(l.u))
-		}
-	}
-}
-
-func (l *Logger) processLogRecords() {
-	batchSize := l.bqSpec.BatchSize
-	batch := make([]*lpb.LogRecord, 0, batchSize)
-	for {
-		r, ok := <-l.items
-		if !ok {
-			ctx, cancel := context.WithTimeout(context.Background(), l.bqSpec.Timeout)
-			defer cancel()
-			failed, _ := bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
-			l.bqSuccess.Add(int32(len(batch)))
-			l.bqFailed.Add(failed)
-			return
-		}
-		batch = append(batch, r.LogRecord)
-		if len(batch) == batchSize {
-			l.wg.Add(1)
-			go func(batch []*lpb.LogRecord) {
-				ctx, cancel := context.WithTimeout(context.Background(), l.bqSpec.Timeout)
-				defer cancel()
-				failed, _ := bigquery.InsertRows(ctx, batch, *l.bqSpec, false)
-				l.bqSuccess.Add(int32(len(batch)))
-				l.bqFailed.Add(failed)
-				l.wg.Done()
-			}(batch)
-			batch = make([]*lpb.LogRecord, 0, batchSize)
 		}
 	}
 }

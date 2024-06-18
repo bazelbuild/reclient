@@ -46,7 +46,9 @@ import (
 	"context"
 	"flag"
 
+	lpb "github.com/bazelbuild/reclient/api/log"
 	"github.com/bazelbuild/reclient/internal/pkg/bigquery"
+	"github.com/bazelbuild/reclient/internal/pkg/bigquerytranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/rbeflag"
 	log "github.com/golang/glog"
@@ -54,12 +56,11 @@ import (
 
 var (
 	// TODO: support --proxy_log_dir.
+	bqProjectID = flag.String("bq_project", "foundry-x-experiments", "Project where log records are stored.")
+	bqTableSpec = flag.String("bq_table", "reproxy_log_test.test_1", "Table where log records are stored.")
+	// 8M byte limit for marshaled JSON data is empirically derived. BigQuery's REST API has a 10M upload payload limit, but JSON encoding adds overhead.
+	bqBatchMB = flag.Int("bq_batch_mb", 8, "Batch size in MB for bigquery uploading, defaults to 8MB and should not be larger than 8 MB")
 	logPath   = flag.String("log_path", "", "If provided, the path to a log file of all executed records. The format is e.g. text:///full/file/path.")
-	projectID = flag.String("project_id", "foundry-x-experiments", "The project containing the big query table to which log records should be streamed to.")
-	tableSpec = flag.String("table", "reproxy_log_test.test_1", "Resource specifier of the BigQuery to which log records should be streamed to. If the project is not provided in the specifier project_id will be used.")
-	// The default value of 2k for num_concurrent_uploads/batch_size was chosen empirically.
-	numConcurrentOps = flag.Int("num_concurrent_uploads", 2000, "Number of concurrent upload operations to perform.")
-	batchSize        = flag.Int("batch_size", 2000, "Number of LogRecords to share one BigQuery Client.")
 )
 
 func main() {
@@ -74,16 +75,34 @@ func main() {
 	if err != nil {
 		log.Exitf("Failed reading proxy log: %v", err)
 	}
+	log.Infof("Loaded %v log records from %v. to cache.", len(logRecords), *logPath)
 
-	log.Infof("Inserting stats into bigquery table...")
-	bqSpecs := bigquery.BQSpec{
-		ProjectID:  *projectID,
-		TableSpec:  *tableSpec,
-		BatchSize:  *batchSize,
-		Concurrent: *numConcurrentOps,
+	ctx, cancel := context.WithCancel(context.Background())
+	client, cleanUp, err := bigquery.NewInserter(ctx, *bqTableSpec, *bqProjectID, nil)
+	if err != nil {
+		log.Exitf("Failed creating bigquery client: %v", err)
 	}
-	ctx := context.Background()
-	if failed, err := bigquery.InsertRows(ctx, logRecords, bqSpecs, true); err != nil {
-		log.Exitf("%v records out of %v failed to be inserted into bigquery table: %+v", failed, len(logRecords), err)
+	bqSpec := &bigquery.BQSpec{
+		ProjectID:   *bqProjectID,
+		TableSpec:   *bqTableSpec,
+		BatchSizeMB: *bqBatchMB,
+		Client:      client,
+		CleanUp:     cleanUp,
+		Ctx:         ctx,
+		Cancel:      cancel,
 	}
+
+	items := make(chan *bigquerytranslator.Item, 1000)
+	var successful int32
+	var failed int32
+	go marshalLogRecords(logRecords, items)
+	bigquery.LogRecordsToBigQuery(bqSpec, items, &successful, &failed)
+	log.Infof("Totally %v log records in file, %v successful, %v failed", len(logRecords), successful, failed)
+}
+
+func marshalLogRecords(logRecords []*lpb.LogRecord, items chan<- *bigquerytranslator.Item) {
+	for _, r := range logRecords {
+		items <- &bigquerytranslator.Item{LogRecord: r}
+	}
+	close(items)
 }

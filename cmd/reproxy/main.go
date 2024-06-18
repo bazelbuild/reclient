@@ -139,8 +139,8 @@ var (
 
 	bqProjectID = flag.String("bq_project", "", "Project where log records are stored.")
 	bqTableSpec = flag.String("bq_table", "", "Table where log records are stored.")
-	bqBatchSize = flag.Int("bq_batch_size", 2000, "Batch size for bigquery uploading.")
-	bqTimeout   = flag.Duration("bq_timeout", 30*time.Second, "The maximum time to wait for a batch of log records to be uploaded to BigQuery.")
+	// 8M byte limit for marshaled JSON data is empirically derived. BigQuery's REST API has a 10M upload payload limit, but JSON encoding adds overhead.
+	bqBatchMB = flag.Int("bq_batch_mb", 8, "Batch size in MB for bigquery uploading, defaults to 8MB and should not be larger than 8 MB")
 
 	maxListenSizeKb = flag.Int("max_listen_size_kb", 8*1024, "Maximum grpc listen size in kilobytes for messages from rewrapper")
 )
@@ -520,13 +520,20 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter
 
 	var bqSpec *bigquery.BQSpec
 	if *bqProjectID != "" && *bqTableSpec != "" {
-		bqSpec = &bigquery.BQSpec{
-			ProjectID: *bqProjectID,
-			TableSpec: *bqTableSpec,
-			BatchSize: *bqBatchSize,
-			// from experiment, Concurrent = BatchSize has good performance.
-			Concurrent: *bqBatchSize,
-			Timeout:    *bqTimeout,
+		ctx, cancel := context.WithCancel(context.Background())
+		client, cleanUp, err := bigquery.NewInserter(ctx, *bqTableSpec, *bqProjectID, nil)
+		if err != nil {
+			log.Errorf("Failed creating bigquery stream: %v", err)
+		} else {
+			bqSpec = &bigquery.BQSpec{
+				ProjectID:   *bqProjectID,
+				TableSpec:   *bqTableSpec,
+				BatchSizeMB: *bqBatchMB,
+				Client:      client,
+				CleanUp:     cleanUp,
+				Ctx:         ctx,
+				Cancel:      cancel,
+			}
 		}
 	} else {
 		log.Infof("If you want to collect LogRecords for each action to a bigquery table, please set the --bq_project, --bq_table flags.")

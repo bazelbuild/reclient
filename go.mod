@@ -13,6 +13,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240620141056-108231926e9c
 	github.com/bazelbuild/rules_go v0.48.0
+	github.com/eapache/go-resiliency v1.6.0
 	github.com/fatih/color v1.17.0
 	github.com/golang/glog v1.1.0
 	github.com/google/go-cmp v0.6.0
@@ -28,7 +29,7 @@ require (
 	golang.org/x/mod v0.18.0
 	golang.org/x/oauth2 v0.20.0
 	golang.org/x/sync v0.6.0
-	golang.org/x/sys v0.19.0
+	golang.org/x/sys v0.21.0
 	google.golang.org/api v0.139.0
 	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d
