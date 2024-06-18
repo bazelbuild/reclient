@@ -1,0 +1,242 @@
+"""Bazel Module definition for reclient"""
+
+register_toolchains(
+    "@nodejs_toolchains//:linux_amd64_toolchain_target",
+    "@nodejs_toolchains//:linux_amd64_toolchain",
+    "@ninja_1.11.1_toolchains//:all",
+    "@rules_foreign_cc//toolchains:built_ninja_toolchain",
+)
+
+## Bazel rule libraries
+bazel_dep(name = "rules_cc", version = "0.0.9")
+bazel_dep(name = "rules_foreign_cc", version = "0.10.1")
+single_version_override(
+    module_name = "rules_foreign_cc",
+    patch_strip = 0,
+    patches = [
+        "//third_party/patches/bazel:rfcc.patch",
+    ],
+)
+
+tools = use_extension("@rules_foreign_cc//foreign_cc:extensions.bzl", "tools")
+use_repo(tools, "ninja_1.11.1_toolchains")
+
+bazel_dep(name = "rules_proto", version = "6.0.0")
+bazel_dep(name = "rules_go", version = "0.48.0", repo_name = "io_bazel_rules_go")
+single_version_override(
+    module_name = "rules_go",
+    patch_strip = 0,
+    patches = [
+        "//third_party/patches/bazel:rules_go.patch",
+    ],
+)
+
+bazel_dep(name = "rules_pkg", version = "0.10.1")
+bazel_dep(name = "bazel_skylib", version = "1.7.0")
+bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "rules_nodejs", version = "6.1.1")
+
+## Nodejs Dependencies
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(
+    name = "nodejs",
+    node_version = "20.13.1",
+)
+use_repo(node, "nodejs", "nodejs_toolchains")
+
+## C++ Dependencies
+
+# Protobuf and abseil are linked against by goma's input processor so we must keep the source versions in sync
+bazel_dep(
+    name = "protobuf",
+    version = "26.0.bcr.1",  # Same version as used in goma patch
+    repo_name = "com_google_protobuf",
+)
+single_version_override(
+    module_name = "protobuf",
+    patch_strip = 0,
+    patches = ["//third_party/patches/protobuf:clang-cl-link-opts.patch"],
+)
+
+bazel_dep(name = "abseil-cpp", repo_name = "com_google_absl")
+git_override(
+    module_name = "abseil-cpp",
+    commit = "4a2c63365eff8823a5221db86ef490e828306f9d",  # Same commit as in goma patch
+    remote = "https://github.com/abseil/abseil-cpp.git",
+)
+
+bazel_dep(name = "grpc", version = "1.63.1", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "glog", version = "0.7.0", repo_name = "com_github_google_glog")
+bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
+bazel_dep(name = "googletest", version = "1.14.0.bcr.1", repo_name = "com_google_googletest")
+
+gclient_repository = use_repo_rule("//:gclient.bzl", "gclient_repository")
+
+GOMA_REV = "603dfba63fe365a01879029588b48b6f122fe0b8"
+
+gclient_repository(
+    name = "goma",
+    base_dir = "client/client",
+    build_file = "//third_party/goma:BUILD.goma",
+    gn_args_linux = "is_debug=false agnostic_build=true",
+    gn_args_macos_arm64 = "is_debug=false agnostic_build=true target_cpu=\"arm64\" use_system_xcode=true",
+    gn_args_macos_x86 = "is_debug=false agnostic_build=true target_cpu=\"x64\" use_system_xcode=true",
+    gn_args_windows = "is_debug=false is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
+    gn_args_windows_dbg = "is_debug=true is_clang=true is_win_gcc=false agnostic_build=true is_component_build=true",
+    patches = [
+        # It seems like on Mac, popen and pclose calls aren't thread safe, which is how we
+        # invoke it with scandeps_server. According to
+        # https://github.com/microsoft/vcpkg-tool/pull/695/, this maybe due to a bug in
+        # popen implementation in Mac that makes it not thread safe. This patch adds a mutex
+        # that prevents multi-threaded popen and pclose calls.
+        "//third_party/patches/goma:goma_subprocess.patch",
+        # Until breakpad is updated it contains printf calls that Xcode would like to be sprintf calls.
+        "//third_party/patches/goma:breakpad.patch",
+    ],
+    presync_patches = ["//third_party/patches/goma:protobuf.patch"],
+    remote = "https://chromium.googlesource.com/infra/goma/client",
+    revision = GOMA_REV,
+    # If you would like to build goma with a locally checked out version of source,
+    # comment remote / revision args and specify a local path as below.
+    # local_path = "/usr/local/google/home/kousikk/foundry-x/goma-client/client",
+)
+
+## Android Hermitic C++ Toolchain
+android_toolchain_extension = use_extension("//third_party/android_toolchain:android_toolchain_repo.bzl", "android_toolchain_extension")
+
+android_toolchain_extension.toolchain(
+    name = "linux_android1404",
+    clang_sha256 = "6aaac5be8a1907f644a89c54ec93357e987e63093db4d03e1ad0ea4305e403a6",
+    clang_url = "https://mirror.bazel.build/android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r498229b.tar.gz",
+    glibc_sha256 = "61ef531c49ec308daa2b128c64a40e822664401acd8e7418d300f5769435e7df",
+    glibc_url = "https://mirror.bazel.build/android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/+archive/refs/heads/main.tar.gz",
+)
+use_repo(android_toolchain_extension, "linux_android1404", "linux_android1404_android_prebuilts")
+
+## Go Dependencies
+go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(
+    name = "go_sdk",
+    version = "1.20.7",
+)
+use_repo(go_sdk, "go_sdk")
+go_sdk.nogo(nogo = "//tools:nogo")
+
+bazel_dep(name = "gazelle", version = "0.37.0")
+git_override(
+    module_name = "gazelle",
+    commit = "7d10bf7befce477f518056cfc502939000bea3fa",
+    patch_strip = 1,
+    patches = ["//third_party/patches/gazelle:googleapis.patch"],
+    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+)
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+
+### Googleapis pinned version
+go_deps.archive_override(
+    path = "github.com/googleapis/googleapis",
+    sha256 = "7b6ea252f0b8fb5cd722f45feb83e115b689909bbb6a393a873b6cbad4ceae1d",
+    strip_prefix = "googleapis-143084a2624b6591ee1f9d23e7f5241856642f4d",
+    urls = ["https://github.com/googleapis/googleapis/archive/143084a2624b6591ee1f9d23e7f5241856642f4d.zip"],
+)
+
+googleapis_resolve = [
+    "gazelle:resolve proto proto google/rpc/status.proto @com_github_googleapis_googleapis//google/rpc:status_proto",
+    "gazelle:resolve proto go google/rpc/status.proto @org_golang_google_genproto_googleapis_rpc//status",
+    "gazelle:resolve proto proto google/longrunning/operations.proto @com_github_googleapis_googleapis//google/longrunning:operations_proto",
+    "gazelle:resolve proto go google/longrunning/operations.proto @org_golang_google_genproto//googleapis/longrunning",
+    "gazelle:resolve proto proto google/api/annotations.proto @com_github_googleapis_googleapis//google/api:annotations_proto",
+    "gazelle:resolve proto go google/api/annotations.proto @org_golang_google_genproto_googleapis_api//annotations",
+]
+
+# TODO(b/303263153): Remove after remote-apis-sdks migrates to bzlmod
+go_deps.gazelle_override(
+    build_file_generation = "clean",
+    directives = googleapis_resolve,
+    path = "github.com/bazelbuild/remote-apis-sdks",
+)
+
+# TODO(b/303263153): Remove after remote-apis migrates to bzlmod
+go_deps.gazelle_override(
+    build_file_generation = "clean",
+    directives = googleapis_resolve,
+    path = "github.com/bazelbuild/remote-apis",
+)
+
+# TODO(b/303263153): Remove after remote-apis-sdks and remote-apis migrate to bzlmod
+go_deps.gazelle_override(
+    build_file_generation = "clean",
+    directives = [
+        "gazelle:proto file",
+    ],
+    path = "github.com/googleapis/googleapis",
+)
+
+# golang.org/x/tools is not a direct dependency of the go code but is used by nogo
+go_deps.module(
+    path = "golang.org/x/tools",
+    sum = "h1:k8NLag8AGHnn+PHbl7g43CtqZAwG60vZkLqgyZgIHgQ=",
+    version = "v0.18.0",
+)
+
+### All *direct* Go dependencies of the module have to be listed explicitly.
+use_repo(
+    go_deps,
+    "com_github_bazelbuild_remote_apis_sdks",
+    "com_github_fatih_color",
+    "com_github_golang_glog",
+    "com_github_google_go_cmp",
+    "com_github_google_uuid",
+    "com_github_googlecloudplatform_protoc_gen_bq_schema",
+    "com_github_gorilla_mux",
+    "com_github_gosuri_uilive",
+    "com_github_hectane_go_acl",
+    "com_github_karrick_godirwalk",
+    "com_github_microsoft_go_winio",
+    "com_github_pkg_xattr",
+    "com_github_shirou_gopsutil_v3",
+    "com_github_vardius_progress_go",
+    "com_google_cloud_go_bigquery",
+    "com_google_cloud_go_monitoring",
+    "com_google_cloud_go_profiler",
+    "com_google_cloud_go_storage",
+    "com_google_cloud_go_trace",
+    "io_opencensus_go",
+    "io_opencensus_go_contrib_exporter_stackdriver",
+    "org_golang_google_api",
+    "org_golang_google_genproto",
+    "org_golang_google_genproto_googleapis_rpc",
+    "org_golang_google_grpc",
+    "org_golang_google_protobuf",
+    "org_golang_x_mod",
+    "org_golang_x_oauth2",
+    "org_golang_x_sync",
+    "org_golang_x_sys",
+    "org_golang_x_tools",
+)
+
+## LLVM Dependenices
+
+llvm = use_extension("//module_extensions:llvm.bzl", "llvm_extension")
+use_repo(llvm, "llvm", "llvm_version")
+
+# Apply the overlay to produce llvm-project.
+llvm_project = use_extension("//module_extensions:llvm_project.bzl", "llvm_project")
+use_repo(llvm_project, "llvm-project", "llvm_zlib", "llvm_zstd")
+
+## Test Dependencies
+
+# For integration tests that use ninja.
+new_git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+
+new_git_repository(
+    name = "depot_tools",
+    build_file_content = """
+exports_files(["gn", "gn.bat", "gn.py", "ninja", "ninja-linux64", "ninja-mac", "ninja.exe",])
+""",
+    commit = "940cd8e20f5451a03737f1fbcc505f7b84dff2b3",
+    remote = "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+    shallow_since = "1660680867 +0000",
+)

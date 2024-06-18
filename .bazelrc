@@ -69,6 +69,8 @@ build:linux --extra_toolchains=@linux_android1404//:cc-toolchain
 # Ninja writes to the client/out directory in the goma repository
 common:linux --strategy=CcNinjaMakeRule=remote,processwrapper-sandbox
 
+# Googler specific flags, this file does not exist in the open source repo.
+try-import %workspace%/googler.bazelrc
 
 # Get the current workspace git commit SHA as a variable for use with versioning.
 # See https://docs.bazel.build/versions/master/user-manual.html#flag--workspace_status_command.
