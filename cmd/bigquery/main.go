@@ -14,25 +14,32 @@
 
 // Binary biqeury is used to stream an reproxy_log generated from a build
 // using re-client to bigquery so that it can be further queried upon.
-//
-// Example invocation (assuming the bigquery table already exists):
-//
-//	bazelisk run //cmd/bigquery:bigquery -- \
-//	  --log_path text:///tmp/reproxy_log.txt \
-//	  --alsologtostderr=true \
-//	  --table <bigquery-dataset-id>.<bigquery-table-id> \
-//	  --project_id <gcp-project-id> # (ex:"foundry-x-experiments")
-//
-// If you don't have a bigquery table yet, you can create it using the following steps:
-//  1. Run scripts/gen_reproxy_log_big_query_schema.sh
-//  2. Run the following command using "bq" tool to create table:
-//     bq mk --table \
-//     --expiration 600 \ # in seconds. This argument is optional and the table doesn't expire if you don't set it.
-//     foundry-x-experiments:reproxylogs.reproxy_log_1 \ # Format: <project-id>:<dataset-id>.<table-id>
-//     `pwd`/reproxy_log_bigquery_schema/proxy/reproxy_log.schema
-//
-// Note: It can take upto 5mins for the bigquery table to become active
-// after it is created.
+
+/*
+Example invocation (assuming the bigquery table already exists):
+
+	bazelisk run //cmd/bigquery:bigquery -- \
+	  --log_path text:///tmp/reproxy_log.txt \
+	  --alsologtostderr=true \
+	  --table <bigquery-dataset-id>.<bigquery-table-id> \
+	  --project_id <gcp-project-id> # (ex:"foundry-x-experiments")
+
+If you don't have a bigquery table yet, you can create it using the following steps:
+
+ 1. Run scripts/gen_reproxy_log_big_query_schema.sh
+
+ 2. Run the following command using "bq" tool to create table:
+
+    bq mk --table \
+    `# expiration time in seconds. This argument is optional and the table doesn't expire if you don't set it.` \
+    --expiration 600 \
+    `# Format: <project-id>:<dataset-id>.<table-id>` \
+    foundry-x-experiments:reproxylogs.reproxy_log_1 \
+    `pwd`/reproxy_log_bigquery_schema/log/log.schema
+
+Note: It can take upto 5mins for the bigquery table to become active
+after it is created.
+*/
 package main
 
 import (
