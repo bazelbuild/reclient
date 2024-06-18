@@ -113,7 +113,6 @@ genrule(
 pkg_files(
     name = "artifacts_regular",
     srcs = [
-        "CHANGELOG.md",
         "LICENSE",
         "NOTICE",
         "version.txt",
