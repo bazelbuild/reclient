@@ -9,6 +9,10 @@ build --enable_platform_specific_config
 # across developers and CI. It'll _eventually_ be turned on by default. See
 # https://github.com/bazelbuild/bazel/issues/7026
 build --incompatible_strict_action_env
+
+# Optional user specific bazelrc
+try-import %workspace%/user.bazelrc
+
 # When running with strict action environments. Bazel effectivelly hardcodes
 # Both the MSYS64 bin path & Windows default paths. However, go code and protobufs
 # also rely on mingw installs of git, patch, unzip, gcc and python. There doesn't seem
