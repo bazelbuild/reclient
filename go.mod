@@ -3,7 +3,7 @@ module github.com/bazelbuild/reclient
 go 1.20
 
 require (
-	cloud.google.com/go/bigquery v1.53.0
+	cloud.google.com/go/bigquery v1.56.0
 	cloud.google.com/go/monitoring v1.15.1
 	cloud.google.com/go/profiler v0.4.0
 	cloud.google.com/go/storage v1.30.1
@@ -29,9 +29,9 @@ require (
 	golang.org/x/oauth2 v0.20.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.19.0
-	google.golang.org/api v0.128.0
+	google.golang.org/api v0.139.0
 	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230731190214-cbb8c96f2d6d
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d
 	google.golang.org/grpc v1.58.0-dev.0.20230804151048-7aceafcc52f9
 	google.golang.org/protobuf v1.33.0
 )
@@ -54,8 +54,8 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v2.0.8+incompatible // indirect
 	github.com/google/pprof v0.0.0-20230602150820-91b7bce49751 // indirect
-	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.2.4 // indirect
+	github.com/google/s2a-go v0.1.7 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
