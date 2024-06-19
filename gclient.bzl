@@ -149,7 +149,7 @@ def _clean_extra_files(ctx):
     __execute(ctx, __prefix(ctx, "find") + [".", "-name", "WORKSPACE.bazel", "-delete"])
 
 def __execute(ctx, command, wd = ""):
-    st = ctx.execute(command, environment = __env(ctx), working_directory = wd)
+    st = ctx.execute(command, environment = __env(ctx), working_directory = wd, timeout = 1800)
     if st.return_code != 0:
         __error(ctx.name, command, st.stdout, st.stderr, __env(ctx))
 
