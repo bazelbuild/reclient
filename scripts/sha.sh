@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # This script is used to print current git SHA so that Bazel's workspace command
 # can consume it.
+
+# Use googler sha script if it exists, this script does not exist in the
+# open source repo.
+test -f scripts/sha_internal.sh && exec scripts/sha_internal.sh
+
 if gitSha=$(git rev-parse HEAD); then
   echo STABLE_VERSION_SHA "$gitSha"
 else
