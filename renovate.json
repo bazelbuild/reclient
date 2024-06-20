@@ -1,0 +1,8 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "group:allNonMajor", // One PR for all non major bumps.
+        "schedule:earlyMondays", // Run once a week.
+    ]
+}
