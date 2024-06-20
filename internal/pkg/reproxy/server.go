@@ -695,8 +695,7 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 	}
 	switch a.execStrategy {
 	case ppb.ExecutionStrategy_LOCAL:
-		err := a.downloadVirtualInputs(ctx, s.REClient)
-		if err != nil {
+		if err := a.downloadVirtualInputs(ctx, s.REClient); err != nil {
 			log.Warningf("%v: Failed to download virtual inputs before LERC run: %v", a.cmd.Identifiers.ExecutionID, err)
 		}
 		s.runLERC(ctx, a)
@@ -719,8 +718,7 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 			a.fallbackOE = a.oe
 			a.fallbackExitCode = a.res.ExitCode
 			a.oe = outerr.NewRecordingOutErr()
-			err := a.downloadVirtualInputs(ctx, s.REClient)
-			if err != nil {
+			if err := a.downloadVirtualInputs(ctx, s.REClient); err != nil {
 				log.Warningf("%v: Failed to download virtual inputs before local fallback: %v", a.cmd.Identifiers.ExecutionID, err)
 			}
 			a.runLocal(ctx, s.LocalPool)

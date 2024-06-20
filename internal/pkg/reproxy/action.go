@@ -480,8 +480,7 @@ func (a *action) runLocalRace(ctx, cCtx context.Context, pool *LocalPool, client
 	log.V(2).Infof("%v: Running local", a.cmd.Identifiers.ExecutionID)
 	lr := logger.NewLogRecord()
 	lOE := outerr.NewRecordingOutErr()
-	err := a.downloadVirtualInputs(cCtx, client)
-	if err != nil {
+	if err := a.downloadVirtualInputs(cCtx, client); err != nil {
 		log.Warningf("%v: Failed to download virtual inputs before local race run: %v", a.cmd.Identifiers.ExecutionID, err)
 	}
 	cmd := a.duplicateCmd(0)
@@ -1009,28 +1008,40 @@ func (a *action) downloadVirtualInputs(ctx context.Context, cl *rexec.Client) er
 			}
 		}
 	}
-	if len(outs) == 0 {
-		return nil
-	}
 	cmd := a.cmd
 	outDir = filepath.Join(outDir, cmd.WorkingDir)
-	_, err := cl.GrpcClient.DownloadOutputs(ctx, outs, outDir, cl.FileMetadataCache)
-	if err != nil {
+	if _, err := cl.GrpcClient.DownloadOutputs(ctx, outs, outDir, cl.FileMetadataCache); err != nil {
 		return err
 	}
 	for _, vi := range a.cmd.InputSpec.VirtualInputs {
 		if _, ok := outs[vi.Path]; ok {
 			abspath := filepath.Join(outDir, vi.Path)
+
+			dg, err := digest.NewFromString(vi.Digest)
+			if err != nil {
+				log.Errorf("%v: Invalid digest provided by virtual input %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
+			}
+
+			md := &filemetadata.Metadata{
+				Digest: dg,
+			}
+
 			if vi.Mtime != time.Unix(0, 0).UTC() {
 				if err := os.Chtimes(abspath, vi.Mtime, vi.Mtime); err != nil {
-					log.Warningf("%v: Failed to change mtime of %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
+					log.Errorf("%v: Failed to change mtime of %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
 				}
+				md.MTime = vi.Mtime
 			}
 
 			if vi.FileMode != os.FileMode(0) {
 				if err := os.Chmod(abspath, vi.FileMode); err != nil {
-					log.Warningf("%v: Failed to change file mode of %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
+					log.Errorf("%v: Failed to change file mode of %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
 				}
+				md.IsExecutable = (vi.FileMode & 0100) != 0
+			}
+
+			if err := a.fmc.Update(abspath, md); err != nil {
+				log.Errorf("%v: Failed to update the filemetadata cache with virtual input %v: %v", a.cmd.Identifiers.ExecutionID, abspath, err)
 			}
 		}
 	}
