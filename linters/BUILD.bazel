@@ -1,19 +1,4 @@
 sh_binary(
-    name = "gofmt",
-    srcs = ["run_in_workspace.sh"],
-    args = [
-        "$(location @go_sdk//:bin/gofmt)",
-    ],
-    data = [
-        "@go_sdk//:bin/gofmt",
-    ],
-    tags = [
-        "local",
-        "manual",
-    ],
-)
-
-sh_binary(
     name = "clang-format",
     srcs = ["run_in_workspace.sh"],
     args = [

@@ -45,7 +45,7 @@ func main() {
 	res, err := client.RunCommand(ctx, &ppb.RunRequest{
 		Labels: map[string]string{"type": "compile", "lang": "cpp", "compiler": "clang"},
 		Command: &cpb.Command{
-			Args:     []string{"clang", "-c", "-o", "test.o", "examples/proxyclient/test.cpp"},
+			Args:     []string{"clang", "-c", "-o", "test.o", "examples/proxyclient/testdata/test.cpp"},
 			ExecRoot: wd,
 			Platform: map[string]string{
 				"container-image": "docker://gcr.io/foundry-x-experiments/proxy-test@sha256:af0af0a78b2766398b1789c01d1665547b97246b7adc4848df5ebbfa21fab490",

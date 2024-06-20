@@ -1,7 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
-# gazelle:exclude test.h
-
 go_library(
     name = "proxyclient_lib",
     srcs = ["main.go"],
@@ -16,10 +14,7 @@ go_library(
 
 go_binary(
     name = "proxyclient",
-    data = [
-        "test.cpp",
-        "test.h",
-    ],
+    data = glob(["testdata/**"]),
     embed = [":proxyclient_lib"],
     visibility = ["//visibility:public"],
 )
