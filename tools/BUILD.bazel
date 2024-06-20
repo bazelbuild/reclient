@@ -1,5 +1,5 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "nogo")
 
 exports_files([
     "diff_gen_vs_workspace.sh",
@@ -66,4 +66,16 @@ nogo(
         "//conditions:default": TOOLS_NOGO,
         ":no_nogo_true": [],
     }),
+)
+
+go_library(
+    name = "tools",
+    srcs = ["imports.go"],
+    importpath = "github.com/bazelbuild/reclient/tools",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_pkg_xattr//:xattr",
+        "@com_google_cloud_go_monitoring//apiv3",
+        "@com_google_cloud_go_storage//:storage",
+    ],
 )

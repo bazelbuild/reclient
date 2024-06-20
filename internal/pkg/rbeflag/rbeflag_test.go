@@ -185,7 +185,6 @@ func TestParseWithConfigFile(t *testing.T) {
 	os.Args = []string{os.Args[0], "--cfg", cfgFile.Name()}
 	// Note, the cfg flag is defined in Parse, so don't need to define it here.
 	f := flag.String("arg", "", "Some value")
-	flag.CommandLine.Set("cfg", cfgFile.Name())
 	Parse()
 	if *f != "xyz" {
 		t.Errorf("Flag has wrong value, want 'xyz', got %q", *f)
@@ -219,7 +218,6 @@ func TestParseWithConfigFileCmdLineWins(t *testing.T) {
 	os.Args = []string{os.Args[0], "--cfg", cfgFile.Name(), "--arg", "abc"}
 	// Note, the cfg flag is defined in Parse, so don't need to define it here.
 	f := flag.String("arg", "", "Some value")
-	flag.CommandLine.Set("cfg", cfgFile.Name())
 	Parse()
 	if *f != "abc" {
 		t.Errorf("Flag has wrong value, want 'abc', got %q", *f)

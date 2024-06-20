@@ -1,6 +1,6 @@
 module github.com/bazelbuild/reclient
 
-go 1.20
+go 1.21.11
 
 require (
 	cloud.google.com/go/bigquery v1.56.0
