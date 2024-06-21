@@ -7,10 +7,20 @@ genrule(
         exclude = ["app/dist/**/*"],
     ),
     outs = ["reproxytool_ui.tar"],
-    cmd_bash = "export PATH=$$PATH:$$PWD/$$(dirname $(NPM_PATH)) && export ROOT=$$PWD ;" +
-               "echo \"Installing angular...\" ; cd internal/pkg/logrecordserver/ui/app ; $$ROOT/$(NPM_PATH) ci ;" +
-               "echo \"Building app\" ; node_modules/.bin/ng build ;" +
-               "cd $$ROOT ; tar cvf $(OUTS) internal/pkg/logrecordserver/ui/app/dist/reproxyui/browser",
+    cmd_bash = """
+      export PATH=$$PWD/$$(dirname $(NPM_PATH)):$$PWD/$$(dirname $(NODE_PATH)):$$PATH
+      export ROOT=$$PWD
+      export HOME=/tmp
+
+      echo "Installing angular..."
+      cd internal/pkg/logrecordserver/ui/app
+      $$ROOT/$(NPM_PATH) ci
+
+      echo "Building app"
+      node_modules/.bin/ng build
+      cd $$ROOT
+      tar cvf $(OUTS) internal/pkg/logrecordserver/ui/app/dist/reproxyui/browser
+    """,
     exec_properties = {"dockerNetwork": "standard"},
     target_compatible_with = select({
         "@platforms//os:linux": [],
