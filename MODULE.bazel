@@ -192,6 +192,7 @@ use_repo(
     "com_github_googlecloudplatform_protoc_gen_bq_schema",
     "com_github_gorilla_mux",
     "com_github_gosuri_uilive",
+    "com_github_hectane_go_acl",
     "com_github_karrick_godirwalk",
     "com_github_microsoft_go_winio",
     "com_github_pkg_xattr",

@@ -2,11 +2,22 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "auth",
-    srcs = ["auth.go"],
+    srcs = [
+        "auth.go",
+        "cache.go",
+    ],
     importpath = "github.com/bazelbuild/reclient/internal/pkg/auth",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//api/auth",
+        "//internal/pkg/features",
+        "//internal/pkg/pathtranslator",
+        "@com_github_bazelbuild_remote_apis_sdks//go/pkg/digest",
         "@com_github_golang_glog//:glog",
+        "@com_github_hectane_go_acl//:go-acl",
+        "@org_golang_google_grpc//credentials/oauth",
+        "@org_golang_google_protobuf//encoding/prototext",
+        "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_oauth2//:oauth2",
         "@org_golang_x_oauth2//google",
     ],
@@ -16,4 +27,8 @@ go_test(
     name = "auth_test",
     srcs = ["auth_test.go"],
     embed = [":auth"],
+    deps = [
+        "@org_golang_google_grpc//credentials/oauth",
+        "@org_golang_x_oauth2//:oauth2",
+    ],
 )
