@@ -25,15 +25,15 @@ import (
 // Tsconfig encapusulates configuration in tsconfig.json for a Typescript project.
 type Tsconfig struct {
 	// Extends is the parent tsconfig to be extended.
-	Extends string `json:extends`
+	Extends string `json:"extends"`
 	// Exclude is the list of files to be excluded.
-	Exclude []string `json:exclude`
+	Exclude []string `json:"exclude"`
 	// Files is the list of files to be included.
-	Files []string `json:files`
+	Files []string `json:"files"`
 	// Include is the list of directories to be included.
-	Include []string `json:include`
+	Include []string `json:"include"`
 	// References is list of project references.
-	References []Reference `json:references`
+	References []Reference `json:"references"`
 	// PaTsPathth is the path to this tsconfig.json file.
 	TsPath string
 }
@@ -41,7 +41,7 @@ type Tsconfig struct {
 // Reference defines the path to a project reference.
 type Reference struct {
 	// Path is the path to the project reference.
-	Path string `json:path`
+	Path string `json:"path"`
 }
 
 // parseTsconfig parses the tsconfig.json pointed to by Path.
