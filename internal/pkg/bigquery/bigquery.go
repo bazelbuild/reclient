@@ -79,14 +79,31 @@ func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *o
 
 // BQSpec defines which bigquery table the LogRecords will be saved.
 type BQSpec struct {
-	Err         atomic.Pointer[error]
-	ProjectID   string
-	TableSpec   string
-	BatchSizeMB int
-	Client      *bigquery.Inserter
-	CleanUp     func() error
-	Ctx         context.Context
-	Cancel      context.CancelFunc
+	Err            atomic.Pointer[error]
+	ProjectID      string
+	TableSpec      string
+	BatchSizeMB    int
+	Client         *bigquery.Inserter
+	CleanUp        func() error
+	Ctx            context.Context
+	Cancel         context.CancelFunc
+	runningWorkers int32
+	peakWorkers    int32
+}
+
+func (b *BQSpec) increaseWorkerNum() {
+	atomic.AddInt32(&b.runningWorkers, 1)
+	atomic.StoreInt32(&b.peakWorkers, max(b.peakWorkers, b.runningWorkers))
+}
+
+func (b *BQSpec) decreaseWorkerNum() {
+	atomic.AddInt32(&b.runningWorkers, -1)
+}
+
+func (b *BQSpec) GetPeakWorkers() int32 {
+	res := atomic.LoadInt32(&b.peakWorkers)
+	atomic.StoreInt32(&b.peakWorkers, 0)
+	return res
 }
 
 // batch fetches LogRecords from a channel, groups and saves them in batches.
@@ -139,8 +156,10 @@ func upload(bqSpec *BQSpec, batches <-chan []*bigquerytranslator.Item, successfu
 				return
 			} else {
 				wg.Add(1)
+				bqSpec.increaseWorkerNum()
 				go func(bqSpec *BQSpec, items []*bigquerytranslator.Item, successful *int32, failed *int32) {
 					uploadWithRetry(bqSpec, items, successful, failed)
+					bqSpec.decreaseWorkerNum()
 					wg.Done()
 				}(bqSpec, items, successful, failed)
 			}
@@ -216,4 +235,11 @@ func LogRecordsToBigQuery(bqSpec *BQSpec, items <-chan *bigquerytranslator.Item,
 	wg.Wait()
 	bqSpec.CleanUp()
 	bqSpec.Cancel()
+}
+
+func max(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
 }

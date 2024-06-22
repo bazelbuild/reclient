@@ -68,9 +68,10 @@ const (
 )
 
 const (
-	textDelimiter  string = "\n\n\n"
-	peakNumActions string = "PEAK_NUM_ACTIONS"
-	unixTime       string = "UNIX_TIME"
+	textDelimiter   string = "\n\n\n"
+	peakNumActions  string = "PEAK_NUM_ACTIONS"
+	unixTime        string = "UNIX_TIME"
+	peakNumBQWorker string = "PEAK_NUM_BQ_WORKER"
 )
 
 // Logger logs Records asynchronously into a file.
@@ -466,6 +467,9 @@ func (l *Logger) collectResourceUsageSamples(samples map[string]int64) {
 	}
 	samples[unixTime] = time.Now().Unix()
 	samples[peakNumActions] = int64(atomic.SwapInt32(&l.peakRunningActions, 0))
+	if l.bqSpec != nil {
+		samples[peakNumBQWorker] = int64(l.bqSpec.GetPeakWorkers())
+	}
 	// These log messages in reproxy.INFO are used for plotting the time series
 	// of resource usage by a plotter.
 	log.Infof("Resource Usage: %v", samples)
