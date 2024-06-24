@@ -81,9 +81,7 @@ try-import %workspace%/googler.bazelrc
 build:linux --workspace_status_command=./scripts/sha.sh
 build:macos --workspace_status_command=./scripts/sha.sh
 build:windows --workspace_status_command=./scripts/sha.bat
-# TODO(b/144421495): Temporary workaround for https://github.com/bazelbuild/rules_go/issues/2224
-# to stamp version numbers. Remove when the issue is fixed.
-build --stamp
+
 build:linux --copt '-fPIC'
 build:macos --copt '-fPIC'
 
@@ -92,8 +90,6 @@ build:macos --copt '-fPIC'
 # //internal/pkg/cppdependencyscanner/bridge.cc.
 build:glibc_new --cxxopt=-D__GLIBC_NEW__
 
-# need for windows to avoid mt.exe permission error.
-build --action_env=TMPDIR
 # need this for user's application default credentials for integ test
 # with --test_env=RBE_use_application_default_credentials=true
 test:linux --test_env=HOME
@@ -113,3 +109,5 @@ test:racedetection --@io_bazel_rules_go//go/config:race --@io_bazel_rules_go//go
 common:nonogo --@@//tools:no_nogo
 
 common --lockfile_mode=off
+
+common:ci --remote_download_minimal
