@@ -700,6 +700,12 @@ func (a *action) getCachedResult(ctx context.Context) {
 		return
 	}
 	a.rec.LocalMetadata.ValidCacheHit = true
+	outDir := a.cmd.ExecRoot
+	outs, err := a.execContext.GetFlattenedOutputs()
+	if err != nil {
+		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v", a.cmd.Identifiers.ExecutionID, err)
+	}
+	a.execContext.DownloadSpecifiedOutputs(a.excludeOutputsViaFilter(outs), outDir)
 }
 
 func (a *action) cacheLocal() {

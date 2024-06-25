@@ -840,6 +840,9 @@ func (s *Server) rerunAction(ctx context.Context, a *action) {
 }
 
 func (s *Server) runLERC(ctx context.Context, a *action) {
+	if a.downloadRegex != "" {
+		a.rOpt.DownloadOutputs = false
+	}
 	if err := a.createExecContext(ctx, s.REClient); err != nil {
 		// This cannot really happen, as the only error it checks for is cmd.Validate.
 		a.res = command.NewLocalErrorResult(err)
