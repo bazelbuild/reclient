@@ -5,22 +5,24 @@
  #include <iostream>
  #include <memory>
 +#include <mutex>
- 
+
  #include "absl/strings/str_join.h"
  #include "absl/strings/string_view.h"
-@@ -40,6 +41,8 @@
- 
+@@ -40,6 +41,10 @@ namespace devtools_goma {
+
  namespace {
- 
+
++#ifndef _WIN32
 +std::mutex popen_mutex;
++#endif
 +
  #ifdef _WIN32
  std::string GetPathExt(const std::vector<std::string>& envs) {
    return GetEnvFromEnvIter(envs.begin(), envs.end(), "PATHEXT");
-@@ -179,7 +182,11 @@
+@@ -179,7 +184,11 @@ std::string ReadCommandOutputByPopen(const std::string& prog,
    if (option == MERGE_STDOUT_STDERR)
      commandline += " 2>&1";
- 
+
 -  FILE* p = popen(commandline.c_str(), "r");
 +  FILE* p = nullptr;
 +  {
@@ -28,12 +30,12 @@
 +    p = popen(commandline.c_str(), "r");
 +  }
    CHECK(p) << "popen for " << prog << " (" << commandline << ") failed";
- 
+
    std::ostringstream strbuf;
-@@ -196,7 +203,11 @@
+@@ -196,7 +205,11 @@ std::string ReadCommandOutputByPopen(const std::string& prog,
      strbuf.write(buf, len);
    }
- 
+
 -  int exit_status = pclose(p);
 +  int exit_status;
 +  {
