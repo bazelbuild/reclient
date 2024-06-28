@@ -72,7 +72,7 @@ bazel_dep(name = "googletest", version = "1.14.0.bcr.1", repo_name = "com_google
 
 gclient_repository = use_repo_rule("//:gclient.bzl", "gclient_repository")
 
-GOMA_REV = "603dfba63fe365a01879029588b48b6f122fe0b8"
+GOMA_REV = "7ab631ba788178c65281ef46b3edce251c595f23"
 
 gclient_repository(
     name = "goma",
@@ -93,8 +93,7 @@ gclient_repository(
         # Until breakpad is updated it contains printf calls that Xcode would like to be sprintf calls.
         "//third_party/patches/goma:breakpad.patch",
     ],
-    presync_patches = ["//third_party/patches/goma:protobuf.patch"],
-    remote = "https://chromium.googlesource.com/infra/goma/client",
+    remote = "https://chromium.googlesource.com/infra/goma-input-processor",
     revision = GOMA_REV,
     # If you would like to build goma with a locally checked out version of source,
     # comment remote / revision args and specify a local path as below.

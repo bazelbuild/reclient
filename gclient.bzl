@@ -43,14 +43,15 @@ def _gclient_repository_rule(ctx):
 
 def _config(ctx):
     if __is_windows(ctx) and len(ctx.attr.gclient_vars_windows) > 0:
-        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--custom-var=" + ctx.attr.gclient_vars_windows, "--unmanaged"])
+        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--name", "client", "--custom-var=" + ctx.attr.gclient_vars_windows, "--unmanaged"])
     else:
-        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--unmanaged"])
+        __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--name", "client", "--unmanaged"])
 
 def _clone(ctx):
-    __execute(ctx, __prefix(ctx, "git") + ["clone", ctx.attr.remote])
+    __execute(ctx, __prefix(ctx, "git") + ["clone", ctx.attr.remote, "client"])
 
 def _checkout(ctx):
+    __execute(ctx, __prefix(ctx, "git") + ["fetch", "origin", ctx.attr.revision], wd = ctx.attr.base_dir)
     __execute(ctx, __prefix(ctx, "git") + ["checkout", ctx.attr.revision], wd = ctx.attr.base_dir)
 
 def _sync(ctx):
