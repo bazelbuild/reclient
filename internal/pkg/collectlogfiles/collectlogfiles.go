@@ -47,6 +47,7 @@ var (
 		"build.trace.gz",
 	}, glogGlobs(
 		"bootstrap",
+		"credshelper",
 		"reproxy",
 		"rewrapper",
 		"scandeps_server",
