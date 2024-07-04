@@ -21,11 +21,19 @@ package cppdependencyscanner
 import (
 	"context"
 	"errors"
+	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	pb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/depsscannerclient"
+	"github.com/bazelbuild/reclient/internal/pkg/ipc"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/retry"
 
 	spb "github.com/bazelbuild/reclient/api/scandeps"
 )
@@ -49,9 +57,41 @@ var (
 	// ErrDepsScanTimeout is the error returned by the input processor
 	// when it times out during the dependency scanning phase.
 	ErrDepsScanTimeout = errors.New("cpp dependency scanner timed out")
+	backoff            = retry.ExponentialBackoff(1*time.Second, 10*time.Second, retry.Attempts(10))
+	shouldRetry        = func(err error) bool {
+		if err == context.DeadlineExceeded {
+			return true
+		}
+		s, ok := status.FromError(err)
+		if !ok {
+			return false
+		}
+		switch s.Code() {
+		case codes.Canceled, codes.Unknown, codes.DeadlineExceeded, codes.Unavailable, codes.ResourceExhausted:
+			return true
+		default:
+			return false
+		}
+	}
 )
+
+// TODO (b/258275137): Move this to it's own package with a unit test
+var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, *pb.CapabilitiesResponse, error) {
+	conn, err := ipc.DialContext(ctx, address)
+	if err != nil {
+		return nil, nil, err
+	}
+	client := pb.NewCPPDepsScannerClient(conn)
+	var capabilities *pb.CapabilitiesResponse
+	err = retry.WithPolicy(ctx, shouldRetry, backoff, func() error {
+		capabilities, err = client.Capabilities(ctx, &emptypb.Empty{})
+		return err
+	})
+	return client, capabilities, nil
+}
 
 // New creates new DepsScanner.
 func New(ctx context.Context, executor executor, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
-	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress)
+	// TODO (b/258275137): make connTimeout configurable and move somewhere more appropriate when reconnect logic is implemented.
+	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, 30*time.Second, connect)
 }

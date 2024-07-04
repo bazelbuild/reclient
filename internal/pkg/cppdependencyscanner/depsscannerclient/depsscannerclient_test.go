@@ -55,6 +55,8 @@ type stubExecutor struct {
 type testService struct {
 	// A fake gRPC client to return from connect.
 	stubClient *stubClient
+	// A fake capabilities response
+	capabilities *pb.CapabilitiesResponse
 	// The number of times connect should fail before returning stubClient.
 	connectDelay time.Time
 	// Output: the number of times connect() was called.
@@ -62,18 +64,18 @@ type testService struct {
 }
 
 // connect returns a preset stubClient.
-func (s *testService) connect(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
+func (s *testService) connect(ctx context.Context, address string) (pb.CPPDepsScannerClient, *pb.CapabilitiesResponse, error) {
 	s.connectCount.Add(1)
 	select {
 	case <-time.After(time.Until(s.connectDelay)):
 		// Sleep, simulate a slow connection that may or may not timeout
 	case <-ctx.Done():
-		return nil, errors.New("Connection timed out")
+		return nil, nil, errors.New("Connection timed out")
 	}
 	if s.stubClient != nil {
-		return s.stubClient, nil
+		return s.stubClient, s.capabilities, nil
 	}
-	return nil, errors.New("Connection not ready yet")
+	return nil, nil, errors.New("Connection not ready yet")
 }
 
 // A stub CPPDepsScannerClient.
@@ -149,15 +151,11 @@ var (
 // TestNew_ConnectSuccess tests that a call to New() can connect to an already running dependency
 // scanner service.
 func TestNew_ConnectSuccess(t *testing.T) {
+	t.Parallel()
 	testService := &testService{
 		stubClient: &stubClient{},
 	}
-	oldConnect := connect
-	connect = testService.connect
-	t.Cleanup(func() {
-		connect = oldConnect
-	})
-	depsScannerClient, err := New(context.Background(), nil, "", 0, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), nil, "", 0, false, "", "127.0.0.1:8001", "127.0.0.1:1000", 30*time.Second, testService.connect)
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
@@ -172,17 +170,12 @@ func TestNew_ConnectSuccess(t *testing.T) {
 // TestNew_ConnectFailure tests that a call to New() will fail if no dependency scanner service is
 // running when expected.
 func TestNew_ConnectFailure(t *testing.T) {
-	setConnTimeout(t, 500*time.Millisecond)
+	t.Parallel()
 	testService := &testService{
 		stubClient:   nil,
 		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
-	oldConnect := connect
-	connect = testService.connect
-	t.Cleanup(func() {
-		connect = oldConnect
-	})
-	depsScannerClient, err := New(context.Background(), nil, "", 0, false, "", "127.0.0.1:8001", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), nil, "", 0, false, "", "127.0.0.1:8001", "127.0.0.1:1000", 500*time.Millisecond, testService.connect)
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
@@ -198,16 +191,17 @@ func TestNew_ConnectFailure(t *testing.T) {
 // TestNew_StartSuccess tests that a call to New() will start and connect to a dependency scanner
 // service executable.
 func TestNew_StartSuccess(t *testing.T) {
-	testService := &testService{
-		stubClient: &stubClient{},
+	t.Parallel()
+	fakeCapabilities := &pb.CapabilitiesResponse{
+		Caching:            false,
+		ExpectsResourceDir: true,
 	}
-	oldConnect := connect
-	connect = testService.connect
-	t.Cleanup(func() {
-		connect = oldConnect
-	})
+	testService := &testService{
+		stubClient:   &stubClient{},
+		capabilities: fakeCapabilities,
+	}
 	stubExecutor := &stubExecutor{}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000", 30*time.Second, testService.connect)
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
@@ -238,23 +232,22 @@ func TestNew_StartSuccess(t *testing.T) {
 	default:
 		// No Cancel() call. Expected.
 	}
+	if got := depsScannerClient.Capabilities(); got != fakeCapabilities {
+		t.Errorf("Capabilities() returned unexpected value, wanted %v, got %v", fakeCapabilities, got)
+	}
 }
 
 // TestNew_StartFailure tests that a call to New() will fail if an executable is provided but cannot
 // be started.
 func TestNew_StartFailure(t *testing.T) {
+	t.Parallel()
 	testService := &testService{
 		stubClient: &stubClient{},
 	}
-	oldConnect := connect
-	connect = testService.connect
-	t.Cleanup(func() {
-		connect = oldConnect
-	})
 	stubExecutor := &stubExecutor{
 		err: errors.New("File not found"),
 	}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000", 30*time.Second, testService.connect)
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
@@ -284,17 +277,12 @@ func TestNew_StartFailure(t *testing.T) {
 // TestNew_StartNoConnect tests that New() will error if it is able to successfully start a
 // dependency scanner service, but is unable to connect to it for any reason.
 func TestNew_StartNoConnect(t *testing.T) {
-	setConnTimeout(t, 500*time.Millisecond)
+	t.Parallel()
 	testService := &testService{
 		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
-	oldConnect := connect
-	connect = testService.connect
-	t.Cleanup(func() {
-		connect = oldConnect
-	})
 	stubExecutor := &stubExecutor{}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000", 500*time.Millisecond, testService.connect)
 	if err == nil {
 		t.Errorf("New() did not return expected error")
 	}
@@ -320,17 +308,13 @@ func TestNew_StartNoConnect(t *testing.T) {
 // dependency scanner service takes a little while (more than 5 seconds, less than 15) to become
 // available.
 func TestNew_StartDelayedConnect(t *testing.T) {
+	t.Parallel()
 	testService := &testService{
 		stubClient:   &stubClient{},
 		connectDelay: time.Now().Add(5 * time.Second), // Wait for 5 seconds before "accepting" the connection
 	}
-	oldConnect := connect
-	connect = testService.connect
-	t.Cleanup(func() {
-		connect = oldConnect
-	})
 	stubExecutor := &stubExecutor{}
-	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000")
+	depsScannerClient, err := New(context.Background(), stubExecutor, "", 0, false, "", "exec://test_exec", "127.0.0.1:1000", 30*time.Second, testService.connect)
 	if err != nil {
 		t.Errorf("New() retured unexpected error: %v", err)
 	}
@@ -360,6 +344,7 @@ func TestNew_StartDelayedConnect(t *testing.T) {
 // TestStopService_Success tests that a call to stopService (trivially called by the exported
 // Close() function) will properly stop the service.
 func TestStopService_Success(t *testing.T) {
+	t.Parallel()
 	terminateCalled := 0
 	stubClient := &stubClient{}
 	depsScannerClient := &DepsScannerClient{
@@ -404,6 +389,7 @@ func TestStopService_Success(t *testing.T) {
 // function) will error if it was unable to verify the service had been shutdown after a fixed
 // timeout.
 func TestStopService_Failure(t *testing.T) {
+	t.Parallel()
 	terminateCalled := 0
 	stubClient := &stubClient{}
 	depsScannerClient := &DepsScannerClient{
@@ -438,6 +424,7 @@ func TestStopService_Failure(t *testing.T) {
 }
 
 func TestProcessInputs_nocache(t *testing.T) {
+	t.Parallel()
 	execID := uuid.New().String()
 	fileList := []string{
 		filename,
@@ -473,6 +460,7 @@ func TestProcessInputs_nocache(t *testing.T) {
 }
 
 func TestProcessInputs_abspath(t *testing.T) {
+	t.Parallel()
 	execID := uuid.New().String()
 	fileList := []string{
 		filename,
@@ -512,6 +500,7 @@ func TestProcessInputs_abspath(t *testing.T) {
 }
 
 func TestProcessInputs_cache(t *testing.T) {
+	t.Parallel()
 	execID := uuid.New().String()
 	fileList := []string{
 		filename,
@@ -548,6 +537,7 @@ func TestProcessInputs_cache(t *testing.T) {
 }
 
 func TestProcessInputs_remoteError(t *testing.T) {
+	t.Parallel()
 	execID := uuid.New().String()
 	stubClient := &stubClient{
 		processInputsResponse: &pb.CPPProcessInputsResponse{
@@ -576,6 +566,7 @@ func TestProcessInputs_remoteError(t *testing.T) {
 }
 
 func TestProcessInputs_timeoutError(t *testing.T) {
+	t.Parallel()
 	execID := uuid.New().String()
 	stubClient := &stubClient{
 		processInputsResponse: &pb.CPPProcessInputsResponse{
@@ -787,25 +778,6 @@ func TestBuildAddress(t *testing.T) {
 	}
 }
 
-func TestCapabilities(t *testing.T) {
-	want := &pb.CapabilitiesResponse{
-		Caching:            false,
-		ExpectsResourceDir: true,
-	}
-	stubClient := &stubClient{
-		capabilitiesResponse: want,
-	}
-	client := &DepsScannerClient{
-		ctx:    context.Background(),
-		client: stubClient,
-	}
-	client.updateCapabilities(context.Background())
-
-	if got := client.Capabilities(); got != want {
-		t.Errorf("Capabilities() returned unexpected value, wanted %v, got %v", want, got)
-	}
-}
-
 func runForPlatforms(t *testing.T, name string, platforms []string, test func(t *testing.T)) {
 	t.Helper()
 	for _, platform := range platforms {
@@ -814,13 +786,4 @@ func runForPlatforms(t *testing.T, name string, platforms []string, test func(t 
 			return
 		}
 	}
-}
-
-func setConnTimeout(t *testing.T, newTimeout time.Duration) {
-	t.Helper()
-	oldConnTimeout := connTimeout
-	connTimeout = newTimeout
-	t.Cleanup(func() {
-		connTimeout = oldConnTimeout
-	})
 }

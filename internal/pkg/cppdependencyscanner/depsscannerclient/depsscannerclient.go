@@ -110,24 +110,10 @@ var (
 	}
 )
 
-var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, error) {
-	conn, err := ipc.DialContext(ctx, address)
-	if err != nil {
-		return nil, err
-	}
-	client := pb.NewCPPDepsScannerClient(conn)
-	err = retry.WithPolicy(ctx, shouldRetry, backoff, func() error {
-		_, err = client.Status(ctx, &emptypb.Empty{})
-		return err
-	})
-	return client, nil
-}
-
-// TODO (b/258275137): make this configurable and move somewhere more appropriate when reconnect logic is implemented.
-var connTimeout = 30 * time.Second
+type connectFn func(ctx context.Context, address string) (pb.CPPDepsScannerClient, *pb.CapabilitiesResponse, error)
 
 // New creates new DepsScannerClient.
-func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string) (*DepsScannerClient, error) {
+func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string, connTimeout time.Duration, connect connectFn) (*DepsScannerClient, error) {
 	log.Infof("Connecting to remote dependency scanner: %v", depsScannerAddress)
 	client := &DepsScannerClient{
 		address:        depsScannerAddress,
@@ -153,19 +139,21 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 	}
 
 	type connectResponse struct {
-		client pb.CPPDepsScannerClient
-		err    error
+		client       pb.CPPDepsScannerClient
+		capabilities *pb.CapabilitiesResponse
+		err          error
 	}
 	connectCh := make(chan connectResponse)
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)
 	defer cancel()
 	go func() {
 		defer close(connectCh)
-		client, err := connect(ctx, client.address)
+		client, capabilities, err := connect(ctx, client.address)
 		select {
 		case connectCh <- connectResponse{
-			client: client,
-			err:    err,
+			client:       client,
+			capabilities: capabilities,
+			err:          err,
 		}:
 		case <-ctx.Done():
 		}
@@ -182,9 +170,7 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 		}
 		log.Infof("Connected to dependency scanner service on %v", client.address)
 		client.client = c.client
-		if err := client.updateCapabilities(ctx); err != nil {
-			return nil, fmt.Errorf("Failed to update capabilities: %w", err)
-		}
+		client.updateCapabilities(c.capabilities)
 		return client, nil
 	}
 }
@@ -396,18 +382,10 @@ func (ds *DepsScannerClient) ProcessInputs(ctx context.Context, execID string, c
 	}
 }
 
-func (ds *DepsScannerClient) updateCapabilities(ctx context.Context) error {
-	if ds.client == nil {
-		return nil
-	}
-	capabilities, err := ds.client.Capabilities(ctx, &emptypb.Empty{})
-	if err != nil {
-		return err
-	}
+func (ds *DepsScannerClient) updateCapabilities(capabilities *pb.CapabilitiesResponse) {
 	ds.capabilitiesMu.Lock()
 	defer ds.capabilitiesMu.Unlock()
 	ds.capabilities = capabilities
-	return nil
 }
 
 // Capabilities implements DepsScanner.Capabilities.
@@ -424,7 +402,7 @@ func (ds *DepsScannerClient) verifyService(ctx context.Context) error {
 		sctx, cancel := context.WithTimeout(ds.ctx, timeout)
 		defer cancel()
 
-		_, err := ds.client.Status(sctx, &emptypb.Empty{})
+		capabilities, err := ds.client.Capabilities(sctx, &emptypb.Empty{})
 
 		select {
 		case <-ctx.Done():
@@ -433,9 +411,7 @@ func (ds *DepsScannerClient) verifyService(ctx context.Context) error {
 		default:
 			// success?
 			if err == nil {
-				if err := ds.updateCapabilities(ctx); err != nil {
-					return err
-				}
+				ds.updateCapabilities(capabilities)
 				return nil
 			} // else
 			// Status call may return an error before the 10 seconds timeout expires if it isn't
