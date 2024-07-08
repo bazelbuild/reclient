@@ -4,5 +4,6 @@
         "config:recommended",
         "group:allNonMajor", // One PR for all non major bumps.
         "schedule:earlyMondays", // Run once a week.
-    ]
+    ],
+    "postUpdateOptions": ["gomodTidy"] // Run go mod tidy after updating.
 }
