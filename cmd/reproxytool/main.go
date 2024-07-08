@@ -50,13 +50,16 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 
 	"github.com/bazelbuild/reclient/internal/pkg/logrecordserver"
 
-	csv "github.com/bazelbuild/reclient/cmd/reproxytool/usage2csv"
+	rclient "github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
 	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
 	remotetool "github.com/bazelbuild/remote-apis-sdks/go/pkg/tool"
 	log "github.com/golang/glog"
+
+	csv "github.com/bazelbuild/reclient/cmd/reproxytool/usage2csv"
 )
 
 const (
@@ -65,7 +68,8 @@ const (
 )
 
 var (
-	supportedOps = append(remotetool.SupportedOps, usage2CSV, server)
+	supportedOps       = append(remotetool.SupportedOps, usage2CSV, server)
+	requiresGrpcClient = remotetool.SupportedOps
 )
 
 var (
@@ -101,11 +105,15 @@ func main() {
 	}
 
 	ctx := context.Background()
-	grpcClient, err := rflags.NewClientFromFlags(ctx)
-	if err != nil {
-		log.Exitf("error connecting to remote execution client: %v", err)
+	var grpcClient *rclient.Client
+	var err error
+	if slices.Contains(requiresGrpcClient, remotetool.OpType(*operation)) {
+		grpcClient, err = rflags.NewClientFromFlags(ctx)
+		if err != nil {
+			log.Exitf("error connecting to remote execution client: %v", err)
+		}
+		defer grpcClient.Close()
 	}
-	defer grpcClient.Close()
 	c := &remotetool.Client{GrpcClient: grpcClient}
 
 	fn, ok := remotetool.RemoteToolOperations[remotetool.OpType(*operation)]
