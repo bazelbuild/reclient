@@ -17,7 +17,7 @@ package tools
 import (
 	// Dependencies of non-exported code, specified here so that
 	// go.mod and go.sum remain consistent
-	_ "cloud.google.com/go/monitoring/apiv3"
+	_ "cloud.google.com/go/monitoring/apiv3/v2"
 	_ "cloud.google.com/go/storage"
 	_ "github.com/pkg/xattr"
 

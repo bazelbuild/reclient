@@ -75,7 +75,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_pkg_xattr//:xattr",
-        "@com_google_cloud_go_monitoring//apiv3",
+        "@com_google_cloud_go_monitoring//apiv3/v2:apiv3",
         "@com_google_cloud_go_storage//:storage",
         "@org_golang_x_tools//go/analysis",
     ],
