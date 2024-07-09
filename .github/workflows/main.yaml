@@ -36,8 +36,10 @@ jobs:
           bazelisk-cache: true
           # Store build cache per workflow.
           disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
-          # Share repository cache between workflows.
-          repository-cache: true
+          # Share repository cache between workflows with the same image version.
+          # Invalidating on image version is required because the local toolchain
+          # needs to be regenerated for new image versions.
+          repository-cache: ${{ env.ImageVersion }}
 
       # Checkout the depot tools they are needed by the goma repository
       - if: runner.os != 'Windows'
