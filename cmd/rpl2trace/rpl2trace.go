@@ -206,7 +206,7 @@ func convertLogRecords(ctx context.Context, logs []*lpb.LogRecord, level int) []
 		events = append(events, evs...)
 	}
 	sort.Slice(events, func(i, j int) bool {
-		if events[i].Timestamp != events[i].Timestamp {
+		if events[i].Timestamp != events[j].Timestamp {
 			return events[i].Timestamp < events[j].Timestamp
 		}
 		return events[i].Dur >= events[j].Dur
