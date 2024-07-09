@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Define all imports that are only in non-exported code so that
-// go.mod and go.sum remain consistent
-
 package tools
 
 import (
+	// Dependencies of non-exported code, specified here so that
+	// go.mod and go.sum remain consistent
 	_ "cloud.google.com/go/monitoring/apiv3"
 	_ "cloud.google.com/go/storage"
 	_ "github.com/pkg/xattr"
+
+	_ "golang.org/x/tools/go/analysis" // Used as tools by bazel nogo analyzers
 )

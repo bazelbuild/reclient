@@ -173,13 +173,6 @@ go_deps.gazelle_override(
     path = "github.com/googleapis/googleapis",
 )
 
-# golang.org/x/tools is not a direct dependency of the go code but is used by nogo
-go_deps.module(
-    path = "golang.org/x/tools",
-    sum = "h1:k8NLag8AGHnn+PHbl7g43CtqZAwG60vZkLqgyZgIHgQ=",
-    version = "v0.18.0",
-)
-
 ### All *direct* Go dependencies of the module have to be listed explicitly.
 use_repo(
     go_deps,
