@@ -64,6 +64,6 @@ do
   fi
 done
 if [ "$diff_found" -ne 0 ]; then
-    echo
     echo "diff detected, you should run ./scripts/regenpbgo.sh"
+    exit 1
 fi
