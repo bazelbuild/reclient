@@ -32,7 +32,7 @@ require (
 	golang.org/x/sys v0.21.0
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
 	google.golang.org/api v0.187.0
-	google.golang.org/genproto v0.0.0-20240709173604-40e1e62336c5
+	google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094
 	google.golang.org/grpc v1.64.1
 	google.golang.org/protobuf v1.34.2
