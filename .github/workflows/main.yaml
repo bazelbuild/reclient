@@ -17,6 +17,7 @@ jobs:
         includescanner: ["goma", "clangscandeps"]
         os: ["ubuntu-20.04", "macos-13", "windows-2019"]
     runs-on: ${{ matrix.os }}
+    continue-on-error: true # Allow other marix jobs to complete if one fails
     steps:
     # Clean up unused tools to have more disk space in the GitHub hosted runner.
       - if: runner.os == 'Linux'
@@ -34,12 +35,12 @@ jobs:
         with:
           # Avoid downloading Bazel every time.
           bazelisk-cache: true
-          # Store build cache per workflow.
-          disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
-          # Share repository cache between workflows with the same image version.
-          # Invalidating on image version is required because the local toolchain
-          # needs to be regenerated for new image versions.
-          repository-cache: ${{ env.ImageVersion }}
+          # Disk and repository caches are disabled on mac due to some build errors with c-ares~/ares* symbols when they are used.
+          # Store build cache per workflow unless running on mac.
+          # See https://docs.github.com/en/actions/learn-github-actions/expressions#format for format function syntax
+          disk-cache: ${{ runner.os != 'macOS' && format('{0} {1}', github.workflow, matrix.includescanner) || false }}
+          # Use repository cache unless running on mac.
+          repository-cache: ${{ runner.os != 'macOS' }}
 
       # Checkout the depot tools they are needed by the goma repository
       - if: runner.os != 'Windows'
