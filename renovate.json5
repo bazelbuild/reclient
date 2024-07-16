@@ -1,0 +1,24 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "group:allNonMajor", // One PR for all non major bumps.
+        "schedule:earlyMondays", // Run once a week.
+    ],
+    "postUpdateOptions": ["gomodTidy"], // Run go mod tidy after updating.
+    "packageRules": [
+      { // Update googleapis packages once a month.
+        "matchPackagePrefixes": [
+          "google.golang.org/genproto",
+        ],
+        "schedule": ["every month"],
+        "groupName": "googleapis"
+      },
+      { // Update x/tools packages once a month.
+        "matchPackagePrefixes": [
+          "golang.org/x/tools"
+        ],
+        "schedule": ["every month"]
+      }
+    ]
+}
