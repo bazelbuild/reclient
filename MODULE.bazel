@@ -69,6 +69,7 @@ bazel_dep(name = "grpc", version = "1.63.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "glog", version = "0.7.0", repo_name = "com_github_google_glog")
 bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
 bazel_dep(name = "googletest", version = "1.14.0.bcr.1", repo_name = "com_google_googletest")
+bazel_dep(name = "c-ares", version = "1.16.1")
 
 gclient_repository = use_repo_rule("//:gclient.bzl", "gclient_repository")
 
