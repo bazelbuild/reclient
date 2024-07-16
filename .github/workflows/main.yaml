@@ -61,5 +61,9 @@ jobs:
           Add-Content $env:GITHUB_ENV "BAZEL_SH=C:\MSYS64\usr\bin\bash.exe"
           echo C:\MSYS64\usr\bin | Out-File -FilePath $env:GITHUB_PATH -Append
           echo C:\msys64\mingw64\bin | Out-File -FilePath $env:GITHUB_PATH -Append
-      - name: Bazel Build
-        run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true --verbose_failures //:artifacts.tar || bazelisk query @@bazel_tools~cc_configure_extension~local_config_cc//... --output=build
+      - if: runner.os == 'macOS'
+        name: Bazel Build (mac)
+        run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true --verbose_failures --copt=-isystem/usr/local/include //:artifacts.tar || bazelisk query @@bazel_tools~cc_configure_extension~local_config_cc//... --output=build
+      - if: runner.os != 'macOS'
+        name: Bazel Build
+        run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true //:artifacts.tar
