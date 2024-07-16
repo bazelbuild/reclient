@@ -15,15 +15,31 @@ jobs:
     strategy:
       matrix:
         includescanner: ["goma", "clangscandeps"]
-        os: ["ubuntu-20.04", "macos-13", "windows-2019"]
-    runs-on: ${{ matrix.os }}
+        os:
+          - name: ubuntu-20.04
+          - name: macos-14
+            cpu: darwin_x86_64
+            platform: darwin_amd64_cgo
+          - name: macos-14
+            cpu: darwin_arm64
+            platform: darwin_arm64_cgo
+          - name: windows-2019
+
+    runs-on: ${{ matrix.os.name }}
+    continue-on-error: true # Allow other marix jobs to complete if one fails
     steps:
     # Clean up unused tools to have more disk space in the GitHub hosted runner.
       - if: runner.os == 'Linux'
         name: Free disk space
-        run:
+        run: |
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf /usr/local/lib/android
+      - if: runner.os == 'macOS'
+        name: Free disk space
+        run: |
+            sudo rm -rf "/Applications/Visual Studio.app"
+            sudo rm -rf "/Applications/Visual Studio 2019.app"
+            sudo rm -rf "/Users/runner/Library/Android/sdk"
       - name: Checkout
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
@@ -36,10 +52,14 @@ jobs:
           bazelisk-cache: true
           # Store build cache per workflow.
           disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
-          # Share repository cache between workflows with the same image version.
-          # Invalidating on image version is required because the local toolchain
-          # needs to be regenerated for new image versions.
-          repository-cache: ${{ env.ImageVersion }}
+          # Share repository cache between workflows.
+          repository-cache: true
+      - if: matrix.os.cpu
+        name: Set --cpu
+        run: echo "--cpu=${{ matrix.os.cpu }}" >> /Users/runner/.bazelrc
+      - if: matrix.os.platform
+        name: Set --platforms
+        run: echo "--platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os.platform }}" >> /Users/runner/.bazelrc
 
       # Checkout the depot tools they are needed by the goma repository
       - if: runner.os != 'Windows'
