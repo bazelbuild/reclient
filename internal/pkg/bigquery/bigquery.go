@@ -74,7 +74,10 @@ func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *o
 	if err != nil {
 		return nil, cleanup, err
 	}
-	return client.Dataset(dataset).Table(table).Inserter(), client.Close, nil
+	inserter = client.Dataset(dataset).Table(table).Inserter()
+	inserter.SkipInvalidRows = true
+	inserter.IgnoreUnknownValues = true
+	return inserter, client.Close, nil
 }
 
 // BQSpec defines which bigquery table the LogRecords will be saved.
