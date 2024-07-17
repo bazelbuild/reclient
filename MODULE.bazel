@@ -172,6 +172,12 @@ go_deps.gazelle_override(
     ],
     path = "github.com/googleapis/googleapis",
 )
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:resolve go github.com/GoogleCloudPlatform/protoc-gen-bq-schema/protos //:protos_go_proto",
+    ],
+    path = "github.com/GoogleCloudPlatform/protoc-gen-bq-schema",
+)
 
 ### All *direct* Go dependencies of the module have to be listed explicitly.
 use_repo(

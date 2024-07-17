@@ -26,7 +26,7 @@ Example invocation (assuming the bigquery table already exists):
 
 If you don't have a bigquery table yet, you can create it using the following steps:
 
- 1. Run scripts/gen_reproxy_log_big_query_schema.sh
+ 1. Run bazelisk build //api/log:log_bq_schema_proto
 
  2. Run the following command using "bq" tool to create table:
 
@@ -35,7 +35,7 @@ If you don't have a bigquery table yet, you can create it using the following st
     --expiration 600 \
     `# Format: <project-id>:<dataset-id>.<table-id>` \
     foundry-x-experiments:reproxylogs.reproxy_log_1 \
-    `pwd`/reproxy_log_bigquery_schema/log/log.schema
+    bazel-bin/api/log/log.schema
 
 Note: It can take upto 5mins for the bigquery table to become active
 after it is created.

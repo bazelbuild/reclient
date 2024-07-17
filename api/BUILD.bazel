@@ -1,0 +1,15 @@
+load("@rules_proto//proto:defs.bzl", "proto_lang_toolchain")
+
+# Defines a proto toolchain for using the protoc-gen-bq-schema plugin
+# This target should not be used anywhere except for the definition of bq_schema_proto_library
+# Documentation for this is hard to find, best to just read the implementation
+# of this rule and of proto_common.compile in https://github.com/bazelbuild/bazel/blob/7.1.2/src/main/starlark/builtins_bzl/common/proto/
+proto_lang_toolchain(
+    name = "bq_schema_proto_lang_toolchain",
+    command_line = "--bq-schema_out=%s/api",  # %s will be substituted for the bazel-bin directory
+    output_files = "multiple",  # multiple is required as protoc-gen-bq-schema expects a base directory as an output flag not a single file
+    plugin = "@com_github_googlecloudplatform_protoc_gen_bq_schema//:protoc-gen-bq-schema",
+    plugin_format_flag = "--plugin=protoc-gen-bq-schema=%s",  # %s will be substituted for the plugin executable
+    runtime = "@com_google_protobuf//:protobuf",
+    visibility = ["//api:__subpackages__"],
+)

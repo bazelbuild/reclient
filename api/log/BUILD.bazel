@@ -1,6 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//api:defs.bzl", "bq_schema_proto_library")
 load("//tools:build_defs.bzl", "go_proto_checkedin_test")
 
 # gazelle:resolve proto go/api/command/command.proto @com_github_bazelbuild_remote_apis_sdks//go/api/command:cmd_proto
@@ -41,4 +42,9 @@ go_library(
     embed = [":log_go_proto"],
     importpath = "github.com/bazelbuild/reclient/api/log",
     visibility = ["//visibility:public"],
+)
+
+bq_schema_proto_library(
+    name = "log_bq_schema_proto",
+    src = ":log_proto",
 )
