@@ -48,7 +48,9 @@ build:linux --cxxopt=-Wuninitialized --host_cxxopt=-Wuninitialized
 # The protobuf cc library version we use has warnings on some versions of xcode
 # We can probably remove this once we update our proto version
 build:macos --cxxopt=-Wno-unknown-warning-option --cxxopt=-Wno-deprecated-builtins --host_cxxopt=-Wno-unknown-warning-option --host_cxxopt=-Wno-deprecated-builtins
-
+# Building c-ares (a dependency of grpc) fails to link on github action runners if this is not specified
+# Inspired by https://github.com/bazelbuild/bazel-central-registry/blob/main/modules/grpc/1.48.1.bcr.3/presubmit.yml
+build:macos --copt=-isystem/usr/local/include --host_copt=-isystem/usr/local/include
 
 ## use BAZEL_LLVM on windows
 ## http://docs.bazel.build/versions/master/windows.html#bulid-c-with-clang

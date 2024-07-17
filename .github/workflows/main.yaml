@@ -35,12 +35,10 @@ jobs:
         with:
           # Avoid downloading Bazel every time.
           bazelisk-cache: true
-          # Disk and repository caches are disabled on mac due to some build errors with c-ares~/ares* symbols when they are used.
-          # Store build cache per workflow unless running on mac.
-          # See https://docs.github.com/en/actions/learn-github-actions/expressions#format for format function syntax
-          disk-cache: ${{ runner.os != 'macOS' && format('{0} {1}', github.workflow, matrix.includescanner) || false }}
-          # Use repository cache unless running on mac.
-          repository-cache: ${{ runner.os != 'macOS' }}
+          # Store build cache per workflow.
+          disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
+          # Share repository cache between workflows
+          repository-cache: true
 
       # Checkout the depot tools they are needed by the goma repository
       - if: runner.os != 'Windows'
@@ -61,9 +59,5 @@ jobs:
           Add-Content $env:GITHUB_ENV "BAZEL_SH=C:\MSYS64\usr\bin\bash.exe"
           echo C:\MSYS64\usr\bin | Out-File -FilePath $env:GITHUB_PATH -Append
           echo C:\msys64\mingw64\bin | Out-File -FilePath $env:GITHUB_PATH -Append
-      - if: runner.os == 'macOS'
-        name: Bazel Build (mac)
-        run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true --verbose_failures --copt=-isystem/usr/local/include //:artifacts.tar || bazelisk query @@bazel_tools~cc_configure_extension~local_config_cc//... --output=build
-      - if: runner.os != 'macOS'
-        name: Bazel Build
+      - name: Bazel Build
         run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true //:artifacts.tar
