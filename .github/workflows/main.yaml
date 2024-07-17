@@ -60,9 +60,9 @@ jobs:
           Add-Content $env:GITHUB_ENV "BAZEL_SH=C:\MSYS64\usr\bin\bash.exe"
           echo C:\MSYS64\usr\bin | Out-File -FilePath $env:GITHUB_PATH -Append
           echo C:\msys64\mingw64\bin | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: build ares
+        run: bazelisk build @com_github_cares_cares//:ares --subcommands
       - name: query ares
         run: bazelisk aquery @com_github_cares_cares//:ares
-      - name: dump configs
-        run: bazelisk config --dump_all
       - name: Bazel Build
         run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true //:artifacts.tar
