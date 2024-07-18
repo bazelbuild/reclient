@@ -15,16 +15,17 @@ jobs:
     strategy:
       matrix:
         includescanner: ["goma", "clangscandeps"]
-        os: ["ubuntu-20.04", "macos-14", "windows-2019"]
-        include:
-          - os: macos-14
+        os:
+          - name: ubuntu-20.04
+          - name: macos-14
             cpu: darwin_x86_64
             platform: darwin_amd64_cgo
-          - os: macos-14
+          - name: macos-14
             cpu: darwin_arm64
             platform: darwin_arm64_cgo
+          - name: windows-2019
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os.name }}
     continue-on-error: true # Allow other marix jobs to complete if one fails
     steps:
     # Clean up unused tools to have more disk space in the GitHub hosted runner.
@@ -47,10 +48,8 @@ jobs:
           disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
           # Share repository cache between workflows.
           repository-cache: true
-          # Set mac cross compile flags if building for mac x86
-          bazelrc: build --cpu=darwin_x86_64 --platforms=@io_bazel_rules_go//go/toolchain:darwin_amd64_cgo
-      - if: runner.os == 'macOS'
-        run: echo "--cpu=${{ matrix.cpu }} --platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.platform }}" >> /Users/runner/.bazelrc
+      - if: matrix.os.cpu
+        run: echo "--cpu=${{ matrix.os.cpu }} --platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os.platform }}" >> /Users/runner/.bazelrc
       # Checkout the depot tools they are needed by the goma repository
       - if: runner.os != 'Windows'
         name: Checkout depot tools
