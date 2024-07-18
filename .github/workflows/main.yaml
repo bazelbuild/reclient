@@ -14,8 +14,8 @@ jobs:
   bazel-build:
     strategy:
       matrix:
-        includescanner: ["goma"]
-        os: ["macos-14"]
+        includescanner: ["goma", "clangscandeps"]
+        os: ["ubuntu-20.04", "macos-14", "windows-2019"]
     runs-on: ${{ matrix.os }}
     continue-on-error: true # Allow other marix jobs to complete if one fails
     steps:
@@ -36,10 +36,9 @@ jobs:
           # Avoid downloading Bazel every time.
           bazelisk-cache: true
           # Store build cache per workflow.
-          disk-cache: false
-          # Share repository cache between workflows
-          repository-cache: false
-          bazelrc: import %workspace%/.github/workflows/githubci.bazelrc
+          disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
+          # Share repository cache between workflows.
+          repository-cache: true
 
       # Checkout the depot tools they are needed by the goma repository
       - if: runner.os != 'Windows'
@@ -48,9 +47,6 @@ jobs:
       - if: runner.os != 'Windows'
         name: Update PATH
         run: echo "$(pwd)/depot_tools" >> $GITHUB_PATH
-      - if: runner.os == 'macOS'
-        name: Update PATH
-        run: echo "PWD=/proc/self/cwd" >> $GITHUB_ENV
       - if: runner.os == 'Windows'
         name: Checkout depot tools (win)
         run: git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git C:\src\depot_tools
@@ -63,9 +59,5 @@ jobs:
           Add-Content $env:GITHUB_ENV "BAZEL_SH=C:\MSYS64\usr\bin\bash.exe"
           echo C:\MSYS64\usr\bin | Out-File -FilePath $env:GITHUB_PATH -Append
           echo C:\msys64\mingw64\bin | Out-File -FilePath $env:GITHUB_PATH -Append
-      - name: build ares
-        run: bazelisk build @com_github_cares_cares//:ares --copt=-v --subcommands
-      - name: query ares
-        run: bazelisk aquery @com_github_cares_cares//:ares
       - name: Bazel Build
-        run: bazelisk build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true //:artifacts.tar
+        run: bazel build --config=${{ matrix.includescanner }} --jobs=50 --//:use_android_glibc=true //:artifacts.tar

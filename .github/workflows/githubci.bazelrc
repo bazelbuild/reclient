@@ -1,3 +1,0 @@
-# Building c-ares (a dependency of grpc) fails to link on github action runners if this is not specified
-# Inspired by https://github.com/bazelbuild/bazel-central-registry/blob/main/modules/grpc/1.48.1.bcr.3/presubmit.yml
-# build:macos --copt=-isystem/usr/local/include --host_copt=-isystem/usr/local/include
