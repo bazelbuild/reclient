@@ -14,8 +14,8 @@ jobs:
   bazel-build:
     strategy:
       matrix:
-        includescanner: ["goma", "clangscandeps"]
-        os: ["ubuntu-20.04", "macos-13", "windows-2019"]
+        includescanner: ["goma"]
+        os: ["macos-13"]
     runs-on: ${{ matrix.os }}
     continue-on-error: true # Allow other marix jobs to complete if one fails
     steps:
@@ -64,7 +64,7 @@ jobs:
           echo C:\MSYS64\usr\bin | Out-File -FilePath $env:GITHUB_PATH -Append
           echo C:\msys64\mingw64\bin | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: build ares
-        run: bazelisk build @com_github_cares_cares//:ares --subcommands
+        run: bazelisk build @com_github_cares_cares//:ares --copt=-v --subcommands
       - name: query ares
         run: bazelisk aquery @com_github_cares_cares//:ares
       - name: Bazel Build
