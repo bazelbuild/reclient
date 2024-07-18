@@ -36,9 +36,9 @@ jobs:
           # Avoid downloading Bazel every time.
           bazelisk-cache: true
           # Store build cache per workflow.
-          disk-cache: ${{ github.workflow }} ${{ matrix.includescanner }}
+          disk-cache: false
           # Share repository cache between workflows
-          repository-cache: true
+          repository-cache: false
           bazelrc: import %workspace%/.github/workflows/githubci.bazelrc
 
       # Checkout the depot tools they are needed by the goma repository
