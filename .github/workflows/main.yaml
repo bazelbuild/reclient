@@ -37,11 +37,11 @@ jobs:
       - if: runner.os == 'macOS'
         name: Free disk space
         run: |
-            df / -h
+            df /
             sudo rm -rf "/Applications/Visual Studio.app"
             sudo rm -rf "/Applications/Visual Studio 2019.app"
             sudo rm -rf "/Users/runner/Library/Android/sdk"
-            df / -h
+            df /
       - name: Checkout
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
