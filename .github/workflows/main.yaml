@@ -31,12 +31,12 @@ jobs:
     # Clean up unused tools to have more disk space in the GitHub hosted runner.
       - if: runner.os == 'Linux'
         name: Free disk space
-        run:
+        run: |
             sudo rm -rf /usr/share/dotnet
             sudo rm -rf /usr/local/lib/android
       - if: runner.os == 'macOS'
         name: Free disk space
-        run:
+        run: |
             df / -h
             sudo rm -rf "/Applications/Visual Studio.app"
             sudo rm -rf "/Applications/Visual Studio 2019.app"
