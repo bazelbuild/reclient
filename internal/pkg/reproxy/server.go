@@ -852,6 +852,8 @@ func (s *Server) runLERC(ctx context.Context, a *action) {
 		return
 	}
 	log.V(1).Infof("%v: Inputs: %v", a.cmd.Identifiers.ExecutionID, a.cmd.InputSpec.Inputs)
+	log.V(1).Infof("%v: Outputs: %v", a.cmd.Identifiers.ExecutionID, a.cmd.OutputFiles)
+	log.V(1).Infof("%v: dFile: %v", a.cmd.Identifiers.ExecutionID, a.dFile)
 	// Since this is LERC mode, add dependency file outputs to the command since we will
 	// generate it locally.
 	a.addDepsFileOutput()

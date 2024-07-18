@@ -790,6 +790,8 @@ func (a *action) populateCommandIO(ctx context.Context, ip *inputprocessor.Input
 func (a *action) addDepsFileOutput() {
 	if a.depsFile != "" {
 		a.cmd.OutputFiles = append(a.cmd.OutputFiles, pathtranslator.RelToWorkingDir(a.cmd.ExecRoot, a.cmd.WorkingDir, a.depsFile))
+	} else {
+		log.Warningf("%v: no depsFile to process", a.cmd.Identifiers.ExecutionID)
 	}
 }
 
