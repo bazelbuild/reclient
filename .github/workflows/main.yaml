@@ -48,6 +48,9 @@ jobs:
       - if: runner.os != 'Windows'
         name: Update PATH
         run: echo "$(pwd)/depot_tools" >> $GITHUB_PATH
+      - if: runner.os == 'macOS'
+        name: Update PATH
+        run: echo "PWD=/proc/self/cwd" >> $GITHUB_ENV
       - if: runner.os == 'Windows'
         name: Checkout depot tools (win)
         run: git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git C:\src\depot_tools
