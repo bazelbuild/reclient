@@ -85,7 +85,7 @@ type Logger struct {
 	remoteDisabled bool
 	stats          stats.StatCollector
 	mi             *ignoremismatch.MismatchIgnorer
-	e              monitoring.StatExporter
+	exporter       monitoring.StatExporter
 
 	runningActions     int32
 	peakRunningActions int32
@@ -94,7 +94,7 @@ type Logger struct {
 	mu               sync.RWMutex
 	open             bool
 	resourceUsage    map[string][]int64
-	u                *usage.PsutilSampler
+	psutilSampler    *usage.PsutilSampler
 	cancelSamplerCtx context.CancelFunc
 
 	// qps indicates the rate of completed actions.
@@ -148,8 +148,8 @@ func (e *endActionEvent) apply(l *Logger) {
 	if !e.lr.open {
 		return
 	}
-	if l.e != nil {
-		l.e.ExportActionMetrics(context.Background(), e.lr.LogRecord, l.remoteDisabled)
+	if l.exporter != nil {
+		l.exporter.ExportActionMetrics(context.Background(), e.lr.LogRecord, l.remoteDisabled)
 	}
 	// Process any mismatches to be ignored for this log record.
 	l.mi.ProcessLogRecord(e.lr.LogRecord)
@@ -350,10 +350,10 @@ func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ig
 		},
 		stats:            s,
 		mi:               mi,
-		e:                e,
+		exporter:         e,
 		open:             true,
 		completedActions: make(map[lpb.CompletionStatus]int32),
-		u:                u,
+		psutilSampler:    u,
 		items:            make(chan *bigquerytranslator.Item, 1000),
 		bqSpec:           bqSpec,
 	}
@@ -365,7 +365,7 @@ func newLogger(format Format, recs, info *os.File, s stats.StatCollector, mi *ig
 func (l *Logger) startBackgroundProcess() {
 	l.wg.Add(1)
 	go l.processEvents()
-	if l.u != nil {
+	if l.psutilSampler != nil {
 		ctx, cancel := context.WithCancel(context.Background())
 		l.cancelSamplerCtx = cancel
 		l.wg.Add(1)
@@ -663,7 +663,7 @@ func (l *Logger) processUsageData(ctx context.Context) {
 			l.wg.Done()
 			return
 		case <-ticker.C:
-			l.collectResourceUsageSamples(usage.Sample(l.u))
+			l.collectResourceUsageSamples(usage.Sample(l.psutilSampler))
 		}
 	}
 }
