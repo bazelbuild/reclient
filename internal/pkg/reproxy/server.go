@@ -37,7 +37,6 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
-	"github.com/bazelbuild/reclient/internal/pkg/version"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -110,6 +109,7 @@ type Server struct {
 	RacingBias                float64
 	DownloadTmp               string
 	MaxHoldoff                time.Duration // Maximum amount of time to wait for downloads before starting racing.
+	ReclientVersion           string
 	StartupCancelFn           func()
 	numActions                *windowedCount
 	numFallbacks              *windowedCount
@@ -418,7 +418,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 	cmd := command.FromProto(req.Command)
 	cmd.Identifiers.ExecutionID = executionID
 	cmd.Identifiers.ToolName = "re-client"
-	cmd.Identifiers.ToolVersion = version.CurrentVersion()
+	cmd.Identifiers.ToolVersion = s.ReclientVersion
 	if err := cmd.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -435,7 +435,7 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		// For LERC actions, there's a chance we may have reclient bugs.
 		// We want to ensure we don't persist those across actions.
 		// We also want to add version if the option to do so is set to true.
-		cmd.Platform[platformVersionKey] = version.CurrentVersion()
+		cmd.Platform[platformVersionKey] = s.ReclientVersion
 	}
 
 	if len(s.CacheSilo) > 0 {

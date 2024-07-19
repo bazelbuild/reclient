@@ -28,7 +28,6 @@ import (
 	lpb "github.com/bazelbuild/reclient/api/log"
 	"github.com/bazelbuild/reclient/internal/pkg/event"
 	st "github.com/bazelbuild/reclient/internal/pkg/stats"
-	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
@@ -140,9 +139,10 @@ func TestExportMetrics(t *testing.T) {
 			sp.FatalExit = tc.fatalExit
 			r := &stubRecorder{reports: make([]*metricReport, 0)}
 			e := &Exporter{
-				project:  "fake-project",
-				recorder: r,
-				ts:       nil,
+				project:         "fake-project",
+				reclientVersion: "0.1.2.abcdefg",
+				recorder:        r,
+				ts:              nil,
 			}
 
 			err := e.initCloudMonitoring(context.Background())
@@ -165,7 +165,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						labelsKey.Name():         "[type=tool]",
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteStatusKey.Name():   "CACHE_HIT",
 						statusKey.Name():         "CACHE_HIT",
 						remoteExitCodeKey.Name(): "0",
@@ -179,7 +179,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						labelsKey.Name():         "[type=tool]",
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteStatusKey.Name():   "CACHE_HIT",
 						statusKey.Name():         "CACHE_HIT",
 						remoteExitCodeKey.Name(): "0",
@@ -193,7 +193,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						labelsKey.Name():         "[type=tool]",
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteStatusKey.Name():   "SUCCESS",
 						statusKey.Name():         "SUCCESS",
 						remoteExitCodeKey.Name(): "0",
@@ -207,7 +207,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						labelsKey.Name():         "[type=tool]",
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteStatusKey.Name():   "SUCCESS",
 						statusKey.Name():         "SUCCESS",
 						remoteExitCodeKey.Name(): "0",
@@ -221,7 +221,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						labelsKey.Name():         "[type=tool]",
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteStatusKey.Name():   "NON_ZERO_EXIT",
 						statusKey.Name():         "SUCCESS",
 						remoteExitCodeKey.Name(): "99",
@@ -235,7 +235,7 @@ func TestExportMetrics(t *testing.T) {
 					Tags: map[string]string{
 						labelsKey.Name():         "[type=tool]",
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteStatusKey.Name():   "NON_ZERO_EXIT",
 						statusKey.Name():         "SUCCESS",
 						remoteExitCodeKey.Name(): "99",
@@ -248,7 +248,7 @@ func TestExportMetrics(t *testing.T) {
 					Val:  1,
 					Tags: map[string]string{
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						statusKey.Name():         wantBuildStatus,
 						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
 					},
@@ -258,7 +258,7 @@ func TestExportMetrics(t *testing.T) {
 					Val:  10,
 					Tags: map[string]string{
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
 					},
 				},
@@ -267,7 +267,7 @@ func TestExportMetrics(t *testing.T) {
 					Val:  1.0 / 3.0,
 					Tags: map[string]string{
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
 					},
 				},
@@ -276,7 +276,7 @@ func TestExportMetrics(t *testing.T) {
 					Val:  500,
 					Tags: map[string]string{
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
 					},
 				},
@@ -285,7 +285,7 @@ func TestExportMetrics(t *testing.T) {
 					Val:  200,
 					Tags: map[string]string{
 						osFamilyKey.Name():       runtime.GOOS,
-						versionKey.Name():        version.CurrentVersion(),
+						versionKey.Name():        "0.1.2.abcdefg",
 						remoteDisabledKey.Name(): strconv.FormatBool(tc.remoteDisabled),
 					},
 				},

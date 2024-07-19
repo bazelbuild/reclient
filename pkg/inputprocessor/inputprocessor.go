@@ -125,6 +125,7 @@ type Options struct {
 	IPTimeout          time.Duration
 	DepsScannerAddress string
 	ProxyServerAddress string
+	ReclientVersion    string
 }
 
 // TODO(b/169675226): Replace usage with sync.OnceFunc when we upgrade to go 1.21
@@ -146,7 +147,7 @@ func NewInputProcessor(ctx context.Context, executor Executor, resMgr *localreso
 	ip := newInputProcessor(depScanner, opt.IPTimeout, opt.CppLinkDeepScan, executor, resMgr, fmc, l)
 	cleanup := func() {}
 	if useDepsCache && (!depScanner.Capabilities().GetCaching() || features.GetConfig().ExperimentalGomaDepsCache) {
-		ip.depsCache, cleanup = newDepsCache(opt.CacheDir, l)
+		ip.depsCache, cleanup = newDepsCache(opt.CacheDir, opt.ReclientVersion, l)
 	}
 	return ip, onceFunc(func() {
 		cleanup()
@@ -173,8 +174,8 @@ func newInputProcessor(ds cppcompile.CPPDependencyScanner, depScanTimeout time.D
 	}
 }
 
-func newDepsCache(depsCacheDir string, l *logger.Logger) (*depscache.Cache, func()) {
-	dc := depscache.New()
+func newDepsCache(depsCacheDir, reclientVersion string, l *logger.Logger) (*depscache.Cache, func()) {
+	dc := depscache.New(reclientVersion)
 	dc.Logger = l
 	go dc.LoadFromDir(depsCacheDir)
 	return dc, func() {

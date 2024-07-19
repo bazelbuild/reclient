@@ -38,6 +38,8 @@ var (
 	strSliceCmp = cmpopts.SortSlices(func(a, b string) bool { return a < b })
 )
 
+const fakeVersion = "0.1.2.abcdefg"
+
 func TestComputeSpec(t *testing.T) {
 	tests := []struct {
 		name                 string
@@ -172,7 +174,7 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 	c := &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(),
+		DepsCache:        depscache.New(fakeVersion),
 	}
 
 	existingFiles := []string{
@@ -216,7 +218,7 @@ func TestComputeSpecWithDepsCache(t *testing.T) {
 	c = &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(),
+		DepsCache:        depscache.New(fakeVersion),
 	}
 	c.DepsCache.LoadFromDir(er)
 	got, err = inputprocessor.Compute(c, opts)
@@ -246,7 +248,7 @@ func TestComputeSpecWithDepsCache_ResourceDirChanged(t *testing.T) {
 			FileMetadataCache: fmc,
 			Executor:          &stubExecutor{outStr: "/first/resource/dir"},
 		},
-		DepsCache: depscache.New(),
+		DepsCache: depscache.New(fakeVersion),
 	}
 
 	existingFiles := []string{
@@ -294,7 +296,7 @@ func TestComputeSpecWithDepsCache_ResourceDirChanged(t *testing.T) {
 			FileMetadataCache: fmc,
 			Executor:          &stubExecutor{outStr: "/second/resource/dir"},
 		},
-		DepsCache: depscache.New(),
+		DepsCache: depscache.New(fakeVersion),
 	}
 	c.DepsCache.LoadFromDir(er)
 	got, err = inputprocessor.Compute(c, opts)
@@ -604,7 +606,7 @@ func TestComputeSpecEventTimes(t *testing.T) {
 	c := &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(),
+		DepsCache:        depscache.New(fakeVersion),
 	}
 
 	existingFiles := []string{
@@ -644,7 +646,7 @@ func TestComputeSpecEventTimes(t *testing.T) {
 	c = &Preprocessor{
 		CPPDepScanner:    s,
 		BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc},
-		DepsCache:        depscache.New(),
+		DepsCache:        depscache.New(fakeVersion),
 	}
 	c.DepsCache.LoadFromDir(er)
 	wg.Add(1)

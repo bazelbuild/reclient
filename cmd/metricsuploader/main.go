@@ -147,7 +147,7 @@ func uploadToCloudMonitoring(ctx context.Context, s *spb.Stats, ts *oauth.TokenS
 	if err := monitoring.SetupViews(labels); err != nil {
 		return fmt.Errorf("failed to initialize cloud monitoring views: %w", err)
 	}
-	e, err := monitoring.NewExporter(ctx, *metricsProject, *metricsPrefix, *metricsNamespace, ts)
+	e, err := monitoring.NewExporter(ctx, *metricsProject, *metricsPrefix, *metricsNamespace, version.CurrentVersion(), ts)
 	if err != nil {
 		return fmt.Errorf("failed to initialize cloud monitoring exporter: %w", err)
 	}

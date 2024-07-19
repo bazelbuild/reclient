@@ -30,7 +30,6 @@ import (
 	spb "github.com/bazelbuild/reclient/api/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/labels"
-	"github.com/bazelbuild/reclient/internal/pkg/version"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	log "github.com/golang/glog"
@@ -102,6 +101,8 @@ type Exporter struct {
 	prefix string
 	// MetricNamespace is the namespace of the exported metrics.
 	namespace string
+	// reclientVersion is the current version of reclient.
+	reclientVersion string
 	// recorder is responsible for recording metrics.
 	recorder recorder
 	// ts is a token source to use for authenticating to the monitoring service.
@@ -109,13 +110,14 @@ type Exporter struct {
 }
 
 // NewExporter returns a new Cloud monitoring metrics exporter.
-func NewExporter(ctx context.Context, project, prefix, namespace string, ts *oauth.TokenSource) (*Exporter, error) {
+func NewExporter(ctx context.Context, project, prefix, namespace, reclientVersion string, ts *oauth.TokenSource) (*Exporter, error) {
 	e := &Exporter{
-		project:   project,
-		prefix:    prefix,
-		namespace: namespace,
-		recorder:  &stackDriverRecorder{},
-		ts:        ts,
+		project:         project,
+		prefix:          prefix,
+		namespace:       namespace,
+		reclientVersion: reclientVersion,
+		recorder:        &stackDriverRecorder{},
+		ts:              ts,
 	}
 	if err := e.initCloudMonitoring(ctx); err != nil {
 		return nil, err
@@ -228,7 +230,7 @@ func (e *Exporter) ExportActionMetrics(ctx context.Context, r *lpb.LogRecord, re
 	aCtx := e.recorder.tagsContext(ctx, staticKeys)
 	aCtx = e.recorder.tagsContext(aCtx, map[tag.Key]string{
 		osFamilyKey: runtime.GOOS,
-		versionKey:  version.CurrentVersion(),
+		versionKey:  e.reclientVersion,
 	})
 	times := r.GetLocalMetadata().GetEventTimes()
 	var latency float64
@@ -260,7 +262,7 @@ func (e *Exporter) ExportBuildMetrics(ctx context.Context, sp *spb.Stats) {
 
 	aCtx = e.recorder.tagsContext(aCtx, map[tag.Key]string{
 		osFamilyKey:       runtime.GOOS,
-		versionKey:        version.CurrentVersion(),
+		versionKey:        e.reclientVersion,
 		remoteDisabledKey: remoteDisabledFlagValue(sp),
 	})
 	if numRecs == 0 {

@@ -204,6 +204,7 @@ func main() {
 		})
 		s.ProxyInfo = append(s.ProxyInfo, spi)
 		s.FatalExit = fatalLogsExist(logDir)
+		s.ToolVersion = version.CurrentVersion()
 		log.Infof("Writing stats to %v", *outputDir)
 		if err := stats.WriteStats(s, *outputDir); err != nil {
 			log.Errorf("WriteStats(%s) failed: %v", *outputDir, err)

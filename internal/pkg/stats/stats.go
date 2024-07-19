@@ -30,7 +30,6 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
 	"github.com/bazelbuild/reclient/internal/pkg/protoencoding"
 	"github.com/bazelbuild/reclient/internal/pkg/reproxystatus"
-	"github.com/bazelbuild/reclient/internal/pkg/version"
 	log "github.com/golang/glog"
 
 	"cloud.google.com/go/bigquery"
@@ -504,7 +503,6 @@ func WriteStats(sPb *spb.Stats, outputdir string) error {
 		return err
 	}
 	defer f.Close()
-	sPb.ToolVersion = version.CurrentVersion()
 	f.WriteString(protoencoding.TextWithIndent.Format(sPb))
 	blob, err := proto.Marshal(sPb)
 	if err != nil {

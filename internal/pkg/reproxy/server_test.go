@@ -35,7 +35,6 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/stats"
 	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
-	"github.com/bazelbuild/reclient/internal/pkg/version"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -68,6 +67,7 @@ var cmpLogRecordsOpts = []cmp.Option{
 
 const (
 	executablePath = "fake-exec"
+	fakeVersion    = "0.1.2.abcdefg"
 )
 
 var (
@@ -1072,6 +1072,7 @@ func TestLERCNoDeps(t *testing.T) {
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1159,7 +1160,7 @@ func TestLERCNoDeps(t *testing.T) {
 		InputSpec:   &command.InputSpec{},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	wantRecs := []*lpb.LogRecord{
@@ -1221,6 +1222,7 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1317,7 +1319,7 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 		InputSpec:   &command.InputSpec{},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	wantCmd2 := &command.Command{
 		Identifiers: &command.Identifiers{},
@@ -1325,7 +1327,7 @@ func TestLERC_UsesActionEnvironmentVariables(t *testing.T) {
 		InputSpec:   &command.InputSpec{},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd1)
 	setPlatformOSFamily(wantCmd2)
@@ -1388,6 +1390,7 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1505,7 +1508,7 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 		},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	wantCmd2 := &command.Command{
 		Identifiers: &command.Identifiers{},
@@ -1517,7 +1520,7 @@ func TestLERC_ChangeInAllowlistedEnvVariablesCausesInvalidation(t *testing.T) {
 		},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd1)
 	setPlatformOSFamily(wantCmd2)
@@ -1580,6 +1583,7 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1683,7 +1687,7 @@ func TestLERCNoDeps_CanonicalWorkingDir(t *testing.T) {
 		WorkingDir:       wd,
 		RemoteWorkingDir: toRemoteWorkingDir(wd),
 		OutputFiles:      []string{abOutPath},
-		Platform:         map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:         map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	wantRecs := []*lpb.LogRecord{
@@ -1745,6 +1749,7 @@ func TestLERCLocalFailure(t *testing.T) {
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
 		FileMetadataStore: fmc,
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1814,7 +1819,7 @@ func TestLERCLocalFailure(t *testing.T) {
 		InputSpec:   &command.InputSpec{},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	wantRecs := []*lpb.LogRecord{
@@ -1855,6 +1860,7 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
 		FileMetadataStore: fmc,
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -1942,7 +1948,7 @@ func TestLERCNoDeps_NoAcceptCached(t *testing.T) {
 		InputSpec:   &command.InputSpec{},
 		ExecRoot:    env.ExecRoot,
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	wantRecs := []*lpb.LogRecord{
@@ -2041,6 +2047,7 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2088,7 +2095,7 @@ func TestLERCNonShallowValidCacheHit(t *testing.T) {
 			},
 		},
 		OutputFiles: []string{"foo.o", "foo.d"},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
@@ -2361,6 +2368,7 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 		FileMetadataStore: fmc,
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2408,7 +2416,7 @@ func TestLERCDepsValidCacheHit(t *testing.T) {
 			},
 		},
 		OutputFiles: []string{"foo.o", "foo.d", "foo.d.deps"},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
@@ -2504,6 +2512,7 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2551,7 +2560,7 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 			},
 		},
 		OutputFiles: []string{"foo.d", "foo.d.deps", "foo.o"},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
@@ -2705,6 +2714,7 @@ func TestLERCMismatches(t *testing.T) {
 		LocalPool:         NewLocalPool(executor, resMgr),
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -2757,7 +2767,7 @@ func TestLERCMismatches(t *testing.T) {
 			},
 		},
 		OutputFiles: []string{"foo.d", "foo.d.deps", "foo.o"},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(wantCmd)
 	res := &command.Result{Status: command.CacheHitResultStatus}
@@ -4324,6 +4334,7 @@ func TestLocalFallback(t *testing.T) {
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
 		FileMetadataStore: fmc,
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4360,7 +4371,7 @@ func TestLocalFallback(t *testing.T) {
 		ExecRoot:    env.ExecRoot,
 		InputSpec:   &command.InputSpec{},
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(cmd)
 	got, err := server.RunCommand(ctx, req)
@@ -4418,6 +4429,7 @@ func TestLocalFallback_EnvVariables(t *testing.T) {
 		MaxHoldoff:        time.Minute,
 		DownloadTmp:       t.TempDir(),
 		FileMetadataStore: fmc,
+		ReclientVersion:   fakeVersion,
 	}
 	server.Init()
 	server.SetInputProcessor(inputprocessor.NewInputProcessorWithStubDependencyScanner(&stubCPPDependencyScanner{}, false, nil, resMgr), func() {})
@@ -4484,7 +4496,7 @@ func TestLocalFallback_EnvVariables(t *testing.T) {
 		ExecRoot:    env.ExecRoot,
 		InputSpec:   &command.InputSpec{},
 		OutputFiles: []string{abOutPath},
-		Platform:    map[string]string{platformVersionKey: version.CurrentVersion()},
+		Platform:    map[string]string{platformVersionKey: fakeVersion},
 	}
 	setPlatformOSFamily(cmd)
 	wantRecs := []*lpb.LogRecord{

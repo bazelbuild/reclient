@@ -335,6 +335,7 @@ func main() {
 		MaxHoldoff:                time.Minute,
 		Logger:                    l,
 		StartupCancelFn:           cancelInit,
+		ReclientVersion:           version.CurrentVersion(),
 	}
 	server.Init()
 
@@ -347,6 +348,7 @@ func main() {
 		IPTimeout:          *ipTimeout,
 		DepsScannerAddress: *depsScannerAddress,
 		ProxyServerAddress: *serverAddr,
+		ReclientVersion:    version.CurrentVersion(),
 	}
 	go func() {
 		log.Infof("Setting up input processor")
@@ -532,7 +534,7 @@ func newExporter(ts *grpcOauth.TokenSource) (*monitoring.Exporter, error) {
 	if err := monitoring.SetupViews(labels); err != nil {
 		return nil, err
 	}
-	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, ts)
+	return monitoring.NewExporter(context.Background(), *metricsProject, *metricsPrefix, *metricsNamespace, version.CurrentVersion(), ts)
 }
 
 func getLogDir() string {

@@ -28,6 +28,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+const fakeVersion = "0.1.2.abcdefg"
+
 func TestSetGet(t *testing.T) {
 	er, cleanup := execroot.Setup(t, nil)
 	defer cleanup()
@@ -36,7 +38,7 @@ func TestSetGet(t *testing.T) {
 		filepath.Join(er, "bar"): []byte("#bar"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New()
+	dc := New(fakeVersion)
 	dc.LoadFromDir(er)
 	k := Key{
 		CommandDigest: "hash/123",
@@ -64,7 +66,7 @@ func TestSetGetBeforeLoaded(t *testing.T) {
 		filepath.Join(er, "bar"): []byte("#bar"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New()
+	dc := New(fakeVersion)
 	k := Key{
 		CommandDigest: "hash/123",
 		SrcFilePath:   filepath.Join(er, "foo"),
@@ -102,7 +104,7 @@ func TestWriteLoad(t *testing.T) {
 		chaPath: []byte("#cha \\\nbuz"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New()
+	dc := New(fakeVersion)
 	dc.LoadFromDir(er)
 	k1 := Key{
 		CommandDigest: "hash/123",
@@ -148,7 +150,7 @@ func TestWriteLoad(t *testing.T) {
 	}
 	time.Sleep(1 * time.Second)
 	filemetadata.ResetGlobalCache()
-	dc = New()
+	dc = New(fakeVersion)
 	dc.LoadFromDir(er)
 	deps, ok := dc.GetDeps(k1)
 	if !ok {
@@ -174,6 +176,37 @@ func TestWriteLoad(t *testing.T) {
 	}
 }
 
+func TestWriteLoadDifferentVersion(t *testing.T) {
+	er, cleanup := execroot.Setup(t, nil)
+	defer cleanup()
+	fooPath := filepath.Join(er, "foo")
+	barPath := filepath.Join(er, "bar")
+	files := map[string][]byte{
+		fooPath: []byte("#foo"),
+		barPath: []byte("#bar"),
+	}
+	execroot.AddFilesWithContent(t, "", files)
+	dc := New(fakeVersion)
+	dc.LoadFromDir(er)
+	k1 := Key{
+		CommandDigest: "hash/123",
+		SrcFilePath:   fooPath,
+	}
+	err := dc.SetDeps(k1, []string{barPath})
+	if err != nil {
+		t.Errorf("SetDeps(k1) returned error: %v", err)
+	}
+	dc.WriteToDisk(er)
+	time.Sleep(1 * time.Second)
+	filemetadata.ResetGlobalCache()
+	dc = New("0.1.3.hijklmnop")
+	dc.LoadFromDir(er)
+	_, ok := dc.GetDeps(k1)
+	if ok {
+		t.Errorf("GetDeps() did not fail")
+	}
+}
+
 func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 	er, cleanup := execroot.Setup(t, nil)
 	defer cleanup()
@@ -184,7 +217,7 @@ func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 		barPath: []byte("#bar"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New()
+	dc := New(fakeVersion)
 	dc.LoadFromDir(er)
 	k1 := Key{
 		CommandDigest: "hash/123",
@@ -207,7 +240,7 @@ func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 	execroot.AddFileWithContent(t, barPath, []byte("#bar2"))
 	time.Sleep(1 * time.Second)
 	filemetadata.ResetGlobalCache()
-	dc = New()
+	dc = New(fakeVersion)
 	dc.LoadFromDir(er)
 	// bar has changed, we should not get a cache hit.
 	deps, ok := dc.GetDeps(k1)
@@ -223,7 +256,7 @@ func TestWriteLoadKeysDependingOnSameFile(t *testing.T) {
 	dc.WriteToDisk(er)
 	time.Sleep(1 * time.Second)
 	filemetadata.ResetGlobalCache()
-	dc = New()
+	dc = New(fakeVersion)
 	dc.LoadFromDir(er)
 	deps, ok = dc.GetDeps(k2)
 	// k2 should still get a cache miss because it refers to the old version of bar.
@@ -246,7 +279,7 @@ func TestEviction(t *testing.T) {
 		quxPath: []byte("#qux"),
 	}
 	execroot.AddFilesWithContent(t, "", files)
-	dc := New()
+	dc := New(fakeVersion)
 	dc.LoadFromDir(er)
 	k1 := Key{
 		CommandDigest: "hash/123",
@@ -270,7 +303,7 @@ func TestEviction(t *testing.T) {
 	}
 	dc.WriteToDisk(er)
 	filemetadata.ResetGlobalCache()
-	dc = New()
+	dc = New(fakeVersion)
 	dc.MaxEntries = 2
 	dc.LoadFromDir(er)
 	wg := sync.WaitGroup{}
@@ -293,7 +326,7 @@ func TestEviction(t *testing.T) {
 	}
 	wg.Wait()
 	dc.WriteToDisk(er)
-	dc = New()
+	dc = New(fakeVersion)
 	dc.LoadFromDir(er)
 	wantKeys := []Key{privateKey(dc, k1), privateKey(dc, k3)}
 	gotKeys := make([]Key, 0)

@@ -27,7 +27,6 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/event"
 	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
-	"github.com/bazelbuild/reclient/internal/pkg/version"
 	log "github.com/golang/glog"
 	"google.golang.org/protobuf/proto"
 
@@ -48,11 +47,12 @@ type Key struct {
 
 // Cache is the deps cache.
 type Cache struct {
-	MaxEntries int
-	Logger     *logger.Logger
-	depsCache  map[Key][]*ppb.FileInfo
-	depsMu     sync.RWMutex
-	filesCache minimalFileCache
+	MaxEntries      int
+	Logger          *logger.Logger
+	reclientVersion string
+	depsCache       map[Key][]*ppb.FileInfo
+	depsMu          sync.RWMutex
+	filesCache      minimalFileCache
 	// last use time of a key
 	lutByKey map[Key]time.Time
 	lutMu    sync.Mutex
@@ -62,11 +62,12 @@ type Cache struct {
 }
 
 // New creates a new empty deps cache.
-func New() *Cache {
+func New(reclientVersion string) *Cache {
 	return &Cache{
-		MaxEntries: features.GetConfig().ExperimentalGomaDepsCacheSize,
-		depsCache:  make(map[Key][]*ppb.FileInfo),
-		lutByKey:   make(map[Key]time.Time),
+		MaxEntries:      features.GetConfig().ExperimentalGomaDepsCacheSize,
+		reclientVersion: reclientVersion,
+		depsCache:       make(map[Key][]*ppb.FileInfo),
+		lutByKey:        make(map[Key]time.Time),
 		filesCache: minimalFileCache{
 			files: make(map[string]fileInfo),
 		},
@@ -95,8 +96,8 @@ func (c *Cache) LoadFromDir(dir string) {
 		log.Errorf("Failed to parse cache file: %v", err)
 		return
 	}
-	if db.GetVersion() != version.CurrentVersion() {
-		log.Infof("Deps cache is invalid as it was generated from reproxy version %v, current reproxy version is %v", db.GetVersion(), version.CurrentVersion())
+	if db.GetVersion() != c.reclientVersion {
+		log.Infof("Deps cache is invalid as it was generated from reproxy version %v, current reproxy version is %v", db.GetVersion(), c.reclientVersion)
 		return
 	}
 	c.filesCache.init(db.GetFiles())
@@ -244,7 +245,7 @@ func (c *Cache) WriteToDisk(outDir string) {
 	defer c.depsMu.Unlock()
 	db := &ppb.DepsDatabase{
 		Files:   make([]*ppb.FileInfo, 0),
-		Version: version.CurrentVersion(),
+		Version: c.reclientVersion,
 	}
 	keys := make([]Key, 0, len(c.depsCache))
 	for k := range c.depsCache {
