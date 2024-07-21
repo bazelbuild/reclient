@@ -16,29 +16,17 @@
 package auth
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"os"
-	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
-
-	"github.com/bazelbuild/reclient/internal/pkg/features"
-	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
 
 	log "github.com/golang/glog"
 	"golang.org/x/oauth2"
 	googleOauth "golang.org/x/oauth2/google"
-	grpcOauth "google.golang.org/grpc/credentials/oauth"
 )
 
 // Exit codes to indicate various causes of authentication failure.
@@ -64,9 +52,6 @@ const (
 	// Unknown is an unknown auth mechanism.
 	Unknown Mechanism = iota
 
-	// CredentialsHelper is using an externally provided binary to get credentials.
-	CredentialsHelper
-
 	// ADC is GCP's application default credentials authentication mechanism.
 	ADC
 	// GCE is authentication using GCE VM service accounts.
@@ -82,8 +67,6 @@ func (m Mechanism) String() string {
 	switch m {
 	case Unknown:
 		return "Unknown"
-	case CredentialsHelper:
-		return "CredentialsHelper"
 	case ADC:
 		return "ADC"
 	case GCE:
@@ -102,9 +85,6 @@ const (
 	CredshelperPathFlag = "experimental_credentials_helper"
 	// CredshelperArgsFlag is the flag used to pass in the arguments to the credentials helper binary.
 	CredshelperArgsFlag = "experimental_credentials_helper_args"
-
-	// TODO(b/261172745): define these flags in reproxy rather than in the SDK.
-
 	// UseAppDefaultCredsFlag is used to authenticate with application default credentials.
 	UseAppDefaultCredsFlag = "use_application_default_credentials"
 	// UseExternalTokenFlag indicates the user will authenticate with a provided token.
@@ -128,55 +108,11 @@ var stringAuthFlags = []string{
 	CredentialFileFlag,
 }
 
-var nowFn = time.Now
-
 // Error is an error occured during authenticating or initializing credentials.
 type Error struct {
 	error
 	// ExitCode is the exit code for the error.
 	ExitCode int
-}
-
-type reusableCmd struct {
-	path       string
-	args       []string
-	digestOnce sync.Once
-	digest     digest.Digest
-}
-
-func newResubaleCmd(binary string, args []string) *reusableCmd {
-	cmd := exec.Command(binary, args...)
-	return &reusableCmd{
-		path: cmd.Path,
-		args: args,
-	}
-}
-
-func (r *reusableCmd) String() string {
-	return fmt.Sprintf("%s %v", r.path, strings.Join(r.args, " "))
-}
-
-func (r *reusableCmd) Cmd() *exec.Cmd {
-	return exec.Command(r.path, r.args...)
-}
-
-func (r *reusableCmd) Digest() digest.Digest {
-	r.digestOnce.Do(func() {
-		chCmd := append(r.args, r.path)
-		sort.Strings(chCmd)
-		cmdStr := strings.Join(chCmd, ",")
-		r.digest = digest.NewFromBlob([]byte(cmdStr))
-	})
-	return r.digest
-}
-
-// Credentials provides auth functionalities with a specific auth mechanism.
-type Credentials struct {
-	m              Mechanism
-	refreshExp     time.Time
-	tokenSource    *grpcOauth.TokenSource
-	credsHelperCmd *reusableCmd
-	credsFile      string
 }
 
 // MechanismFromFlags returns an auth Mechanism based on flags currently set.
@@ -212,17 +148,6 @@ func MechanismFromFlags() (Mechanism, error) {
 	return Unknown, &Error{fmt.Errorf("couldn't determine auth mechanism from flags %v", vals), ExitCodeNoAuth}
 }
 
-// Cacheable returns true if this mechanism should be cached to disk
-func (m Mechanism) Cacheable() bool {
-	if !features.GetConfig().EnableCredentialCache {
-		return false
-	}
-	if m == CredentialsHelper {
-		return true
-	}
-	return false
-}
-
 func boolFlagVal(flagName string) (bool, error) {
 	if f := flag.Lookup(flagName); f != nil && f.Value.String() != "" {
 		b, err := strconv.ParseBool(f.Value.String())
@@ -234,136 +159,15 @@ func boolFlagVal(flagName string) (bool, error) {
 	return false, nil
 }
 
-// NewCredentials initializes a credentials object.
-func NewCredentials(m Mechanism, credsFile string) (*Credentials, error) {
-	cc, err := loadFromDisk(credsFile)
-	if err != nil {
-		log.Warningf("Failed to load credentials cache file from %v: %v", credsFile, err)
-		return buildCredentials(cachedCredentials{m: m}, credsFile)
-	}
-	if cc.m != m {
-		log.Warningf("Cached mechanism (%v) is not the same as requested mechanism (%v). Will attempt to authenticate using the requested mechanism.", cc.m, m)
-		return buildCredentials(cachedCredentials{m: m}, credsFile)
-	}
-	return buildCredentials(cc, credsFile)
-}
-
-func buildCredentials(baseCreds cachedCredentials, credsFile string) (*Credentials, error) {
-	if baseCreds.m == Unknown {
-		return nil, errors.New("cannot initialize credentials with unknown mechanism")
-	}
-	c := &Credentials{
-		m:          baseCreds.m,
-		refreshExp: baseCreds.refreshExp,
-		credsFile:  credsFile,
-	}
-	return c, nil
-}
-
-// build credentials obtained from the credentials helper.
-func buildExternalCredentials(baseCreds cachedCredentials, credsFile string, credsHelperCmd *reusableCmd) *Credentials {
-	c := &Credentials{
-		m:              CredentialsHelper,
-		credsFile:      credsFile,
-		credsHelperCmd: credsHelperCmd,
-	}
-	baseTs := &externalTokenSource{
-		credsHelperCmd: credsHelperCmd,
-	}
-	c.tokenSource = &grpcOauth.TokenSource{
-		// Wrap the base token source with a ReuseTokenSource so that we only
-		// generate new credentials when the current one is about to expire.
-		// This is needed because retrieving the token is expensive and some
-		// token providers have per hour rate limits.
-		TokenSource: oauth2.ReuseTokenSourceWithExpiry(
-			baseCreds.token,
-			baseTs,
-			// Refresh tokens 5 mins early to be safe
-			5*time.Minute,
-		),
-	}
-	return c
-}
-
-func loadCredsFromDisk(credsFile string, credsHelperCmd *reusableCmd) (*Credentials, error) {
-	cc, err := loadFromDisk(credsFile)
-	if err != nil {
-		return nil, err
-	}
-	cmdDigest := credsHelperCmd.Digest()
-	if cc.credsHelperCmdDigest != cmdDigest.String() {
-		return nil, fmt.Errorf("cached credshelper command digest: %s is not the same as requested credshelper command digest: %s",
-			cc.credsHelperCmdDigest, cmdDigest.String())
-	}
-	isExpired := cc.token != nil && cc.token.Expiry.Before(nowFn())
-	if isExpired {
-		return nil, fmt.Errorf("cached token is expired at %v", cc.token.Expiry)
-	}
-	return buildExternalCredentials(cc, credsFile, credsHelperCmd), nil
-}
-
-// SaveToDisk saves credentials to disk.
-func (c *Credentials) SaveToDisk() {
-	if c == nil {
-		return
-	}
-	if !c.m.Cacheable() {
-		return
-	}
-	cc := cachedCredentials{m: c.m, refreshExp: c.refreshExp}
-	// Since c.tokenSource is always wrapped in a oauth2.ReuseTokenSourceWithExpiry
-	// this will return a cached credential if one exists.
-	t, err := c.tokenSource.Token()
-	if err != nil {
-		log.Errorf("Failed to get token to persist to disk: %v", err)
-		return
-	}
-	cc.token = t
-	if c.credsHelperCmd != nil {
-		cc.credsHelperCmdDigest = c.credsHelperCmd.Digest().String()
-	}
-	if err := saveToDisk(cc, c.credsFile); err != nil {
-		log.Errorf("Failed to save credentials to disk: %v", err)
-	}
-}
-
-// RemoveFromDisk deletes the credentials cache on disk.
-func (c *Credentials) RemoveFromDisk() {
-	if c == nil {
-		return
-	}
-	if err := os.Remove(c.credsFile); err != nil {
-		log.Errorf("Failed to remove credentials from disk: %v", err)
-	}
-}
-
-// UpdateStatus updates the refresh expiry time if it is expired
-func (c *Credentials) UpdateStatus() (int, error) {
-	if !nowFn().Before(c.refreshExp) && c.m == ADC {
-		exp, err := checkADCStatus()
+// UpdateStatus updates ADC credentials status if expired
+func UpdateStatus(m Mechanism) (int, error) {
+	if m == ADC {
+		_, err := checkADCStatus()
 		if err != nil {
 			return ExitCodeAppDefCredsAuth, fmt.Errorf("application default credentials were invalid: %v", err)
 		}
-		c.refreshExp = exp
 	}
 	return 0, nil
-}
-
-// Mechanism returns the authentication mechanism of the credentials object.
-func (c *Credentials) Mechanism() Mechanism {
-	if c == nil {
-		return None
-	}
-	return c.m
-}
-
-// TokenSource returns a token source for this credentials instance.
-// If this credential type does not produce credentials nil will be returned.
-func (c *Credentials) TokenSource() *grpcOauth.TokenSource {
-	if c == nil {
-		return nil
-	}
-	return c.tokenSource
 }
 
 func checkADCStatus() (time.Time, error) {
@@ -404,108 +208,4 @@ func checkADCStatus() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("could not get valid Application Default Credentials token: %w", err)
 	}
 	return token.Expiry, nil
-}
-
-// externaltokenSource uses a credentialsHelper to obtain gcp oauth tokens.
-// This should be wrapped in a "golang.org/x/oauth2".ReuseTokenSource
-// to avoid obtaining new tokens each time.
-type externalTokenSource struct {
-	credsHelperCmd *reusableCmd
-}
-
-// Token retrieves an oauth2 token from the external tokensource.
-func (ts *externalTokenSource) Token() (*oauth2.Token, error) {
-	if ts == nil {
-		return nil, fmt.Errorf("empty tokensource")
-	}
-	tk, _, err := runCredsHelperCmd(ts.credsHelperCmd)
-	if err == nil {
-		log.Infof("'%s' credentials refreshed at %v, expires at %v", ts.credsHelperCmd, time.Now(), tk.Expiry)
-	}
-	return tk, err
-}
-
-// NewExternalCredentials creates credentials obtained from a credshelper.
-func NewExternalCredentials(credshelper string, credshelperArgs []string, credsFile string) (*Credentials, error) {
-	if credshelper == "execrel://" {
-		credshelperPath, err := pathtranslator.BinaryRelToAbs("credshelper")
-		if err != nil {
-			log.Fatalf("Specified %s=execrel:// but `credshelper` was not found in the same directory as `bootstrap` or `reproxy`: %v", CredshelperPathFlag, err)
-		}
-		credshelper = credshelperPath
-	}
-	credsHelperCmd := newResubaleCmd(credshelper, credshelperArgs)
-	if credsFile != "" {
-		creds, err := loadCredsFromDisk(credsFile, credsHelperCmd)
-		if err == nil {
-			return creds, nil
-		}
-		log.Warningf("Failed to load cached credentials, will fetch fresh credentials: %v", err)
-	}
-	tk, rexp, err := runCredsHelperCmd(credsHelperCmd)
-	if err != nil {
-		return nil, err
-	}
-	return buildExternalCredentials(cachedCredentials{token: tk, refreshExp: rexp}, credsFile, credsHelperCmd), nil
-}
-
-func runCredsHelperCmd(credsHelperCmd *reusableCmd) (*oauth2.Token, time.Time, error) {
-	log.V(2).Infof("Running %v", credsHelperCmd)
-	var stdout, stderr bytes.Buffer
-	cmd := credsHelperCmd.Cmd()
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	out := stdout.String()
-	if stderr.String() != "" {
-		log.Errorf("Credentials helper warnings and errors: %v", stderr.String())
-	}
-	if err != nil {
-		return nil, time.Time{}, err
-	}
-	token, expiry, refreshExpiry, err := parseTokenExpiryFromOutput(out)
-	return &oauth2.Token{
-		AccessToken: token,
-		Expiry:      expiry,
-	}, refreshExpiry, err
-}
-
-// CredsHelperOut is the struct to record the json output from the credshelper.
-type CredsHelperOut struct {
-	Token         string `json:"token"`
-	Expiry        string `json:"expiry"`
-	RefreshExpiry string `json:"refresh_expiry"`
-}
-
-func parseTokenExpiryFromOutput(out string) (string, time.Time, time.Time, error) {
-	var (
-		tk        string
-		exp, rexp time.Time
-		chOut     CredsHelperOut
-	)
-	if err := json.Unmarshal([]byte(out), &chOut); err != nil {
-		return tk, exp, rexp,
-			fmt.Errorf("error while decoding credshelper output:%v", err)
-	}
-	tk = chOut.Token
-	if tk == "" {
-		return tk, exp, rexp,
-			fmt.Errorf("no token was printed by the credentials helper")
-	}
-	if chOut.Expiry != "" {
-		expiry, err := time.Parse(time.UnixDate, chOut.Expiry)
-		if err != nil {
-			return tk, exp, rexp, fmt.Errorf("invalid expiry format: %v (Expected time.UnixDate format)", chOut.Expiry)
-		}
-		exp = expiry
-		rexp = expiry
-	}
-	if chOut.RefreshExpiry != "" {
-		rexpiry, err := time.Parse(time.UnixDate, chOut.RefreshExpiry)
-		if err != nil {
-			return tk, exp, rexp, fmt.Errorf("invalid refresh expiry format: %v (Expected time.UnixDate format)", chOut.RefreshExpiry)
-		}
-		rexp = rexpiry
-	}
-	return tk, exp, rexp, nil
 }

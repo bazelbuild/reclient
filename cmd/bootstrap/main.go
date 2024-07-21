@@ -54,10 +54,8 @@ import (
 var bootstrapStart = time.Now()
 
 var (
-	homeDir, _   = os.UserHomeDir()
-	gcertErrMsg  = fmt.Sprintf("\nTry restarting the build after running %q\n", "gcert")
-	gcloudErrMsg = fmt.Sprintf("\nTry restarting the build after running %q\n", "gcloud auth login")
-	logDir       = os.TempDir()
+	homeDir, _ = os.UserHomeDir()
+	logDir     = os.TempDir()
 )
 
 var (
@@ -143,9 +141,15 @@ func main() {
 		log.Exitf("Failed to determine the token cache file name: %v", err)
 	}
 	var chCreds *credshelper.Credentials
-	var creds *auth.Credentials
 	var ts *grpcOauth.TokenSource
+	credsArgs := []string{}
 	if !*remoteDisabled {
+		if *experimentalCredentialsHelper != "" && *credentialsHelper == "" {
+			*credentialsHelper = *experimentalCredentialsHelper
+			*credentialsHelperArgs = *experimentalCredentialsHelperArgs
+			credsArgs = append(credsArgs, fmt.Sprintf("--%v=%v", credshelper.CredshelperPathFlag, *credentialsHelper))
+			credsArgs = append(credsArgs, fmt.Sprintf("--%v=%v", credshelper.CredshelperArgsFlag, *credentialsHelperArgs))
+		}
 		if *credentialsHelper != "" {
 			c, err := credshelper.NewExternalCredentials(*credentialsHelper, strings.Fields(*credentialsHelperArgs), cf)
 			if err != nil {
@@ -160,15 +164,12 @@ func main() {
 			chCreds = c
 			ts = c.TokenSource()
 		} else {
-			c := newCreds(cf)
-			status, err := c.UpdateStatus()
+			m := authMechanism()
+			status, err := auth.UpdateStatus(m)
 			if err != nil {
 				log.Errorf("Error obtaining credentials: %v", err)
 				os.Exit(status)
 			}
-			c.SaveToDisk()
-			creds = c
-			ts = c.TokenSource()
 		}
 	}
 
@@ -254,6 +255,7 @@ func main() {
 	currArgs := args[:]
 	if *experimentalCredentialsHelper != "" || *credentialsHelper != "" {
 		currArgs = append(currArgs, "--use_external_auth_token=true")
+		currArgs = append(currArgs, credsArgs...)
 	}
 	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
 	if exitCode == 0 {
@@ -261,7 +263,6 @@ func main() {
 	} else {
 		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\nCredentials cache file was deleted. Please try again. If this continues to fail, please file a bug.\n", msg)
 		chCreds.RemoveFromDisk()
-		creds.RemoveFromDisk()
 	}
 	log.Flush()
 	os.Exit(exitCode)
@@ -370,25 +371,17 @@ func credsFilePath() (string, error) {
 	return cf, nil
 }
 
-func newCreds(cf string) *auth.Credentials {
+func authMechanism() auth.Mechanism {
 	if *experimentalCredentialsHelper != "" {
-		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, strings.Fields(*experimentalCredentialsHelperArgs), cf)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Experimental credentials helper failed. Please try again or use application default credentials:%v", err)
-			os.Exit(auth.ExitCodeExternalTokenAuth)
-		}
-		return creds
+		fmt.Fprintf(os.Stderr, "--experimental_credentials_helper flags are deprecated, please use --credentials_helper flags")
+		os.Exit(auth.ExitCodeExternalTokenAuth)
 	}
 	m, err := auth.MechanismFromFlags()
 	if err != nil || m == auth.Unknown {
 		log.Errorf("Failed to determine auth mechanism: %v", err)
 		os.Exit(auth.ExitCodeNoAuth)
 	}
-	c, err := auth.NewCredentials(m, cf)
-	if err != nil {
-		log.Exitf("Failed to initialize credentials: %v", err)
-	}
-	return c
+	return m
 }
 
 func parseLogs() ([]*lpb.LogRecord, []*lpb.ProxyInfo) {

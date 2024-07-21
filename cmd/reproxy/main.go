@@ -107,19 +107,17 @@ var (
 	idleTimeout           = flag.Duration("proxy_idle_timeout", 6*time.Hour, "Inactivity period after which the running reproxy process will be killed. Default is 6 hours. When set to 0, idle timeout is disabled.")
 	depsCacheMaxMb        = flag.Int("deps_cache_max_mb", 128, "Maximum size of the deps cache file (for goma input processor only).")
 	// TODO(b/233275188): remove this flag.
-	_                                 = flag.Duration("ip_reset_min_delay", 3*time.Minute, "Deprecated. The minimum time after the input processor has been reset before it can be reset again. Negative values disable resetting.")
-	ipTimeout                         = flag.Duration("ip_timeout", 10*time.Minute, "The maximum time to wait for an input processor action. Zero and negative values disable timeout.")
-	metricsProject                    = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
-	metricsPrefix                     = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring")
-	metricsNamespace                  = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project)")
-	experimentalCredentialsHelper     = flag.String(auth.CredshelperPathFlag, "", "Path to the credentials helper binary. If given execrel://, looks for the `credshelper` binary in the same folder as reproxy")
-	experimentalCredentialsHelperArgs = flag.String(auth.CredshelperArgsFlag, "", "Arguments for the experimental credentials helper, separated by space.")
-	failEarlyMinActionCount           = flag.Int64("fail_early_min_action_count", 0, "Minimum number of actions received by reproxy before the fail early mechanism can take effect. 0 indicates fail early is disabled.")
-	failEarlyMinFallbackRatio         = flag.Float64("fail_early_min_fallback_ratio", 0, "Minimum ratio of fallbacks to total actions above which the build terminates early. Ratio is a number in the range [0,1]. 0 indicates fail early is disabled.")
-	failEarlyWindow                   = flag.Duration("fail_early_window", 0, "Window of time to consider for fail_early_min_action_count and fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.")
-	racingBias                        = flag.Float64("racing_bias", 0.75, "Value between [0,1] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (1). The default is to prefer speed over bandwidth.")
-	racingTmp                         = flag.String("racing_tmp_dir", "", "DEPRECATED. Use download_tmp_dir instead.")
-	downloadTmp                       = flag.String("download_tmp_dir", "", "Directory where reproxy should store outputs temporarily before moving them to the desired location. This should be on the same device as the output directory for the build. The default is outputs will be written to a subdirectory inside the action's working directory. Note that the download_tmp_dir will only be used if the action has racing as its exec strategy or it explicitly sets EnableAtomicDownloads=true. See proxy.proto for details.")
+	_                         = flag.Duration("ip_reset_min_delay", 3*time.Minute, "Deprecated. The minimum time after the input processor has been reset before it can be reset again. Negative values disable resetting.")
+	ipTimeout                 = flag.Duration("ip_timeout", 10*time.Minute, "The maximum time to wait for an input processor action. Zero and negative values disable timeout.")
+	metricsProject            = flag.String("metrics_project", "", "If set, action and build metrics are exported to Cloud Monitoring in the specified GCP project")
+	metricsPrefix             = flag.String("metrics_prefix", "", "Prefix of metrics exported to Cloud Monitoring")
+	metricsNamespace          = flag.String("metrics_namespace", "", "Namespace of metrics exported to Cloud Monitoring (e.g. RBE project)")
+	failEarlyMinActionCount   = flag.Int64("fail_early_min_action_count", 0, "Minimum number of actions received by reproxy before the fail early mechanism can take effect. 0 indicates fail early is disabled.")
+	failEarlyMinFallbackRatio = flag.Float64("fail_early_min_fallback_ratio", 0, "Minimum ratio of fallbacks to total actions above which the build terminates early. Ratio is a number in the range [0,1]. 0 indicates fail early is disabled.")
+	failEarlyWindow           = flag.Duration("fail_early_window", 0, "Window of time to consider for fail_early_min_action_count and fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.")
+	racingBias                = flag.Float64("racing_bias", 0.75, "Value between [0,1] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (1). The default is to prefer speed over bandwidth.")
+	racingTmp                 = flag.String("racing_tmp_dir", "", "DEPRECATED. Use download_tmp_dir instead.")
+	downloadTmp               = flag.String("download_tmp_dir", "", "Directory where reproxy should store outputs temporarily before moving them to the desired location. This should be on the same device as the output directory for the build. The default is outputs will be written to a subdirectory inside the action's working directory. Note that the download_tmp_dir will only be used if the action has racing as its exec strategy or it explicitly sets EnableAtomicDownloads=true. See proxy.proto for details.")
 
 	debugPort   = flag.Int("pprof_port", 0, "Enable pprof http server if not zero")
 	cpuProfFile = flag.String("pprof_file", "", "Enable cpu pprof if not empty. Will not work on windows as reproxy shutdowns through an uncatchable sigkill.")
@@ -286,10 +284,6 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Credentials helper failed. Please try again or use application default credentials:%v", err)
 				os.Exit(auth.ExitCodeExternalTokenAuth)
 			}
-			defer c.SaveToDisk()
-			ts = c.TokenSource()
-		} else {
-			c := mustBuildCredentials()
 			defer c.SaveToDisk()
 			ts = c.TokenSource()
 		}
@@ -475,32 +469,6 @@ func formatAuthError(ce *client.InitError) error {
 		errMsg += "    gcloud auth application-default login --no-launch-browser --disable-quota-project"
 	}
 	return status.Errorf(codes.Unauthenticated, errMsg+"\n%s", ce.Error())
-}
-
-// mustBuildCredentials either returns a valid auth.Credentials struct or exits
-func mustBuildCredentials() *auth.Credentials {
-	if *experimentalCredentialsHelper != "" {
-		creds, err := auth.NewExternalCredentials(*experimentalCredentialsHelper, strings.Fields(*experimentalCredentialsHelperArgs), *credsFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Experimental credentials helper failed. Please try again or use application default credentials:%v", err)
-			os.Exit(auth.ExitCodeExternalTokenAuth)
-		}
-		return creds
-	}
-	m, err := auth.MechanismFromFlags()
-	if err != nil || m == auth.Unknown {
-		log.Errorf("Failed to determine auth mechanism: %v", err)
-		os.Exit(auth.ExitCodeNoAuth)
-	}
-	c, err := auth.NewCredentials(m, *credsFile)
-	if err != nil {
-		log.Errorf("Failed to initialize credentials: %v", err)
-		if aerr, ok := err.(*auth.Error); ok {
-			os.Exit(aerr.ExitCode)
-		}
-		os.Exit(auth.ExitCodeUnknown)
-	}
-	return c
 }
 
 func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter) (*logger.Logger, error) {
