@@ -25,6 +25,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	log "github.com/golang/glog"
@@ -41,10 +43,14 @@ type TarFS struct {
 
 // Open creates a new open file.
 func (t *TarFS) Open(name string) (fs.File, error) {
+	if runtime.GOOS == "windows" {
+		name = strings.ReplaceAll(name, "/", "\\")
+	}
 	log.V(3).Infof("TarFS.Open: %s", name)
 	if f, ok := t.tarContents[name]; ok {
 		return f.NewOpenFile(), nil
 	}
+	log.V(3).Infof("TarFS.Open: failed to find %v, tar=%v", name, t.tarContents)
 	return nil, fs.ErrNotExist
 }
 

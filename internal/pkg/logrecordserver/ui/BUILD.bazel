@@ -24,6 +24,7 @@ genrule(
     exec_properties = {"dockerNetwork": "standard"},
     target_compatible_with = select({
         "@platforms//os:linux": [],
+        "@platforms//os:windows": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     toolchains = ["@nodejs_toolchains//:resolved_toolchain"],

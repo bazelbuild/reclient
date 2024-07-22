@@ -20,6 +20,7 @@ go_binary(
     embed = [":reproxytool_lib"],
     target_compatible_with = select({
         "@platforms//os:linux": [],
+        "@platforms//os:windows": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
     visibility = ["//visibility:public"],
