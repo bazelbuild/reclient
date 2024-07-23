@@ -29,6 +29,7 @@ import (
 
 	pb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/depsscannerclient"
+	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -93,5 +94,5 @@ var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient
 // New creates new DepsScanner.
 func New(ctx context.Context, executor executor, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
 	// TODO (b/258275137): make connTimeout configurable and move somewhere more appropriate when reconnect logic is implemented.
-	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, 30*time.Second, connect)
+	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, features.GetConfig().DepsScannerConnectTimeout, connect)
 }

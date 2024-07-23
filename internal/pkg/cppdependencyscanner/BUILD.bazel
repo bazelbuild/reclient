@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//api/scandeps",
         "//internal/pkg/cppdependencyscanner/depsscannerclient",
+        "//internal/pkg/features",
         "//internal/pkg/ipc",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
