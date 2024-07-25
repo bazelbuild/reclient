@@ -260,6 +260,10 @@ An identifier to place in the command to aid in debugging.
 
 An identifier for a group of commands to aid in debugging.
 
+**`-correlated_invocations_id (string)`**
+
+An identifier to tie multiple invocations together.
+
 **`-tool_name (string)`**
 
 The name of the tool to associate with executed commands.

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/bazelbuild/reclient/internal/pkg/rsp"
-
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/retry"
 
@@ -71,6 +70,7 @@ type Proxy interface {
 type CommandOptions struct {
 	CommandID                    string
 	InvocationID                 string
+	CorrelatedInvocationsID      string
 	ToolName                     string
 	Labels                       map[string]string
 	ExecRoot                     string
@@ -148,9 +148,10 @@ func createRequest(cmd []string, opts *CommandOptions) (*ppb.RunRequest, error) 
 	}
 	c := &cpb.Command{
 		Identifiers: &cpb.Identifiers{
-			CommandId:    opts.CommandID,
-			InvocationId: opts.InvocationID,
-			ToolName:     opts.ToolName,
+			CommandId:               opts.CommandID,
+			InvocationId:            opts.InvocationID,
+			CorrelatedInvocationsId: opts.CorrelatedInvocationsID,
+			ToolName:                opts.ToolName,
 		},
 		ExecRoot: opts.ExecRoot,
 		Input: &cpb.InputSpec{

@@ -30,10 +30,11 @@ func TestItemSave(t *testing.T) {
 		LogRecord: &lpb.LogRecord{
 			Command: &cpb.Command{
 				Identifiers: &cpb.Identifiers{
-					CommandId:    "a",
-					InvocationId: "b",
-					ToolName:     "c",
-					ExecutionId:  "d",
+					CommandId:               "a",
+					InvocationId:            "b",
+					CorrelatedInvocationsId: "build-bucket-id",
+					ToolName:                "c",
+					ExecutionId:             "d",
 				},
 				Args:     []string{"a", "b", "c"},
 				ExecRoot: "/exec/root",
@@ -94,7 +95,7 @@ func TestItemSave(t *testing.T) {
 			"identifiers": map[string]bigquery.Value{
 				"command_id":                "a",
 				"invocation_id":             "b",
-				"correlated_invocations_id": "",
+				"correlated_invocations_id": "build-bucket-id",
 				"tool_name":                 "c",
 				"tool_version":              "",
 				"execution_id":              "d",

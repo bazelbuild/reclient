@@ -63,6 +63,7 @@ func initFlags() {
 	flag.StringVar(&serverAddr, "server_address", "", "The server address in the format of host:port for network, or unix:///file for unix domain sockets.")
 	flag.StringVar(&cOpts.CommandID, "command_id", "", "An identifier for the command for use in future debugging")
 	flag.StringVar(&cOpts.InvocationID, "invocation_id", "", "An identifier for a group of commands for use in future debugging")
+	flag.StringVar(&cOpts.CorrelatedInvocationsID, "correlated_invocations_id", "", "An optional id to use to tie multiple invocations together.")
 	flag.StringVar(&cOpts.ToolName, "tool_name", "", "The name of the tool to associate with executed commands")
 	flag.Var((*moreflag.StringMapValue)(&cOpts.Labels), "labels", "Comma-separated key value pairs in the form key=value. This is used to identify the type of command to help the proxy make decisions regarding remote execution. Defaults to type=tool.")
 	flag.StringVar(&cOpts.ExecRoot, "exec_root", "", "The exec root of the command. The path from which all inputs and outputs are defined relatively. Defaults to current working directory.")
