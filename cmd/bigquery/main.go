@@ -14,12 +14,16 @@
 
 // Binary biqeury is used to stream an reproxy_log generated from a build
 // using re-client to bigquery so that it can be further queried upon.
+// Note that due to b/279056853, we only support TextFormat and ReducedTextFormat
+// log files. Valid log_path could be (see: http://shortn/_3fVE7Zeuey):
+// 1. --log_path text:///tmp/reproxy_log.rpl
+// 2. --log_path reducedtext:///tmp/reproxy_log.rrpl
 
 /*
 Example invocation (assuming the bigquery table already exists):
 
 	bazelisk run //cmd/bigquery:bigquery -- \
-	  --log_path text:///tmp/reproxy_log.txt \
+	  --log_path text:///tmp/reproxy_log.rpl \
 	  --alsologtostderr=true \
 	  --table <bigquery-dataset-id>.<bigquery-table-id> \
 	  --project_id <gcp-project-id> # (ex:"foundry-x-experiments")
@@ -60,7 +64,7 @@ var (
 	bqTableSpec = flag.String("bq_table", "reproxy_log_test.test_1", "Table where log records are stored.")
 	// 8M byte limit for marshaled JSON data is empirically derived. BigQuery's REST API has a 10M upload payload limit, but JSON encoding adds overhead.
 	bqBatchMB = flag.Int("bq_batch_mb", 8, "Batch size in MB for bigquery uploading, defaults to 8MB and should not be larger than 8 MB")
-	logPath   = flag.String("log_path", "", "If provided, the path to a log file of all executed records. The format is e.g. text:///full/file/path.")
+	logPath   = flag.String("log_path", "", "If provided, the path to a log file of all executed records. The format is e.g. text:///full/file/path.rpl.")
 )
 
 func main() {

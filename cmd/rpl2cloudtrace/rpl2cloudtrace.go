@@ -49,7 +49,7 @@ import (
 
 var (
 	proxyLogDir []string
-	logPath     = flag.String("log_path", "", "Path to reproxy_log.txt file. E.g., text:///tmp/reproxy_log.txt")
+	logPath     = flag.String("log_path", "", "Path to reproxy_log.rpl file. E.g., text:///tmp/reproxy_log.rpl")
 	logFormat   = flag.String("log_format", "text", "Format of proxy log. Currently only text is supported.")
 	projectID   = flag.String("project_id", os.Getenv("GOOGLE_CLOUD_PROJECT"), "project id for cloud trace")
 
