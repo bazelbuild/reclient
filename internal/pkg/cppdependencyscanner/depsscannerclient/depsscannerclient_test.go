@@ -17,6 +17,7 @@ package depsscannerclient
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -693,74 +694,74 @@ func TestFindKeyVal(t *testing.T) {
 
 func TestBuildAddress(t *testing.T) {
 	tests := []struct {
-		name         string
-		platforms    []string
-		serverAddr   string
-		openPortFunc func() (int, error)
-		wantAddr     string
+		name           string
+		platforms      []string
+		serverAddr     string
+		openPortFunc   func() (int, error)
+		wantAddrPrefix string
 	}{
 		{
-			name:         "UnixSocketReplacereproxy",
-			platforms:    []string{"linux", "darwin"},
-			serverAddr:   "unix:///some/dir/reproxy_123.sock",
-			openPortFunc: func() (int, error) { return 111, nil },
-			wantAddr:     "unix:///some/dir/depscan_123.sock",
+			name:           "UnixSocketReplacereproxy",
+			platforms:      []string{"linux", "darwin"},
+			serverAddr:     "unix:///some/dir/reproxy_123.sock",
+			openPortFunc:   func() (int, error) { return 111, nil },
+			wantAddrPrefix: "unix:///some/dir/depscan_123.sock",
 		},
 		{
-			name:         "UnixSocketAbsOnUnix",
-			platforms:    []string{"linux", "darwin"},
-			serverAddr:   "unix:///some/dir/somesocket.sock",
-			openPortFunc: func() (int, error) { return 111, nil },
-			wantAddr:     "unix:///some/dir/ds_somesocket.sock",
+			name:           "UnixSocketAbsOnUnix",
+			platforms:      []string{"linux", "darwin"},
+			serverAddr:     "unix:///some/dir/somesocket.sock",
+			openPortFunc:   func() (int, error) { return 111, nil },
+			wantAddrPrefix: "unix:///some/dir/ds_somesocket.sock",
 		},
 		{
-			name:         "UnixSocketAbsNoDirsOnUnix",
-			platforms:    []string{"linux", "darwin"},
-			serverAddr:   "unix:///somesocket.sock",
-			openPortFunc: func() (int, error) { return 111, nil },
-			wantAddr:     "unix:///ds_somesocket.sock",
+			name:           "UnixSocketAbsNoDirsOnUnix",
+			platforms:      []string{"linux", "darwin"},
+			serverAddr:     "unix:///somesocket.sock",
+			openPortFunc:   func() (int, error) { return 111, nil },
+			wantAddrPrefix: "unix:///ds_somesocket.sock",
 		},
 		{
-			name:         "UnixSocketRelNoDirsOnUnix",
-			platforms:    []string{"linux", "darwin"},
-			serverAddr:   "unix://somesocket.sock",
-			openPortFunc: func() (int, error) { return 111, nil },
-			wantAddr:     "unix://ds_somesocket.sock",
+			name:           "UnixSocketRelNoDirsOnUnix",
+			platforms:      []string{"linux", "darwin"},
+			serverAddr:     "unix://somesocket.sock",
+			openPortFunc:   func() (int, error) { return 111, nil },
+			wantAddrPrefix: "unix://ds_somesocket.sock",
 		},
 		{
-			name:         "UnixSocketRelOnUnix",
-			platforms:    []string{"linux", "darwin"},
-			serverAddr:   "unix://a/b/somesocket.sock",
-			openPortFunc: func() (int, error) { return 111, nil },
-			wantAddr:     "unix://a/b/ds_somesocket.sock",
+			name:           "UnixSocketRelOnUnix",
+			platforms:      []string{"linux", "darwin"},
+			serverAddr:     "unix://a/b/somesocket.sock",
+			openPortFunc:   func() (int, error) { return 111, nil },
+			wantAddrPrefix: "unix://a/b/ds_somesocket.sock",
 		},
 		{
-			name:         "UnixSocketOnWindows",
-			platforms:    []string{"windows"},
-			serverAddr:   "unix://some/dir/somesocket.sock",
-			openPortFunc: func() (int, error) { return 222, nil },
-			wantAddr:     "127.0.0.1:222",
+			name:           "UnixSocketOnWindows",
+			platforms:      []string{"windows"},
+			serverAddr:     "unix://C:\\src\\somesocket.sock",
+			openPortFunc:   func() (int, error) { return 222, nil },
+			wantAddrPrefix: "unix:C:\\src\\ds_somesocket.sock",
 		},
 		{
-			name:         "WindowsPipe",
-			platforms:    []string{"windows"},
-			serverAddr:   "pipe://pipename.pipe",
-			openPortFunc: func() (int, error) { return 333, nil },
-			wantAddr:     "127.0.0.1:333",
+			name:           "WindowsPipe",
+			platforms:      []string{"windows"},
+			serverAddr:     "pipe://pipename.pipe",
+			openPortFunc:   func() (int, error) { return 333, nil },
+			wantAddrPrefix: fmt.Sprintf("unix:%s", filepath.Join(os.TempDir(), "ds")),
 		},
 		{
-			name:         "TCP",
-			platforms:    []string{"linux", "darwin", "windows"},
-			serverAddr:   "127.0.0.1:8000",
-			openPortFunc: func() (int, error) { return 444, nil },
-			wantAddr:     "127.0.0.1:444",
+			name:           "TCP",
+			platforms:      []string{"linux", "darwin", "windows"},
+			serverAddr:     "127.0.0.1:8000",
+			openPortFunc:   func() (int, error) { return 444, nil },
+			wantAddrPrefix: "127.0.0.1:444",
 		},
 		{
-			name:         "AnotherTCPAddress",
-			platforms:    []string{"linux", "darwin", "windows"},
-			serverAddr:   "192.168.1.1:8000",
-			openPortFunc: func() (int, error) { return 555, nil },
-			wantAddr:     "192.168.1.1:555",
+			name:           "AnotherTCPAddress",
+			platforms:      []string{"linux", "darwin", "windows"},
+			serverAddr:     "192.168.1.1:8000",
+			openPortFunc:   func() (int, error) { return 555, nil },
+			wantAddrPrefix: "192.168.1.1:555",
 		},
 	}
 	for _, test := range tests {
@@ -771,8 +772,8 @@ func TestBuildAddress(t *testing.T) {
 			if err != nil {
 				t.Errorf("buildAddress(%v) returned unexpected error: %v", test.serverAddr, err)
 			}
-			if gotAddr != test.wantAddr {
-				t.Errorf("buildAddress(%v) returned wrong address, wanted '%v', got '%v'", test.serverAddr, test.wantAddr, gotAddr)
+			if !strings.HasPrefix(gotAddr, test.wantAddrPrefix) {
+				t.Errorf("buildAddress(%v) returned wrong address, wanted prefix '%v', got '%v'", test.serverAddr, test.wantAddrPrefix, gotAddr)
 			}
 		})
 	}

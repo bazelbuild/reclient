@@ -20,9 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -176,17 +178,46 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 }
 
 // buildAddress generates an address for the depsscanner process to listen on.
-// If reproxy is on UNIX and using a UDS address then it will replace reproxy
-// with depscan in the sock file name. If reproxy does not exist in the name, it
-// will prepend _ds to the sock file name. Otherwise a random TCP port will be chosen.
+// The path is constructed as:
+//
+//	a) If platform is UNIX & using UDS for rewrapper <-> reproxy
+//	   comms (e.g., /tmp/reproxy.sock), socket filename would be
+//	   unix:///tmp/ds_depsscan.sock.
+//	b) If platform is Windows & using named pipe for rewrapper <-> reproxy
+//	   comms (e.g., pipe://\\.pipe\reproxy.pipe), socket filename would be
+//	   unix:<tmp-dir>\ds_<randnum>.sock (e.g., unix:c:\src\temp/ds_123.sock).
+//
+// If the socket path in (a) or (b) exceeds 108 characters, TCP ports will be used.
 func buildAddress(proxyServerAddress string, openPortFunc func() (int, error)) (string, error) {
 	address := proxyServerAddress
-	if ipc.GrpcCxxSupportsUDS && strings.HasPrefix(address, "unix://") {
-		if strings.Contains(address, "reproxy") {
-			return strings.Replace(address, "reproxy", "depscan", -1), nil
+	if ipc.GrpcCxxSupportsUDS {
+		var socketFilePath string
+		switch {
+		case strings.HasPrefix(address, "unix://"):
+			if strings.Contains(address, "reproxy") {
+				return strings.Replace(address, "reproxy", "depscan", -1), nil
+			}
+			dir, sockFileName := filepath.Split(address[len("unix://"):])
+			socketFilePath = filepath.Join(dir, "ds_"+sockFileName)
+
+		case strings.HasPrefix(address, "pipe://"):
+			sockFileName := fmt.Sprintf("ds_%v.sock", rand.Intn(1000))
+			socketFilePath = filepath.Join(os.TempDir(), sockFileName)
 		}
-		dir, sockFile := filepath.Split(address[len("unix://"):])
-		return fmt.Sprintf("unix://%s", filepath.Join(dir, "ds_"+sockFile)), nil
+
+		sfLen := len(socketFilePath)
+		if sfLen > 0 && sfLen <= 108 {
+			if runtime.GOOS == "windows" {
+				// On Windows, for grpc C++, unix:// style socket file paths
+				// dont seem to work (i.e., the dependency scanner server in C++
+				// is not able to listen on that path).
+				return fmt.Sprintf("unix:%s", socketFilePath), nil
+			}
+			return fmt.Sprintf("unix://%s", socketFilePath), nil
+		}
+		if sfLen > 0 {
+			log.Warningf("buildAddress(%v), constructed socket file path exceeds 108 characters (%v). Falling back to using TCP ports.", proxyServerAddress, socketFilePath)
+		}
 	}
 	if strings.HasPrefix(address, "unix://") || strings.HasPrefix(address, "pipe://") {
 		address = fmt.Sprintf("%s:0", localhost)
