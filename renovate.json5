@@ -19,6 +19,15 @@
           "golang.org/x/tools"
         ],
         "schedule": ["every month"]
+      },
+      { // Update angular monorepo packages once a month.
+        "matchSourceUrlPrefixes": [
+          "https://github.com/angular/angular",
+          "https://github.com/angular/angular-cli",
+          "https://github.com/angular/components",
+        ],
+        "schedule": ["every month"],
+        "groupName": "angular+cli monorepo"
       }
     ]
 }
