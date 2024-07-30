@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
-	"path/filepath"
 	"sync"
 
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
@@ -128,9 +127,8 @@ func (lr *Server) Start(listenAddr string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	basePath := filepath.Join("internal", "pkg", "logrecordserver", "ui", "app", "dist", "reproxyui", "browser")
 	log.V(1).Infof("Loaded JS app from embedded tar file (size=%v)", len(tarAngularApp))
-	indexFS, _ := fs.Sub(tarfs, basePath)
+	indexFS, _ := fs.Sub(tarfs, "internal/pkg/logrecordserver/ui/app/dist/reproxyui/browser")
 	fs := http.FileServer(http.FS(indexFS))
 	r.PathPrefix("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
