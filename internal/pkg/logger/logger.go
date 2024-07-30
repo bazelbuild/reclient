@@ -56,12 +56,6 @@ const (
 	// TextFormat means records marshalled as proto-ASCII.
 	TextFormat Format = iota
 
-	// JSONFormat means records marshalled as JSON.
-	JSONFormat
-
-	// BinaryFormat means records marshalled as binary delimited by record size.
-	BinaryFormat
-
 	// ReducedTextFormat means records are marshalled as proto-ASCII without the
 	// command inputs and args.
 	ReducedTextFormat
@@ -263,10 +257,6 @@ func (f Format) String() string {
 	switch f {
 	case TextFormat:
 		return "text"
-	case JSONFormat:
-		return "json"
-	case BinaryFormat:
-		return "binary"
 	case ReducedTextFormat:
 		return "reducedtext"
 	default:
@@ -279,10 +269,6 @@ func ParseFormat(fs string) (Format, error) {
 	switch fs {
 	case "text":
 		return TextFormat, nil
-	case "json":
-		return JSONFormat, nil
-	case "binary":
-		return BinaryFormat, nil
 	case "reducedtext":
 		return ReducedTextFormat, nil
 	default:
@@ -312,7 +298,7 @@ func NewFromFormatFile(formatfile string, s stats.StatCollector, mi *ignoremisma
 		return nil, err
 	}
 	if format != TextFormat && format != ReducedTextFormat {
-		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", formatfile)
+		return nil, fmt.Errorf("only text:// or reducedtext:// formats are supported, received %v", formatfile)
 	}
 	f, err := os.Create(filepath)
 	if err != nil {
@@ -328,10 +314,6 @@ func logFileSuffix(format Format) string {
 		return "rpl"
 	case ReducedTextFormat:
 		return "rrpl"
-	case JSONFormat:
-		return "rpljs"
-	case BinaryFormat:
-		return "rplpb"
 	default:
 		return ""
 	}
@@ -387,7 +369,7 @@ func (l *Logger) startBackgroundProcess() {
 // New instantiates a new Logger.
 func New(format Format, dir string, s stats.StatCollector, mi *ignoremismatch.MismatchIgnorer, e monitoring.StatExporter, u *usage.PsutilSampler, bqSpec *bigquery.BQSpec) (*Logger, error) {
 	if format != TextFormat && format != ReducedTextFormat {
-		return nil, fmt.Errorf("only text:// or reducedtext:// formats are currently supported, received %v", format)
+		return nil, fmt.Errorf("only text:// or reducedtext:// formats are supported, received %v", format)
 	}
 	ts := time.Now().Format("2006-01-02_15_04_05")
 	filename := filepath.Join(dir, fmt.Sprintf("reproxy_%s.%s", ts, logFileSuffix(format)))
@@ -761,8 +743,6 @@ func CommandRemoteMetadataFromProto(rPb *lpb.RemoteMetadata) *command.Metadata {
 }
 
 func toBytes(format Format, rec *lpb.LogRecord) ([]byte, error) {
-	// This only supports TextFormat for now.
-	// TODO(b/279056853): support other formats.
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text or reducedtext formats are currently supported, received %s", format)
 	}
@@ -820,7 +800,6 @@ func ParseFromFormatFile(formatfile string) ([]*lpb.LogRecord, error) {
 
 // ParseFromFile reads Records from a log file created by a Logger.
 func ParseFromFile(format Format, filepath string) ([]*lpb.LogRecord, error) {
-	// TODO(b/279056853): support other formats.
 	if format != TextFormat && format != ReducedTextFormat {
 		return nil, fmt.Errorf("only text or reducedtext formats are currently supported, received %s", format)
 	}
