@@ -124,7 +124,7 @@ go_sdk.nogo(nogo = "//tools:nogo")
 bazel_dep(name = "gazelle", version = "0.37.0")
 git_override(
     module_name = "gazelle",
-    commit = "852fdcfe7d6cdfcc72b1275a2200a1e131bf0203",
+    commit = "cfe9e8fe37ee29cd9b96fe5b87db7bfd8d424875",
     patch_strip = 1,
     patches = ["//third_party/patches/gazelle:googleapis.patch"],
     remote = "https://github.com/bazelbuild/bazel-gazelle.git",
