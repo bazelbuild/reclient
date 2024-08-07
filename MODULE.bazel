@@ -121,19 +121,23 @@ go_sdk.download(
 use_repo(go_sdk, "go_sdk")
 go_sdk.nogo(nogo = "//tools:nogo")
 
-bazel_dep(name = "gazelle", version = "0.37.0")
-git_override(
-    module_name = "gazelle",
-    commit = "852fdcfe7d6cdfcc72b1275a2200a1e131bf0203",
-    patch_strip = 1,
-    patches = ["//third_party/patches/gazelle:googleapis.patch"],
-    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-)
+bazel_dep(name = "gazelle", version = "0.38.0")
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
 
 ### Googleapis pinned version
+go_deps.module(
+    path = "github.com/googleapis/googleapis",
+    sum = "unused",
+    version = "0.0.0",
+)
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:proto file",
+    ],
+    path = "github.com/googleapis/googleapis",
+)
 go_deps.archive_override(
     path = "github.com/googleapis/googleapis",
     sha256 = "7b6ea252f0b8fb5cd722f45feb83e115b689909bbb6a393a873b6cbad4ceae1d",
@@ -163,15 +167,6 @@ go_deps.gazelle_override(
     directives = googleapis_resolve,
     path = "github.com/bazelbuild/remote-apis",
 )
-
-# TODO(b/303263153): Remove after remote-apis-sdks and remote-apis migrate to bzlmod
-go_deps.gazelle_override(
-    build_file_generation = "clean",
-    directives = [
-        "gazelle:proto file",
-    ],
-    path = "github.com/googleapis/googleapis",
-)
 go_deps.gazelle_override(
     directives = [
         "gazelle:resolve go github.com/GoogleCloudPlatform/protoc-gen-bq-schema/protos //:protos_go_proto",
@@ -188,6 +183,7 @@ use_repo(
     "com_github_golang_glog",
     "com_github_google_go_cmp",
     "com_github_google_uuid",
+    "com_github_googleapis_googleapis",
     "com_github_googlecloudplatform_protoc_gen_bq_schema",
     "com_github_gorilla_mux",
     "com_github_gosuri_uilive",
