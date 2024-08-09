@@ -23,11 +23,11 @@ import (
 	"errors"
 	"time"
 
+	log "github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/bazelbuild/reclient/api/scandeps"
 	"github.com/bazelbuild/reclient/internal/pkg/cppdependencyscanner/depsscannerclient"
 	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
@@ -76,23 +76,41 @@ var (
 	}
 )
 
-// TODO (b/258275137): Move this to it's own package with a unit test
-var connect = func(ctx context.Context, address string) (pb.CPPDepsScannerClient, *pb.CapabilitiesResponse, error) {
+func connect(ctx context.Context, address string) (spb.CPPDepsScannerClient, *spb.CapabilitiesResponse, error) {
+	var client spb.CPPDepsScannerClient
+	var capabilities *spb.CapabilitiesResponse
 	conn, err := ipc.DialContext(ctx, address)
 	if err != nil {
 		return nil, nil, err
 	}
-	client := pb.NewCPPDepsScannerClient(conn)
-	var capabilities *pb.CapabilitiesResponse
 	err = retry.WithPolicy(ctx, shouldRetry, backoff, func() error {
+		client = spb.NewCPPDepsScannerClient(conn)
 		capabilities, err = client.Capabilities(ctx, &emptypb.Empty{})
 		return err
 	})
+	if err != nil {
+		return nil, nil, err
+	}
 	return client, capabilities, nil
+}
+
+func isTimeoutErr(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	if st, ok := status.FromError(err); ok {
+		return st.Code() == codes.DeadlineExceeded
+	}
+	return false
 }
 
 // New creates new DepsScanner.
 func New(ctx context.Context, executor executor, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
-	// TODO (b/258275137): make connTimeout configurable and move somewhere more appropriate when reconnect logic is implemented.
-	return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, features.GetConfig().DepsScannerConnectTimeout, connect)
+	ds, err := depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, features.GetConfig().DepsScannerConnectTimeout, connect)
+	if isTimeoutErr(err) {
+		log.Infof("Timed out connecting to dependency scanner service, retrying")
+		// Try one more time if we timed out connecting to the service.
+		return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, features.GetConfig().DepsScannerConnectTimeout, connect)
+	}
+	return ds, err
 }

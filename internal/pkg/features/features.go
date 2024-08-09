@@ -76,5 +76,5 @@ func init() {
 	flag.BoolVar(&GetConfig().ExperimentalExitOnStuckActions, "experimental_exit_on_stuck_actions", false, "Stops reproxy with exit_code=1 if the command didn't finish within 2*reclient_timeout")
 	flag.BoolVar(&GetConfig().EnableCredentialCache, "enable_creds_cache", true, "If false, disables the credentials cache even if used auth mechanism supports it")
 	flag.IntVar(&GetConfig().ExperimentalGomaDepsCacheSize, "experimental_goma_deps_cache_size", 300000, "Maximum number of entries to hold in the experimental deps cache.")
-	flag.DurationVar(&GetConfig().DepsScannerConnectTimeout, "depsscan_connect_timeout", 60*time.Second, "Number of seconds to wait before timing out on deps scanner connection attempt")
+	flag.DurationVar(&GetConfig().DepsScannerConnectTimeout, "depsscan_connect_timeout", 30*time.Second, "Number of seconds to wait before timing out on deps scanner connection attempt")
 }

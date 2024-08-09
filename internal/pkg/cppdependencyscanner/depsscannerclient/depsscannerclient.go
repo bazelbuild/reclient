@@ -163,7 +163,7 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 	select {
 	case <-ctx.Done():
 		client.Close()
-		return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds", connTimeout.Seconds())
+		return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds: %w", connTimeout.Seconds(), ctx.Err())
 	case err := <-client.ch:
 		return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err.Err)
 	case c := <-connectCh:
@@ -452,7 +452,7 @@ func (ds *DepsScannerClient) verifyService(ctx context.Context) error {
 		}
 	}
 	// Still haven't connected; give up
-	return fmt.Errorf("Unable to connect to server after %v seconds", retries*(int)(timeout.Seconds()))
+	return fmt.Errorf("Unable to connect to server after %v seconds: %w", retries*(int)(timeout.Seconds()), context.DeadlineExceeded)
 }
 
 func (ds *DepsScannerClient) restartService(ctx context.Context, executable string) error {
@@ -470,11 +470,11 @@ func (ds *DepsScannerClient) restartService(ctx context.Context, executable stri
 	}
 	if err := ds.stopService(shutdownTimeout); err != nil {
 		log.Errorf("%v", err)
-		return fmt.Errorf("Unable to shutdown service: %v", err)
+		return fmt.Errorf("Unable to shutdown service: %w", err)
 	}
 	if err := ds.startService(ctx, executable); err != nil {
 		log.Errorf("Failed to start dependency scanner: %v", err)
-		return fmt.Errorf("Unable to start service: %v", err)
+		return fmt.Errorf("Unable to start service: %w", err)
 	}
 
 	err := ds.verifyService(ctx)
@@ -601,5 +601,5 @@ func (ds *DepsScannerClient) stopService(timeout time.Duration) error {
 			}
 		}
 	}
-	return fmt.Errorf("could not shutdown %v after %.0f seconds. Giving up", ds.executable, 2*(timeout.Seconds()))
+	return fmt.Errorf("could not shutdown %v after %.0f seconds. Giving up: %w", ds.executable, 2*(timeout.Seconds()), context.DeadlineExceeded)
 }
