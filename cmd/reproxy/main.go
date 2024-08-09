@@ -115,7 +115,7 @@ var (
 	failEarlyMinActionCount   = flag.Int64("fail_early_min_action_count", 0, "Minimum number of actions received by reproxy before the fail early mechanism can take effect. 0 indicates fail early is disabled.")
 	failEarlyMinFallbackRatio = flag.Float64("fail_early_min_fallback_ratio", 0, "Minimum ratio of fallbacks to total actions above which the build terminates early. Ratio is a number in the range [0,1]. 0 indicates fail early is disabled.")
 	failEarlyWindow           = flag.Duration("fail_early_window", 0, "Window of time to consider for fail_early_min_action_count and fail_early_min_fallback_ratio. 0 indicates all datapoints should be used.")
-	racingBias                = flag.Float64("racing_bias", 0.75, "Value between [0,1] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (1). The default is to prefer speed over bandwidth.")
+	racingBias                = flag.Float64("racing_bias", 0.75, "Value between [0,10] to indicate how racing manages the tradeoff of saving bandwidth (0) versus speed (10). A value of 0 to 1 is recommended for most builds. In case of builds with slow include scanning times due to excessive local execution, a value of > 1 may be used to improve the overall build time.")
 	racingTmp                 = flag.String("racing_tmp_dir", "", "DEPRECATED. Use download_tmp_dir instead.")
 	downloadTmp               = flag.String("download_tmp_dir", "", "Directory where reproxy should store outputs temporarily before moving them to the desired location. This should be on the same device as the output directory for the build. The default is outputs will be written to a subdirectory inside the action's working directory. Note that the download_tmp_dir will only be used if the action has racing as its exec strategy or it explicitly sets EnableAtomicDownloads=true. See proxy.proto for details.")
 
@@ -156,8 +156,8 @@ func verifyFlags() {
 	if *failEarlyWindow < 0 {
 		log.Exitf("Invalid fail_early_window: %v, want >0", *failEarlyWindow)
 	}
-	if *racingBias < 0 || *racingBias > 1 {
-		log.Exitf("Invalid racing_bias: %v, want [0,1]", *racingBias)
+	if *racingBias < 0 || *racingBias > 10 {
+		log.Exitf("Invalid racing_bias: %v, want [0,10]", *racingBias)
 	}
 	if *failEarlyMinActionCount == 0 && *failEarlyMinFallbackRatio > 0 {
 		log.Exitf("fail_early_min_fallback_ratio is set to %v while fail_early_min_action_count is disabled", *failEarlyMinFallbackRatio)
