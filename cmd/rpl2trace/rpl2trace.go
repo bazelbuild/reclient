@@ -108,8 +108,8 @@ func convertEventTime(cat string, pid, tid int, ets map[string]*cpb.TimeInterval
 			log.Infof("%s - %s:%s %s %s %s", name, cat, key, from, to, dur)
 		}
 	}
-	dur := end.Sub(start)
-	if tid <= level {
+	if !start.IsZero() && tid <= level {
+		dur := end.Sub(start)
 		events = append(events, event{
 			Name:      fmt.Sprintf("%s - %s", name, cat),
 			Cat:       cat,
@@ -120,8 +120,8 @@ func convertEventTime(cat string, pid, tid int, ets map[string]*cpb.TimeInterval
 			Tid:       tid,
 			Args:      args,
 		})
+		log.Infof("%s - %s %s %s %s", name, cat, start, end, dur)
 	}
-	log.Infof("%s - %s %s %s %s", name, cat, start, end, dur)
 	return events, start, end
 }
 
@@ -206,7 +206,7 @@ func convertLogRecords(ctx context.Context, logs []*lpb.LogRecord, level int) []
 		events = append(events, evs...)
 	}
 	sort.Slice(events, func(i, j int) bool {
-		if events[i].Timestamp != events[i].Timestamp {
+		if events[i].Timestamp != events[j].Timestamp {
 			return events[i].Timestamp < events[j].Timestamp
 		}
 		return events[i].Dur >= events[j].Dur
