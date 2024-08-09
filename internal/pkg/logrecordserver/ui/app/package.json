@@ -29,7 +29,7 @@
     "zone.js": "~0.14.3"
   },
   "devDependencies": {
-    "@angular-builders/bazel": "^17.0.2",
+    "@angular-builders/bazel": "^18.0.0",
     "@angular-devkit/build-angular": "^18.0.0",
     "@angular/cli": "^18.0.0",
     "@angular/compiler-cli": "^18.0.0",
