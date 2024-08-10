@@ -14,7 +14,14 @@
 
 package bigquery
 
-import "testing"
+import (
+	"errors"
+	"sync/atomic"
+	"testing"
+
+	"github.com/eapache/go-resiliency/retrier"
+	"google.golang.org/api/googleapi"
+)
 
 func TestParseResourceSpec(t *testing.T) {
 	tests := []struct {
@@ -73,6 +80,43 @@ func TestParseResourceSpec(t *testing.T) {
 				t.Errorf(
 					"parseResourceSpec(%v,%v) expected to return (project=%v, dataset=%v, table=%v), got (project=%v, dataset=%v, table=%v)",
 					tc.spec, tc.defaultProject, tc.wantProject, tc.wantDataset, tc.wantTable, gotProject, gotDataset, gotTable)
+			}
+		})
+	}
+}
+
+func TestBQClassifier_Classify(t *testing.T) {
+	bs := &BQSpec{
+		Err: atomic.Pointer[error]{},
+	}
+	tests := []struct {
+		name  string
+		bqErr error
+		want  retrier.Action
+	}{
+		{name: "no error", bqErr: nil, want: retrier.Succeed},
+		{name: "non googleapi error", bqErr: errors.New("a non-googleapi error"), want: retrier.Fail},
+		{name: "non-retriable googleapi error", bqErr: &googleapi.Error{
+			Code:    403,
+			Message: "billingNotEnabled",
+		}, want: retrier.Fail},
+		{name: "retryiable googleapi error: internalError", bqErr: &googleapi.Error{
+			Code:    500,
+			Message: "internalError",
+		}, want: retrier.Retry},
+		{name: "retryiable googleapi error: backendError", bqErr: &googleapi.Error{
+			Code:    503,
+			Message: "backendError",
+		}, want: retrier.Retry},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			classifier := BQClassifier{bQSpec: bs}
+			got := classifier.Classify(tc.bqErr)
+			if got != tc.want {
+				t.Errorf("Classify() = %v, want %v", got, tc.want)
 			}
 		})
 	}

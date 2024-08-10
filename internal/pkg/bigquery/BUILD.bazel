@@ -21,4 +21,8 @@ go_test(
     name = "bigquery_test",
     srcs = ["bigquery_test.go"],
     embed = [":bigquery"],
+    deps = [
+        "@com_github_eapache_go_resiliency//retrier",
+        "@org_golang_google_api//googleapi",
+    ],
 )

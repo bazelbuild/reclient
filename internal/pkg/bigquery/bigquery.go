@@ -184,15 +184,16 @@ func (b BQClassifier) Classify(err error) retrier.Action {
 		return retrier.Succeed
 	}
 	var apiError *googleapi.Error
-	errors.As(err, &apiError)
-	// For errors, such as no permission, wrong project name, wrong dataset/table name,
-	// they are considered as non-retryable errors.
-	if apiError.Code >= 400 {
-		fatalErr := fmt.Errorf("non retryable error occurred in uploading LogRecords to BigQuery: %v", err)
+	if isAPIError := errors.As(err, &apiError); isAPIError && (apiError.Code == 500 || apiError.Code == 503) {
+		return retrier.Retry
+	} else {
+		// For errors, such as no permission, wrong project name, wrong dataset/table
+		// name, they are considered as non-retryable errors. For instructions about
+		// what errors could be retried: see here: https://cloud.google.com/bigquery/docs/error-messages
+		fatalErr := fmt.Errorf("fatal error occurred in uploading LogRecords to BigQuery: %v", err)
 		b.bQSpec.Err.Store(&fatalErr)
 		return retrier.Fail
 	}
-	return retrier.Retry
 }
 
 func uploadWithRetry(bqSpec *BQSpec, items []*bigquerytranslator.Item, successful *int32, failed *int32) {
