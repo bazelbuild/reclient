@@ -15,9 +15,8 @@ does not need to be set.
 
 **`-instance (string)`**
 
-The instance to target when calling the remote execution service via gRPC. For
-Remote Build Execution, the format is
-`projects/_project-id_/instances/_instance-name_`.
+The instance ID to target when calling remote execution via gRPC
+(e.g., projects/$PROJECT/instances/default_instance for Google RBE).
 
 **`-use_application_default_credentials (bool) (from remote-apis-sdks)`**
 
