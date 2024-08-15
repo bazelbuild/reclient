@@ -85,6 +85,18 @@ func TestItemSave(t *testing.T) {
 				ValidCacheHit:   true,
 				ExecutedLocally: false,
 				UpdatedCache:    true,
+				Verification: &lpb.Verification{
+					TotalMismatches: 1,
+					TotalVerified:   2,
+					Mismatches: []*lpb.Verification_Mismatch{
+						&lpb.Verification_Mismatch{
+							Path:         "out/soong/.intermediates/packages/modules/Bluetooth/android/app/bluetooth-proto-enums-java-gen/android_common_apex33/javac/anno",
+							ActionDigest: "62ad67b5b44a1813bb0e1ba348f1ccb40968a15c457fb7bd76198b8e2780cbad/147",
+							LocalDigests: []string{"102b51b9765a56a3e899f7cf0ee38e5251f9c503b357b330a49183eb7b155604/2"},
+							Determinism:  lpb.DeterminismStatus_UNKNOWN,
+						},
+					},
+				},
 			},
 			CompletionStatus: lpb.CompletionStatus_STATUS_CACHE_HIT,
 		},
@@ -146,8 +158,16 @@ func TestItemSave(t *testing.T) {
 			"event_times":      []map[string]bigquery.Value{},
 			"labels":           []map[string]bigquery.Value{},
 			"verification": map[string]bigquery.Value{
-				"mismatches":       []map[string]bigquery.Value{},
-				"total_mismatches": int32(0),
+				"mismatches": []map[string]bigquery.Value{
+					{
+						"determinism":    lpb.DeterminismStatus_UNKNOWN,
+						"local_digests":  []string{"102b51b9765a56a3e899f7cf0ee38e5251f9c503b357b330a49183eb7b155604/2"},
+						"path":           string("out/soong/.intermediates/packages/modules/Bluetooth/android/app/bluetooth-proto-enums-java-gen/android_common_apex33/javac/anno"),
+						"remote_digests": []string{},
+					},
+				},
+				"total_mismatches": int32(1),
+				"total_verified":   int64(2),
 			},
 		},
 		"remote_metadata": map[string]bigquery.Value{

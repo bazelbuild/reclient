@@ -195,15 +195,25 @@ func collectLocalMetadata(lm *lpb.LocalMetadata) (map[string]bigquery.Value, err
 
 	mismatches := []map[string]bigquery.Value{}
 	for _, mismatch := range lm.GetVerification().GetMismatches() {
+		remoteDgs := make([]string, 0)
+		if mismatch.GetRemoteDigests() != nil {
+			remoteDgs = mismatch.GetRemoteDigests()
+		}
+		localDgs := make([]string, 0)
+		if mismatch.GetLocalDigests() != nil {
+			localDgs = mismatch.GetLocalDigests()
+		}
 		mismatches = append(mismatches, map[string]bigquery.Value{
 			"path":           mismatch.GetPath(),
-			"remote_digests": mismatch.GetRemoteDigests(),
-			"local_digest":   mismatch.GetLocalDigest(),
+			"remote_digests": remoteDgs,
+			"local_digests":  localDgs,
+			"determinism":    mismatch.GetDeterminism(),
 		})
 	}
 	res["verification"] = map[string]bigquery.Value{
 		"mismatches":       mismatches,
 		"total_mismatches": lm.GetVerification().GetTotalMismatches(),
+		"total_verified":   lm.GetVerification().GetTotalVerified(),
 	}
 
 	eventTimes := []map[string]bigquery.Value{}
