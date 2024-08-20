@@ -197,7 +197,7 @@ func main() {
 			spi.EventTimes[event.PostBuildAggregateRpl] = command.TimeIntervalToProto(&command.TimeInterval{From: start, To: time.Now()})
 		}
 		down, up := stats.BandwidthStats(s)
-		fmt.Printf("RBE Stats: down %v, up %v, %v\n", down, up, stats.CompletionStats(s))
+		fmt.Fprintf(os.Stderr, "RBE Stats: down %v, up %v, %v\n", down, up, stats.CompletionStats(s))
 		spi.EventTimes[event.BootstrapShutdown] = command.TimeIntervalToProto(&command.TimeInterval{
 			From: bootstrapStart,
 			To:   time.Now(),
@@ -260,7 +260,7 @@ func main() {
 	}
 	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
 	if exitCode == 0 {
-		fmt.Println(msg)
+		fmt.Fprintf(os.Stderr, msg)
 	} else {
 		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\nCredentials cache file was deleted. Please try again. If this continues to fail, please file a bug.\n", msg)
 		chCreds.RemoveFromDisk()
