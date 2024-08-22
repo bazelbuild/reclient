@@ -496,8 +496,6 @@ func initializeLogger(mi *ignoremismatch.MismatchIgnorer, e *monitoring.Exporter
 			log.Errorf("Failed creating bigquery stream: %v", err)
 		} else {
 			bqSpec = &bigquery.BQSpec{
-				ProjectID:   *bqProjectID,
-				TableSpec:   *bqTableSpec,
 				BatchSizeMB: *bqBatchMB,
 				Client:      client,
 				CleanUp:     cleanUp,

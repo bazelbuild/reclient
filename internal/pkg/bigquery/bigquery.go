@@ -83,8 +83,6 @@ func NewInserter(ctx context.Context, resourceSpec, defaultProject string, ts *o
 // BQSpec defines which bigquery table the LogRecords will be saved.
 type BQSpec struct {
 	Err            atomic.Pointer[error]
-	ProjectID      string
-	TableSpec      string
 	BatchSizeMB    int
 	Client         *bigquery.Inserter
 	CleanUp        func() error

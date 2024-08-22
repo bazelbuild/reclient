@@ -25,8 +25,8 @@ Example invocation (assuming the bigquery table already exists):
 	bazelisk run //cmd/bigquery:bigquery -- \
 	  --log_path text:///tmp/reproxy_log.rpl \
 	  --alsologtostderr=true \
-	  --table <bigquery-dataset-id>.<bigquery-table-id> \
-	  --project_id <gcp-project-id> # (ex:"foundry-x-experiments")
+	  --bq_project <gcp-project-id> # (ex:"foundry-x-experiments") \
+	  --bq_table <bigquery-dataset-id>.<bigquery-table-id>
 
 If you don't have a bigquery table yet, you can create it using the following steps:
 
@@ -87,8 +87,6 @@ func main() {
 		log.Exitf("Failed creating bigquery client: %v", err)
 	}
 	bqSpec := &bigquery.BQSpec{
-		ProjectID:   *bqProjectID,
-		TableSpec:   *bqTableSpec,
 		BatchSizeMB: *bqBatchMB,
 		Client:      client,
 		CleanUp:     cleanUp,
