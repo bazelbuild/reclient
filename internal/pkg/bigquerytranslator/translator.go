@@ -312,5 +312,5 @@ func (i *Item) Save() (map[string]bigquery.Value, string, error) {
 		"remote_metadata":   remoteMetadata,
 		"local_metadata":    localMetadata,
 		"completion_status": i.CompletionStatus,
-	}, i.GetCommand().GetIdentifiers().GetCommandId(), nil
+	}, i.GetCommand().GetIdentifiers().GetExecutionId(), nil
 }

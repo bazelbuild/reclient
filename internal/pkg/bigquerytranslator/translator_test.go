@@ -210,7 +210,7 @@ func TestItemSave(t *testing.T) {
 		},
 		"completion_status": lpb.CompletionStatus_STATUS_CACHE_HIT,
 	}
-	wantID := "a"
+	wantID := "d"
 
 	got, gotID, err := i.Save()
 	if err != nil {
