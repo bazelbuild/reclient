@@ -101,10 +101,10 @@ func pathForServerAddr(serverAddr string) (string, error) {
 			return "", err
 		}
 		address = filepath.Join(tmpDir, Proxyname+"_"+port+".pid")
-		err = os.MkdirAll(filepath.Dir(address), 0755)
-		if err != nil {
-			return "", fmt.Errorf("failed to create dir for pid file %q: %w", address, err)
-		}
+	}
+	err := os.MkdirAll(filepath.Dir(address), 0755)
+	if err != nil {
+		return "", fmt.Errorf("failed to create dir for pid file %q: %w", address, err)
 	}
 	return address, nil
 }
