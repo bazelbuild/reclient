@@ -31,7 +31,6 @@ import (
 	"github.com/bazelbuild/reclient/internal/pkg/auth"
 	"github.com/bazelbuild/reclient/internal/pkg/bootstrap"
 	"github.com/bazelbuild/reclient/internal/pkg/event"
-	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/loghttp"
 	"github.com/bazelbuild/reclient/internal/pkg/pathtranslator"
@@ -136,11 +135,6 @@ func main() {
 		}
 	}
 
-	cf, err := credsFilePath()
-	if err != nil {
-		log.Exitf("Failed to determine the token cache file name: %v", err)
-	}
-	var chCreds *credshelper.Credentials
 	var ts *grpcOauth.TokenSource
 	credsArgs := []string{}
 	if !*remoteDisabled {
@@ -151,7 +145,7 @@ func main() {
 			credsArgs = append(credsArgs, fmt.Sprintf("--%v=%v", credshelper.CredshelperArgsFlag, *credentialsHelperArgs))
 		}
 		if *credentialsHelper != "" {
-			c, err := credshelper.NewExternalCredentials(*credentialsHelper, strings.Fields(*credentialsHelperArgs), cf)
+			c, err := credshelper.NewExternalCredentials(*credentialsHelper, strings.Fields(*credentialsHelperArgs))
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Credentials helper failed. Please try again or use application default credentials:%v", err)
 				os.Exit(auth.ExitCodeExternalTokenAuth)
@@ -160,8 +154,6 @@ func main() {
 			if err != nil {
 				log.Exitf("Error obtaining credentials: %v", err)
 			}
-			c.SaveToDisk()
-			chCreds = c
 			ts = c.TokenSource()
 		} else {
 			m := authMechanism()
@@ -247,7 +239,6 @@ func main() {
 			args = append(args, "--cfg="+cfg.Value.String())
 		}
 	}
-	args = append(args, "--creds_file="+cf)
 
 	if *fastLogCollection {
 		args = append(args, "--wait_for_shutdown_rpc=true")
@@ -262,8 +253,7 @@ func main() {
 	if exitCode == 0 {
 		fmt.Fprintf(os.Stderr, msg)
 	} else {
-		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\nCredentials cache file was deleted. Please try again. If this continues to fail, please file a bug.\n", msg)
-		chCreds.RemoveFromDisk()
+		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\n Please try again. If this continues to fail, please file a bug.\n", msg)
 	}
 	log.Flush()
 	os.Exit(exitCode)
@@ -354,22 +344,6 @@ func bootstrapReproxy(args []string, startTime time.Time) (string, int) {
 		return defaultErr, status.ExitStatus()
 	}
 	return "Proxy started successfully.", 0
-}
-
-func credsFilePath() (string, error) {
-	if !features.GetConfig().EnableCredentialCache {
-		return "", nil
-	}
-	dir := os.TempDir()
-	if *cacheDir != "" {
-		dir = *cacheDir
-	}
-	cf := filepath.Join(dir, "reproxy.creds")
-	err := os.MkdirAll(filepath.Dir(cf), 0755)
-	if err != nil {
-		return "", fmt.Errorf("failed to create dir for credentials file %q: %v", cf, err)
-	}
-	return cf, nil
 }
 
 func authMechanism() auth.Mechanism {

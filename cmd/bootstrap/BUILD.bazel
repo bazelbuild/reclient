@@ -11,7 +11,6 @@ go_library(
         "//internal/pkg/auth",
         "//internal/pkg/bootstrap",
         "//internal/pkg/event",
-        "//internal/pkg/features",
         "//internal/pkg/logger",
         "//internal/pkg/loghttp",
         "//internal/pkg/pathtranslator",
