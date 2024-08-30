@@ -127,6 +127,9 @@ message RemoteFallbackInfo {
 
   // Standard error of the remotely executed command that fellback locally. May be empty.
   bytes stderr = 3;
+
+  // Result status of the remotely executed command that fellback locally.
+  cmd.CommandResultStatus.Value result_status = 4;
 }
 
 // Options for executing a command.

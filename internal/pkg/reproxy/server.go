@@ -541,6 +541,12 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 	if req.GetExecutionOptions().GetIncludeActionLog() {
 		logRecord = a.rec.LogRecord
 	}
+	fi := FallbackInfo{
+		res: &command.Result{
+			ExitCode: a.fallbackExitCode,
+			Status:   a.fallbackResultStatus,
+		},
+	}
 	if !a.res.IsOk() {
 		log.Errorf("%v: Execution failed with %+v", executionID, a.res)
 		log.Flush()
@@ -549,23 +555,23 @@ func (s *Server) RunCommand(ctx context.Context, req *ppb.RunRequest) (*ppb.RunR
 		if status != command.NonZeroExitResultStatus && oe != nil && len(oe.Stdout()) == 0 && len(oe.Stderr()) == 0 {
 			if a.res.Err != nil {
 				errorMsg := "reclient[" + executionID + "]: " + status.String() + ": " + a.res.Err.Error() + "\n"
-				return toResponse(cmd, a.res, nil, []byte(errorMsg), nil, nil, a.fallbackExitCode, logRecord), nil
+				return toResponse(cmd, a.res, nil, []byte(errorMsg), fi, logRecord), nil
 			}
-			return toResponse(cmd, a.res, nil, nil, nil, nil, a.fallbackExitCode, logRecord), nil
+			return toResponse(cmd, a.res, nil, nil, fi, logRecord), nil
 		}
 	}
 
-	var oeStdout, oeStderr, fallbackStdout, fallbackStderr []byte
+	var oeStdout, oeStderr []byte
 	if oe != nil {
 		oeStdout = oe.Stdout()
 		oeStderr = oe.Stderr()
 	}
 	if fallbackOE != nil {
-		fallbackStdout = fallbackOE.Stdout()
-		fallbackStderr = fallbackOE.Stderr()
+		fi.stdout = fallbackOE.Stdout()
+		fi.stderr = fallbackOE.Stderr()
 	}
 
-	return toResponse(cmd, a.res, oeStdout, oeStderr, fallbackStdout, fallbackStderr, a.fallbackExitCode, logRecord), nil
+	return toResponse(cmd, a.res, oeStdout, oeStderr, fi, logRecord), nil
 }
 
 func isWindowsCross(platformProperty map[string]string) bool {
@@ -717,6 +723,7 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 				a.cmd.Identifiers.ExecutionID, a.res, roe.Stdout(), roe.Stderr())
 			a.fallbackOE = a.oe
 			a.fallbackExitCode = a.res.ExitCode
+			a.fallbackResultStatus = a.res.Status
 			a.oe = outerr.NewRecordingOutErr()
 			if err := a.downloadVirtualInputs(ctx, s.REClient); err != nil {
 				log.Warningf("%v: Failed to download virtual inputs before local fallback: %v", a.cmd.Identifiers.ExecutionID, err)
@@ -985,13 +992,22 @@ func fileList(execRoot string, files []string, dirs []string) []string {
 	return res
 }
 
-func toResponse(cmd *command.Command, res *command.Result, stdout, stderr, fallbackStdout, fallbackStderr []byte, fallbackExitCode int, logRecord *lpb.LogRecord) *ppb.RunResponse {
+type FallbackInfo struct {
+	stdout []byte
+	stderr []byte
+	res    *command.Result
+}
+
+func toResponse(cmd *command.Command, res *command.Result, stdout, stderr []byte, fi FallbackInfo, logRecord *lpb.LogRecord) *ppb.RunResponse {
 	var fallbackInfo *ppb.RemoteFallbackInfo
-	if fallbackStdout != nil || fallbackStderr != nil || fallbackExitCode != 0 {
+	if fi.stdout != nil || fi.stderr != nil ||
+		(fi.res != nil && fi.res.ExitCode != 0) {
+		cmdRes := *command.ResultToProto(fi.res)
 		fallbackInfo = &ppb.RemoteFallbackInfo{
-			ExitCode: int32(fallbackExitCode),
-			Stdout:   fallbackStdout,
-			Stderr:   fallbackStderr,
+			ExitCode:     cmdRes.ExitCode,
+			Stdout:       fi.stdout,
+			Stderr:       fi.stderr,
+			ResultStatus: cmdRes.Status,
 		}
 	}
 

@@ -2325,8 +2325,9 @@ func TestRemoteLocalFallback_InputAsOutputClearCache(t *testing.T) {
 	wantResp := &ppb.RunResponse{
 		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 		RemoteFallbackInfo: &ppb.RemoteFallbackInfo{
-			ExitCode: 5,
-			Stderr:   stdErr,
+			ExitCode:     5,
+			Stderr:       stdErr,
+			ResultStatus: cpb.CommandResultStatus_NON_ZERO_EXIT,
 		},
 	}
 	if diff := cmp.Diff(wantResp, gotResp, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
@@ -3834,8 +3835,9 @@ func TestRemoteLocalFallback(t *testing.T) {
 		// Stderr of failed remote action isn't sent to client.
 		// Confirmation of remote attempt is checked below in wantRecs.
 		RemoteFallbackInfo: &ppb.RemoteFallbackInfo{
-			ExitCode: 5,
-			Stderr:   stdErr,
+			ExitCode:     5,
+			Stderr:       stdErr,
+			ResultStatus: cpb.CommandResultStatus_NON_ZERO_EXIT,
 		},
 	}
 	if diff := cmp.Diff(want, got, protocmp.IgnoreFields(&ppb.RunResponse{}, "execution_id"), protocmp.Transform()); diff != "" {
@@ -4095,7 +4097,8 @@ func TestFailEarly(t *testing.T) {
 	wantFallback := &ppb.RunResponse{
 		Result: &cpb.CommandResult{Status: cpb.CommandResultStatus_SUCCESS},
 		RemoteFallbackInfo: &ppb.RemoteFallbackInfo{
-			ExitCode: 5,
+			ExitCode:     5,
+			ResultStatus: cpb.CommandResultStatus_NON_ZERO_EXIT,
 		},
 	}
 	wantSuccess := &ppb.RunResponse{

@@ -74,6 +74,7 @@ type action struct {
 	oe                     outerr.OutErr
 	fallbackOE             outerr.OutErr
 	fallbackExitCode       int
+	fallbackResultStatus   command.ResultStatus
 	rec                    *logger.LogRecord
 	rOpt                   *ppb.RemoteExecutionOptions
 	lOpt                   *ppb.LocalExecutionOptions
