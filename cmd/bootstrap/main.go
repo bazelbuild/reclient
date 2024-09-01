@@ -150,10 +150,6 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Credentials helper failed. Please try again or use application default credentials:%v", err)
 				os.Exit(auth.ExitCodeExternalTokenAuth)
 			}
-			err = c.RefreshStatus()
-			if err != nil {
-				log.Exitf("Error obtaining credentials: %v", err)
-			}
 			ts = c.TokenSource()
 		} else {
 			m := authMechanism()
