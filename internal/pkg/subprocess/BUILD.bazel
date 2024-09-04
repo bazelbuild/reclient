@@ -3,9 +3,9 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "subprocess",
     srcs = [
-        "exists_unix.go",
-        "exists_windows.go",
         "subprocess.go",
+        "subprocess_unix.go",
+        "subprocess_windows.go",
     ],
     importpath = "github.com/bazelbuild/reclient/internal/pkg/subprocess",
     visibility = ["//visibility:public"],
