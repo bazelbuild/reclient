@@ -13,7 +13,12 @@ go_library(
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/outerr",
         "@com_github_golang_glog//:glog",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@com_github_kolesnikovae_go_winjob//:go-winjob",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 go_test(

@@ -312,6 +312,12 @@ func main() {
 
 	st := filemetadata.NewSingleFlightCache()
 
+	subprocCleanup, err := subprocess.Setup()
+	if err != nil {
+		log.Exitf("Failed in subprocess setup: %v", err)
+	}
+	defer subprocCleanup()
+
 	exec := &subprocess.SystemExecutor{}
 	resMgr := localresources.NewFractionalDefaultManager(*localResourceFraction)
 

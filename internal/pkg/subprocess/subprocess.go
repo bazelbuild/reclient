@@ -76,37 +76,6 @@ func (SystemExecutor) ExecuteWithOutErr(ctx context.Context, cmd *command.Comman
 	return err
 }
 
-// ExecuteInBackground executes the command in the background. Command result is written to the
-// passed channel.
-func (SystemExecutor) ExecuteInBackground(ctx context.Context, cmd *command.Command, oe outerr.OutErr, ch chan *command.Result) error {
-	cmdCtx, stdout, stderr, err := setupCommand(ctx, cmd)
-	if err != nil {
-		return err
-	}
-	if err = cmdCtx.Start(); err != nil {
-		log.V(2).Infof("Starting command %v >> err=%v", cmd.Args, err)
-		return err
-	}
-	go func() {
-		err := cmdCtx.Wait()
-		if err != nil {
-			log.V(2).Infof("Executed command %v\n >> err=%v", cmd.Args, err)
-		}
-		oe.WriteOut([]byte(stdout.String()))
-		oe.WriteErr([]byte(stderr.String()))
-		exitCode := 0
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr != nil {
-			exitCode = exitErr.ExitCode()
-		}
-		res := command.NewResultFromExitCode(exitCode)
-		if exitCode == 0 && err != nil {
-			res = command.NewLocalErrorResult(err)
-		}
-		ch <- res
-	}()
-	return nil
-}
-
 func setupCommand(ctx context.Context, cmd *command.Command) (*exec.Cmd, *strings.Builder, *strings.Builder, error) {
 	if len(cmd.Args) < 1 {
 		return nil, nil, nil, fmt.Errorf("command must have more than 1 argument")

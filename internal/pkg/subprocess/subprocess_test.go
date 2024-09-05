@@ -52,11 +52,16 @@ func TestExecuteWithOutErr(t *testing.T) {
 }
 
 func TestExecuteInBackground(t *testing.T) {
+	cleanup, err := Setup()
+	if err != nil {
+		t.Fatalf("Failed subprocess setup: %v", err)
+	}
+	defer cleanup()
 	oe := outerr.NewRecordingOutErr()
 	want := "Hello"
 	cmd := &command.Command{Args: []string{"bash", "-c", "sleep 1 && echo " + want}}
 	ch := make(chan *command.Result)
-	err := SystemExecutor{}.ExecuteInBackground(context.Background(), cmd, oe, ch)
+	err = SystemExecutor{}.ExecuteInBackground(context.Background(), cmd, oe, ch)
 	if err != nil {
 		t.Errorf("ExecuteInBackground(%v) failed with error: %v", cmd, err)
 	}
@@ -72,11 +77,16 @@ func TestExecuteInBackground(t *testing.T) {
 }
 
 func TestExecuteInBackgroundCancellation(t *testing.T) {
+	cleanup, err := Setup()
+	if err != nil {
+		t.Fatalf("Failed subprocess setup: %v", err)
+	}
+	defer cleanup()
 	oe := outerr.NewRecordingOutErr()
 	cmd := &command.Command{Args: []string{"bash", "-c", "sleep 2 && echo Hello"}}
 	ch := make(chan *command.Result)
 	ctx, cancel := context.WithCancel(context.Background())
-	err := SystemExecutor{}.ExecuteInBackground(ctx, cmd, oe, ch)
+	err = SystemExecutor{}.ExecuteInBackground(ctx, cmd, oe, ch)
 	if err != nil {
 		t.Errorf("ExecuteInBackground(%v) failed with error: %v", cmd, err)
 	}

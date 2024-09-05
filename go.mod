@@ -22,6 +22,7 @@ require (
 	github.com/gosuri/uilive v0.0.4
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/karrick/godirwalk v1.17.0
+	github.com/kolesnikovae/go-winjob v1.0.0
 	github.com/pkg/xattr v0.4.4
 	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/vardius/progress-go v0.0.0-20221030221608-f948426036a9
