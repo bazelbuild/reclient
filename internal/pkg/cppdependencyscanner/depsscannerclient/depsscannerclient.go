@@ -162,7 +162,9 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 	}()
 	select {
 	case <-ctx.Done():
-		client.Close()
+		if err := client.stopService(1 * time.Second); err != nil {
+			log.Errorf("error during depsscanner stop: %v", err)
+		}
 		return nil, fmt.Errorf("Failed to connect to dependency scanner service after %v seconds: %w", connTimeout.Seconds(), ctx.Err())
 	case err := <-client.ch:
 		return nil, fmt.Errorf("%v terminated during startup: %w", client.executable, err.Err)
@@ -557,7 +559,7 @@ func (ds *DepsScannerClient) stopService(timeout time.Duration) error {
 	}
 
 	// Dependency scanner service was started by reproxy; we must stop it
-	ctx, cancel := context.WithTimeout(ds.ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ds.ctx, timeout)
 	defer cancel()
 	if ds.client != nil {
 		statusResponse, err := ds.client.Shutdown(ctx, &emptypb.Empty{})
