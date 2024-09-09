@@ -19,6 +19,7 @@ import (
 	// go.mod and go.sum remain consistent
 	_ "cloud.google.com/go/monitoring/apiv3/v2"
 	_ "cloud.google.com/go/storage"
+	_ "github.com/hectane/go-acl"
 	_ "github.com/pkg/xattr"
 
 	_ "golang.org/x/tools/go/analysis" // Used as tools by bazel nogo analyzers

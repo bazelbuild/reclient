@@ -74,6 +74,7 @@ go_library(
     importpath = "github.com/bazelbuild/reclient/tools",
     visibility = ["//visibility:public"],
     deps = [
+        "@com_github_hectane_go_acl//:go-acl",
         "@com_github_pkg_xattr//:xattr",
         "@com_google_cloud_go_monitoring//apiv3/v2:apiv3",
         "@com_google_cloud_go_storage//:storage",
