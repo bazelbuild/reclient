@@ -130,7 +130,6 @@ var (
 
 	depsScannerAddress = flag.String("depsscanner_address", "execrel://", "If set, connects to the given address for C++ dependency scanning; a path with the prefix 'exec://' will start the target executable and connect to it. Defaults to execrel:// which looks for the `scandeps_server` binary in the same folder as reproxy. When set to \"\", the internal dependency scanner will be used.")
 
-	credsFile             = flag.String("creds_file", "", "DEPRECATED. Path to file where short-lived credentials are stored. If the file includes a token, reproxy will update the token if it refreshes it. Token refresh is only applicable if use_external_auth_token is used.")
 	waitForShutdownRPC    = flag.Bool("wait_for_shutdown_rpc", false, "If set, will only shutdown after 3 SIGINT signals")
 	logHTTPCalls          = flag.Bool("log_http_calls", false, "Log all http requests made with the default http client.")
 	auxiliaryMetadataPath = flag.String("auxiliary_metadata_path", "", "Path to file where auxiliary_metadata.pb file is stored. Should be a absolute path or a relative path to reproxy.")
@@ -275,11 +274,6 @@ func main() {
 	ctx := context.Background()
 	var ts *grpcOauth.TokenSource
 	if !*remoteDisabled {
-		if *credsFile != "" {
-			// --creds_file flag shouldn't be set anywhere, so this shouldn't come up - since bootstrap was responsible for setting this flag based on the given cache_dir
-			fmt.Fprintf(os.Stderr, "--creds_file flag is invalid now. No credentials are cached. Please unset this flag and try again")
-			os.Exit(1)
-		}
 		chFlag := flag.Lookup(credshelper.CredshelperPathFlag)
 		credentialsHelperPath := chFlag.Value.String()
 		if credentialsHelperPath != "" {
