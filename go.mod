@@ -11,7 +11,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240815141737-7a76f178e91c
+	github.com/bazelbuild/remote-apis-sdks v0.0.0-20240910213405-f4821a2a072c
 	github.com/bazelbuild/rules_go v0.48.0
 	github.com/eapache/go-resiliency v1.6.0
 	github.com/fatih/color v1.17.0
@@ -20,7 +20,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gosuri/uilive v0.0.4
-	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/karrick/godirwalk v1.17.0
 	github.com/kolesnikovae/go-winjob v1.0.0
 	github.com/pkg/xattr v0.4.4
