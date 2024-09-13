@@ -339,7 +339,7 @@ func bootstrapReproxy(args []string, startTime time.Time) (string, int) {
 		}
 		return defaultErr, status.ExitStatus()
 	}
-	return "Proxy started successfully.", 0
+	return "Proxy started successfully.\n", 0
 }
 
 func authMechanism() auth.Mechanism {
