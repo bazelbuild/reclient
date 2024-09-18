@@ -33,15 +33,6 @@
 //	  --operation show_action --instance=<instance> \
 //	  --service <service> --alsologtostderr --v 1 \
 //	  --use_application_default_credentials=true --digest <digest>
-//
-// Example Invocation 3:
-// Start a UI page with an RRPL file:
-//
-//		bazelisk run //cmd/reproxytool:reproxytool -- \
-//		  --operation server --instance=<instance> \
-//		  --service <service> --alsologtostderr --v 1 \
-//		  --use_application_default_credentials=true \
-//	   --log_path text://`pwd`/test.rrpl
 package main
 
 import (
@@ -51,8 +42,6 @@ import (
 	"os"
 	"path"
 	"slices"
-
-	"github.com/bazelbuild/reclient/internal/pkg/logrecordserver"
 
 	rclient "github.com/bazelbuild/remote-apis-sdks/go/pkg/client"
 	rflags "github.com/bazelbuild/remote-apis-sdks/go/pkg/flags"
@@ -64,11 +53,10 @@ import (
 
 const (
 	usage2CSV remotetool.OpType = "usage_to_csv"
-	server    remotetool.OpType = "server"
 )
 
 var (
-	supportedOps       = append(remotetool.SupportedOps, usage2CSV, server)
+	supportedOps       = append(remotetool.SupportedOps, usage2CSV)
 	requiresGrpcClient = remotetool.SupportedOps
 )
 
@@ -84,11 +72,6 @@ func addOps() {
 		if err := csv.Usage2CSV(getLogPathFlag()); err != nil {
 			log.Exitf("Error parsing usage data from reproxy.INFO, %v,to CSV file %v", logPath, err)
 		}
-	}
-	remotetool.RemoteToolOperations[server] = func(ctx context.Context, c *remotetool.Client) {
-		lr := &logrecordserver.Server{}
-		lr.LoadLogRecords(getLogPathFlag())
-		lr.Start(*listenAddr)
 	}
 }
 

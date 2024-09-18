@@ -185,7 +185,6 @@ use_repo(
     "com_github_google_uuid",
     "com_github_googleapis_googleapis",
     "com_github_googlecloudplatform_protoc_gen_bq_schema",
-    "com_github_gorilla_mux",
     "com_github_gosuri_uilive",
     "com_github_hectane_go_acl",
     "com_github_karrick_godirwalk",

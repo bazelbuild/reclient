@@ -7,7 +7,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//cmd/reproxytool/usage2csv",
-        "//internal/pkg/logrecordserver",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/client",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/flags",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/tool",

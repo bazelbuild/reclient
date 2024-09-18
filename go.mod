@@ -18,7 +18,6 @@ require (
 	github.com/golang/glog v1.2.2
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.1
 	github.com/gosuri/uilive v0.0.4
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/karrick/godirwalk v1.17.0
