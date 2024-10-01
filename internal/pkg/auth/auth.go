@@ -81,10 +81,6 @@ func (m Mechanism) String() string {
 }
 
 const (
-	// CredshelperPathFlag is the path to the credentials helper binary.
-	CredshelperPathFlag = "experimental_credentials_helper"
-	// CredshelperArgsFlag is the flag used to pass in the arguments to the credentials helper binary.
-	CredshelperArgsFlag = "experimental_credentials_helper_args"
 	// UseAppDefaultCredsFlag is used to authenticate with application default credentials.
 	UseAppDefaultCredsFlag = "use_application_default_credentials"
 	// UseExternalTokenFlag indicates the user will authenticate with a provided token.

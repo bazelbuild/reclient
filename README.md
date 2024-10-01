@@ -420,8 +420,8 @@ If your RE Server uses RPC authentication then use one of the following flags:
 *   **credential_file** - The name of a file that contains service account
     credentials to use when calling remote execution. Used only if
     `-use_application_default_credentials` and `-use_gce_credentials` are false.
-*   **experimental_credentials_helper** - Path to the credentials helper binary. If given `execrel://`, looks for the `credshelper` binary in the same folder as bootstrap/reproxy
-*   **experimental_credentials_helper_args** - Arguments for the experimental credentials helper, separated by space
+*   **credentials_helper** - Path to the credentials helper binary. If given `execrel://`, looks for the `credshelper` binary in the same folder as bootstrap/reproxy
+*   **credentials_helper_args** - Arguments for the credentials helper, separated by space
 
     The reproxy is typically started via the bootstrap, so it is recommended to
     avoid configuring it through the command line flags. It's advised to use
