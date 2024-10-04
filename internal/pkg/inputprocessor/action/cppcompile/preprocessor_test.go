@@ -343,6 +343,7 @@ func TestComputeSpec_SysrootAndProfileSampleUseArgsConvertedToAbsolutePath(t *te
 			{Key: "-isysroot", Value: "../c/d", Joined: true},
 			{Key: "--sysroot=", Value: fmt.Sprintf("%s/e/f", pwd), Joined: true},
 			{Key: "-fprofile-sample-use=", Value: "../c/d/abc.prof", Joined: true},
+			{Key: "-fsanitize=", Value: "memtag-stack", Joined: true},
 			{Key: "-fsanitize-blacklist=", Value: fmt.Sprintf("%s/e/f/ignores.txt", pwd), Joined: true},
 			{Key: "-fsanitize-ignorelist=", Value: fmt.Sprintf("%s/e/f/ignores2.txt", pwd), Joined: true},
 			{Key: "-fprofile-list=", Value: fmt.Sprintf("%s/e/f/fun.list", pwd), Joined: true},

@@ -258,6 +258,9 @@ func (p *Preprocessor) BuildCommandLine(outputFlag string, outputFlagJoined bool
 	args := []string{executablePath}
 	for _, flag := range p.Flags.Flags {
 		key, value := flag.Key, flag.Value
+		if key == "-fsanitize=" && value == "memtag-stack" {
+			continue
+		}
 		if key == clangCompilerArgFlag {
 			if _, present := toRemoveXclangFlags[value]; present {
 				continue
