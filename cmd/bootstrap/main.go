@@ -237,7 +237,7 @@ func main() {
 	}
 	msg, exitCode := bootstrapReproxy(currArgs, bootstrapStart)
 	if exitCode == 0 {
-		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprint(os.Stderr, msg)
 	} else {
 		fmt.Fprintf(os.Stderr, "\nReproxy failed to start:%s\n Please try again. If this continues to fail, please file a bug.\n", msg)
 	}

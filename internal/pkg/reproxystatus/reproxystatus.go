@@ -240,7 +240,7 @@ func PrintSummaries(ctx context.Context, writer io.Writer, tracker ReproxyTracke
 			fmt.Fprintf(writer, "%s\n", s.HumanReadable())
 		}
 	} else {
-		fmt.Fprintf(writer, color.RedString("Reproxy is not running")+"\n")
+		fmt.Fprintf(writer, "%s\n", color.RedString("Reproxy is not running"))
 	}
 }
 

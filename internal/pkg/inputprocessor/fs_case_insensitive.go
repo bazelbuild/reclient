@@ -146,7 +146,7 @@ loop:
 		if pathBuilder.Len() > 0 {
 			pathBuilder.WriteByte(filepath.Separator)
 		}
-		fmt.Fprintf(&pathBuilder, seg)
+		fmt.Fprint(&pathBuilder, seg)
 		pathname := pathBuilder.String()
 		s, ok := p.m[pathname]
 		if ok {
