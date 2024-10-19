@@ -49,19 +49,13 @@ use_repo(node, "nodejs", "nodejs_toolchains")
 # Protobuf and abseil are linked against by goma's input processor so we must keep the source versions in sync
 bazel_dep(
     name = "protobuf",
-    version = "26.0.bcr.1",  # Same version as used in goma patch
+    version = "28.2",  # Same version as used in goma fork
     repo_name = "com_google_protobuf",
 )
-single_version_override(
-    module_name = "protobuf",
-    patch_strip = 0,
-    patches = ["//third_party/patches/protobuf:clang-cl-link-opts.patch"],
-)
-
 bazel_dep(name = "abseil-cpp", repo_name = "com_google_absl")
 git_override(
     module_name = "abseil-cpp",
-    commit = "4a2c63365eff8823a5221db86ef490e828306f9d",  # Same commit as in goma patch
+    commit = "4a2c63365eff8823a5221db86ef490e828306f9d",  # Same commit as in goma fork
     remote = "https://github.com/abseil/abseil-cpp.git",
 )
 
@@ -72,7 +66,7 @@ bazel_dep(name = "googletest", version = "1.14.0.bcr.1", repo_name = "com_google
 
 gclient_repository = use_repo_rule("//:gclient.bzl", "gclient_repository")
 
-GOMA_REV = "7ab631ba788178c65281ef46b3edce251c595f23"
+GOMA_REV = "b2f15f7360d58a9fb881586fff3645ce154eb70b"
 
 gclient_repository(
     name = "goma",
