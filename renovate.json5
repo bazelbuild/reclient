@@ -35,6 +35,13 @@
         ],
         "schedule": ["every month"],
         "groupName": "protobuf"
+      },
+      { // Ignore llvm_zlib and llvm_zstd packages as they are pinned to the version used by the llvm project.
+        "matchPackagePrefixes": [
+          "llvm_zlib",
+          "llvm_zstd",
+        ],
+        "enabled": false
       }
     ]
 }
