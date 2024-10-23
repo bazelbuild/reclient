@@ -28,6 +28,13 @@
         ],
         "schedule": ["every month"],
         "groupName": "angular+cli monorepo"
+      },
+      { // Update protobuf packages once a month as this is a major task.
+        "matchPackagePrefixes": [
+          "protobuf"
+        ],
+        "schedule": ["every month"],
+        "groupName": "protobuf"
       }
     ]
 }
