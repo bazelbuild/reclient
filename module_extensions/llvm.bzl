@@ -1,4 +1,5 @@
 """Apply llvm_configure to produce a llvm-project repo."""
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Refer to go/rbe/dev/x/playbook/upgrading_clang_scan_deps
@@ -34,6 +35,7 @@ def _llvm_extension_impl(ctx):
             # @llvm//utils/bazel:configure.bzl, @llvm-raw is not pre-defined.
             "//third_party/patches/llvm:llvm-bzl-config.patch",
             "//third_party/patches/llvm:llvm-project-overlay-exectools.patch",
+            "//third_party/patches/llvm:llvm-delay-sanitizer-args-parsing.patch",
         ],
         sha256 = LLVM_SHA256,
         strip_prefix = "llvm-project-%s" % LLVM_COMMIT,
