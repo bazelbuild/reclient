@@ -107,8 +107,8 @@ func isTimeoutErr(err error) bool {
 // New creates new DepsScanner.
 func New(ctx context.Context, executor executor, cacheDir, logDir string, cacheSizeMaxMb int, useDepsCache bool, depsScannerAddress, proxyServerAddress string) (DepsScanner, error) {
 	ds, err := depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, features.GetConfig().DepsScannerConnectTimeout, connect)
-	if isTimeoutErr(err) {
-		log.Infof("Timed out connecting to dependency scanner service, retrying")
+	if err != nil {
+		log.Infof("Timed out or failed connecting to dependency scanner service, restarting service once.  Error was %v", err)
 		// Try one more time if we timed out connecting to the service.
 		return depsscannerclient.New(ctx, executor, cacheDir, cacheSizeMaxMb, useDepsCache, logDir, depsScannerAddress, proxyServerAddress, features.GetConfig().DepsScannerConnectTimeout, connect)
 	}
