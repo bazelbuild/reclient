@@ -49,7 +49,7 @@ use_repo(node, "nodejs", "nodejs_toolchains")
 # Protobuf and abseil are linked against by goma's input processor so we must keep the source versions in sync
 bazel_dep(
     name = "protobuf",
-    version = "28.2",  # Same version as used in goma fork
+    version = "28.3",  # Same version as used in goma fork
     repo_name = "com_google_protobuf",
 )
 bazel_dep(name = "abseil-cpp", repo_name = "com_google_absl")
