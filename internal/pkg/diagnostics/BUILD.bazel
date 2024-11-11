@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "diagnostics",
+    srcs = [
+        "diagnostics.go",
+        "simpleclientserver.go",
+    ],
+    importpath = "github.com/bazelbuild/reclient/internal/pkg/diagnostics",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_golang_glog//:glog"],
+)
+
+go_test(
+    name = "diagnostics_test",
+    srcs = ["simpleclientserver_test.go"],
+    embed = [":diagnostics"],
+)

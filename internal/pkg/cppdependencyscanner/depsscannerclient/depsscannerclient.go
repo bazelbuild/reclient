@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/bazelbuild/reclient/internal/pkg/diagnostics"
 	"github.com/bazelbuild/reclient/internal/pkg/ipc"
 
 	pb "github.com/bazelbuild/reclient/api/scandeps"
@@ -115,9 +116,24 @@ var (
 type connectFn func(ctx context.Context, address string) (pb.CPPDepsScannerClient, *pb.CapabilitiesResponse, error)
 
 // New creates new DepsScannerClient.
-func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string, connTimeout time.Duration, connect connectFn) (*DepsScannerClient, error) {
+func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb int, useDepsCache bool, logDir string, depsScannerAddress, proxyServerAddress string, connTimeout time.Duration, connect connectFn) (client *DepsScannerClient, err error) {
+	var addr string
+	defer func() {
+		if err == nil {
+			return
+		}
+		log.Infof("Found errors in scandeps startup, running diagnostics...")
+		cCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		in := &diagnostics.DiagnosticInputs{
+			UDSAddr: depsScannerAddress,
+		}
+		diagnostics.Run(cCtx, in)
+	}()
+
 	log.Infof("Connecting to remote dependency scanner: %v", depsScannerAddress)
-	client := &DepsScannerClient{
+	addr = depsScannerAddress
+	client = &DepsScannerClient{
 		address:        depsScannerAddress,
 		executor:       executor,
 		cacheDir:       cacheDir,
@@ -130,12 +146,12 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 
 	if strings.HasPrefix(depsScannerAddress, "exec://") {
 		executable := depsScannerAddress[7:]
-		addr, err := buildAddress(proxyServerAddress, findOpenPort)
+		addr, err = buildAddress(proxyServerAddress, findOpenPort)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to build address for dependency scanner: %w", err)
 		}
 		client.address = addr
-		if err := client.startService(ctx, executable); err != nil {
+		if err = client.startService(ctx, executable); err != nil {
 			return nil, fmt.Errorf("Failed to start dependency scanner: %w", err)
 		}
 	}
@@ -150,7 +166,7 @@ func New(ctx context.Context, executor executor, cacheDir string, cacheFileMaxMb
 	defer cancel()
 	go func() {
 		defer close(connectCh)
-		client, capabilities, err := connect(ctx, client.address)
+		client, capabilities, err := connect(ctx, addr)
 		select {
 		case connectCh <- connectResponse{
 			client:       client,
@@ -486,6 +502,23 @@ func (ds *DepsScannerClient) restartService(ctx context.Context, executable stri
 	return err
 }
 
+func removeUDSFile(addr string) {
+	udsPath := addr
+	if !strings.HasPrefix(addr, "unix") {
+		return
+	}
+	if strings.HasPrefix(addr, "unix://") {
+		udsPath = strings.TrimPrefix(addr, "unix://")
+	} else if strings.HasPrefix(addr, "unix:") {
+		udsPath = strings.TrimPrefix(addr, "unix:")
+	}
+	if err := os.Remove(udsPath); err != nil {
+		log.Warningf("Failed to remove UDS socket file at %v: %v", udsPath, err)
+		return
+	}
+	log.Infof("Successfully removed UDS socket file at %v", udsPath)
+}
+
 func (ds *DepsScannerClient) startService(ctx context.Context, executable string) error {
 	ctx, ds.terminate = context.WithCancel(ctx)
 	ds.executable = executable
@@ -520,6 +553,8 @@ func (ds *DepsScannerClient) startService(ctx context.Context, executable string
 		log.Infof("Setting GLOG_log_dir=\"%v\"", ds.logDir)
 		envVars["GLOG_log_dir"] = ds.logDir
 	}
+
+	removeUDSFile(ds.address)
 
 	log.Infof("Starting service: %v", cmdArgs)
 	cmd := &command.Command{Args: cmdArgs}
