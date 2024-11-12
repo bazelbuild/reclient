@@ -21,7 +21,7 @@ single_version_override(
 tools = use_extension("@rules_foreign_cc//foreign_cc:extensions.bzl", "tools")
 use_repo(tools, "ninja_1.11.1_toolchains")
 
-bazel_dep(name = "rules_proto", version = "6.0.0")
+bazel_dep(name = "rules_proto", version = "7.0.2")
 bazel_dep(name = "rules_go", version = "0.48.0", repo_name = "io_bazel_rules_go")
 single_version_override(
     module_name = "rules_go",
