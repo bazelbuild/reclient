@@ -56,11 +56,20 @@ filegroup(
 )
 
 filegroup(
+    name = "validate_static_library",
+    srcs = ["validate_static_library.sh"],
+)
+
+filegroup(
     name = "compiler_deps",
     srcs = glob(
         ["extra_tools/**"],
         allow_empty = True,
-    ) + [":builtin_include_directory_paths"],
+    ) + [
+        ":builtin_include_directory_paths",
+        ":cc_wrapper",
+        ":validate_static_library",
+    ],
 )
 
 # This is the entry point for --crosstool_top.  Toolchains are found
@@ -87,6 +96,7 @@ cc_toolchain(
     module_map = ":module.modulemap",
     objcopy_files = ":empty",
     strip_files = ":empty",
+    supports_header_parsing = 1,
     supports_param_files = 1,
     toolchain_config = ":linux_gnu_x86",
     toolchain_identifier = "linux_gnu_x86",
@@ -124,6 +134,10 @@ cc_toolchain_config(
     ],
     cxx_flags = ["-std=c++14"],
     dbg_compile_flags = ["-g"],
+    extra_flags_per_feature = {"use_module_maps": [
+        "-Xclang",
+        "-fno-cxx-modules",
+    ]},
     host_system_name = "i686-unknown-linux-gnu",
     link_flags = [
         "-fuse-ld=/usr/lib/llvm-17/bin/ld.lld",
@@ -164,6 +178,9 @@ cc_toolchain_config(
         "objcopy": "/usr/bin/objcopy",
         "objdump": "/usr/bin/objdump",
         "strip": "/usr/bin/strip",
+        "c++filt": "/usr/bin/c++filt",
+        "parse_headers": "cc_wrapper.sh",
+        "validate_static_library": "validate_static_library.sh",
     },
     toolchain_identifier = "linux_gnu_x86",
     unfiltered_compile_flags = [

@@ -722,6 +722,25 @@ def _impl(ctx):
             name = "generate_pdb_file",
         )
 
+        generate_linkmap_feature = feature(
+            name = "generate_linkmap",
+            flag_sets = [
+                flag_set(
+                    actions = [
+                        ACTION_NAMES.cpp_link_executable,
+                    ],
+                    flag_groups = [
+                        flag_group(
+                            flags = [
+                                "/MAP:%{output_execpath}.map",
+                            ],
+                            expand_if_available = "output_execpath",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
         output_execpath_flags_feature = feature(
             name = "output_execpath_flags",
             flag_sets = [
@@ -886,7 +905,7 @@ def _impl(ctx):
                     ],
                     flag_groups = [
                         flag_group(
-                            flags = ["/external:I", "%{external_include_paths}"],
+                            flags = ["/external:I%{external_include_paths}"],
                             iterate_over = "external_include_paths",
                             expand_if_available = "external_include_paths",
                         ),
@@ -1105,6 +1124,17 @@ def _impl(ctx):
             ],
             implies = ["msvc_compile_env", "msvc_link_env"],
         )
+
+        symbol_check_feature = feature(
+            name = "symbol_check",
+            flag_sets = [
+                flag_set(
+                    actions = [ACTION_NAMES.cpp_link_static_library],
+                    flag_groups = [flag_group(flags = ["/WX:4006"])],
+                ),
+            ],
+        )
+
         features = [
             no_legacy_features_feature,
             nologo_feature,
@@ -1122,6 +1152,7 @@ def _impl(ctx):
             parse_showincludes_feature,
             no_dotd_file_feature,
             generate_pdb_file_feature,
+            generate_linkmap_feature,
             shared_flag_feature,
             linkstamps_feature,
             output_execpath_flags_feature,
@@ -1154,6 +1185,7 @@ def _impl(ctx):
             no_windows_export_all_symbols_feature,
             supports_dynamic_linker_feature,
             supports_interface_shared_libraries_feature,
+            symbol_check_feature,
         ]
     else:
         targets_windows_feature = feature(

@@ -1,4 +1,4 @@
-7.1.1
+7.4.0
 ### PLEASE READ ###
 
 Bazelisk only reads the first line of this file. Don't move this up.
@@ -12,38 +12,54 @@ When upgrading bazel, you must also upgrade toolchains.
 2. Run it for Linux:
 
 ```
-export RECLIENT_BUILDER_V=v13
 export NEW_BAZEL_VERSION=$(head -n 1 .bazelversion | tail -n 1)
 export PATH_TO_RECLIENT=$PWD
-export GCR_IMAGE=gcr.io/reclient-releases/reclient-builder:${RECLIENT_BUILDER_V}
+export DOCKER_IMAGE="$(grep -Eio 'LINUX_DOCKER_IMAGE = "[^"]*' configs/defs.bzl | sed 's/LINUX_DOCKER_IMAGE = "//')"
 rbe_configs_gen \
     --output_src_root=${PATH_TO_RECLIENT} \
     --output_config_path=configs/linux \
     --exec_os=linux \
     --target_os=linux \
-    --toolchain_container=${GCR_IMAGE} \
+    --toolchain_container=${DOCKER_IMAGE} \
     --bazel_version=${NEW_BAZEL_VERSION} \
     --generate_java_configs=false
 bazelisk run //:gazelle
 ```
+Then:
 
-Edit the cc_toolchain_suite in //configs/linux/cc/BUILD.bazel to include
+1. Edit the cc_library in //configs/linux/cc/BUILD.bazel to include
 `tags=["manual"]` so it isn't caught by `...` expansion.
+2. Add `Copyright 2023 Google LLC` header for //configs/linux/cc/tools/cpp/empty.cc.
+3. Edit the toolchain->exec_compatible_with in //configs/linux/config/BUILD to include "@linux_android1404//:no_android_toolchain"
+3. Edit configs/linux/config/BUILD to refer to the constant in configs/defs.bzl
+instead of hardcoding the docker image version.
 
-3. Run it for Windows. You'll need a windows machine/cloudtop/GCE VM.
+3. Run it for Windows in PowerShell as an administrator.
+(You'll need a windows GCE VM with docker enabled, gWindows cloudtop does not support docker)
 
-$ set RECLIENT_BUILDER_V=v4
-$ set NEW_BAZEL_VERSION=6.3.2
-$ set PATH_TO_RECLIENT=%CD%
-$ rbe_configs_gen.exe^
-    --output_src_root=%PATH_TO_RECLIENT%^
-    --output_config_path=configs/windows^
-    --exec_os=windows^
-    --target_os=windows^
-    --toolchain_container=gcr.io/reclient-releases/reclient-builder-win:%RECLIENT_BUILDER_V%^
-    --cpp_toolchain_target=cc-compiler-x64_windows-clang-cl^
-    --bazel_version=%NEW_BAZEL_VERSION%^
+$ gcloud auth configure-docker us-central1-docker.pkg.dev
+# You must use your email to login, as service account does not have the permission to docker pull images from kokoro-container-bakery
+$ gcloud auth login --no-launch-browser
+$ $DOCKER_IMAGE = (Select-String -Path configs/defs.bzl -Pattern 'WINDOWS_DOCKER_IMAGE = "([^"]*)"' -AllMatches | ForEach-Object {$_.Matches.Groups[1].Value})
+$ $NEW_BAZEL_VERSION = (Get-Content -Path .bazelversion -TotalCount 1)
+$ $PATH_TO_RECLIENT = $PWD
+$ rbe_configs_gen.exe `
+    --output_src_root=$PATH_TO_RECLIENT `
+    --output_config_path=configs/windows `
+    --exec_os=windows `
+    --target_os=windows `
+    --toolchain_container=$DOCKER_IMAGE `
+    --cpp_toolchain_target=cc-compiler-x64_windows-clang-cl `
+    --bazel_version=$NEW_BAZEL_VERSION `
     --generate_java_configs=false
+$ bazelisk run //:gazelle
 
-Edit the cc_toolchain_suite in //configs/windows/cc/BUILD.bazel to include
+Then:
+1. Edit the cc_toolchain_suite in //configs/windows/cc/BUILD.bazel to include
 `tags=["manual"]` so it isn't caught by `...` expansion.
+2. Edit //configs/windows/config/BUILD to include "@bazel_tools//tools/cpp:clang-cl" for both:
+ - "cc-toolchain"'s exec_compatible_with field;
+ - "cc-toolchain"'s target_compatible_with field;
+ - "platform"'s constraint_values field;
+3. Edit //configs/windows/config/BUILD to refer to the constant in configs/defs.bzl
+instead of hardcoding the docker image version.

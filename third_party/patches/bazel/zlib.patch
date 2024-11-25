@@ -1,0 +1,11 @@
+--- BUILD.bazel	2024-11-26 07:07:06.138656017 +0000
++++ BUILD.bazel.new	2024-11-26 07:10:26.946468038 +0000
+@@ -62,7 +62,7 @@
+     outs = _ZLIB_PREFIXED_HEADERS,
+     cmd_bash = "cp $(SRCS) $(@D)/zlib/include/",
+     cmd_bat = " && ".join(
+-        ["@copy /Y \"$(location %s)\" \"$(@D)\\zlib\\include\\\"  >NUL" %
++       ["@copy /Y $(location %s) $(@D)\\zlib\\include\\  >NUL" %
+          s for s in _ZLIB_HEADERS],
+     ),
+ )
