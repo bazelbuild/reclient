@@ -11,6 +11,7 @@
         "matchPackagePrefixes": [
           "google.golang.org/genproto",
         ],
+        "matchUpdateTypes": ["major"],
         "schedule": ["every month"],
         "groupName": "googleapis"
       },
@@ -33,6 +34,7 @@
         "matchPackagePrefixes": [
           "protobuf"
         ],
+        "matchUpdateTypes": ["major"],
         "schedule": ["every month"],
         "groupName": "protobuf"
       },
