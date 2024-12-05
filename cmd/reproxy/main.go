@@ -60,6 +60,7 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/bazelbuild/reclient/api/proxy"
@@ -273,6 +274,7 @@ func main() {
 
 	ctx := context.Background()
 	var ts *grpcOauth.TokenSource
+	var pCreds credentials.PerRPCCredentials
 	if !*remoteDisabled {
 		chFlag := flag.Lookup(credshelper.CredshelperPathFlag)
 		credentialsHelperPath := chFlag.Value.String()
@@ -284,6 +286,7 @@ func main() {
 				os.Exit(auth.ExitCodeExternalTokenAuth)
 			}
 			ts = c.TokenSource()
+			pCreds = c.PerRPCCreds()
 		}
 	}
 	var e *monitoring.Exporter
@@ -385,8 +388,8 @@ func main() {
 			client.UseBatchOps(*useBatches),
 			client.CompressedBytestreamThreshold(*compressionThreshold),
 		}
-		if ts != nil {
-			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: ts})
+		if pCreds != nil {
+			clientOpts = append(clientOpts, &client.PerRPCCreds{Creds: pCreds})
 		}
 		go func() {
 			log.Infof("Creating a new SDK client")

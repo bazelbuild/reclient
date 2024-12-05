@@ -36,6 +36,7 @@ go_library(
         "@com_google_cloud_go_profiler//:profiler",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//credentials/oauth",
         "@org_golang_google_grpc//status",
     ],
