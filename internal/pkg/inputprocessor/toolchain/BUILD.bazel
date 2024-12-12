@@ -30,6 +30,6 @@ go_test(
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/command",
         "@com_github_bazelbuild_remote_apis_sdks//go/pkg/filemetadata",
         "@com_github_google_go_cmp//cmp",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel",
     ],
 )

@@ -1,6 +1,8 @@
 module github.com/bazelbuild/reclient
 
-go 1.21.11
+go 1.22.7 // Remember to also update the go sdks in MODULE.bazel
+
+toolchain go1.23.4
 
 require (
 	cloud.google.com/go/bigquery v1.63.1
@@ -12,7 +14,7 @@ require (
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/bazelbuild/remote-apis-sdks v0.0.0-20241120150805-8ff3cc74b7fd
-	github.com/bazelbuild/rules_go v0.48.0
+	github.com/bazelbuild/rules_go v0.50.1
 	github.com/eapache/go-resiliency v1.6.0
 	github.com/fatih/color v1.17.0
 	github.com/golang/glog v1.2.2
@@ -26,7 +28,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/vardius/progress-go v0.0.0-20221030221608-f948426036a9
 	go.opencensus.io v0.24.0
-	golang.org/x/mod v0.20.0
+	golang.org/x/mod v0.22.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
@@ -34,7 +36,7 @@ require (
 	google.golang.org/api v0.197.0
 	google.golang.org/genproto v0.0.0-20241007155032-5fefd90f89a9
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9
-	google.golang.org/grpc v1.67.1
+	google.golang.org/grpc v1.68.0
 	google.golang.org/protobuf v1.35.1
 )
 

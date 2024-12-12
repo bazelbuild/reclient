@@ -32,6 +32,8 @@ build:windows --@io_bazel_rules_go//go/config:static
 build:windows --@io_bazel_rules_go//go/config:pure
 build:linux --@io_bazel_rules_go//go/config:static
 build:linux --@io_bazel_rules_go//go/config:pure
+build:macos --@io_bazel_rules_go//go/config:static
+build:macos --@io_bazel_rules_go//go/config:pure
 
 ### Required for LLVM
 # Prevent invalid caching if input files are modified during a build.

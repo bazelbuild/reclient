@@ -3,13 +3,13 @@
 register_toolchains(
     "@nodejs_toolchains//:linux_amd64_toolchain_target",
     "@nodejs_toolchains//:linux_amd64_toolchain",
-    "@ninja_1.11.1_toolchains//:all",
+    "@ninja_1.12.1_toolchains//:all",  # Make sure to update in use_repo as well
     "@rules_foreign_cc//toolchains:built_ninja_toolchain",
 )
 
 ## Bazel rule libraries
-bazel_dep(name = "rules_cc", version = "0.0.9")
-bazel_dep(name = "rules_foreign_cc", version = "0.10.1")
+bazel_dep(name = "rules_cc", version = "0.0.17")
+bazel_dep(name = "rules_foreign_cc", version = "0.13.0")
 single_version_override(
     module_name = "rules_foreign_cc",
     patch_strip = 0,
@@ -19,10 +19,10 @@ single_version_override(
 )
 
 tools = use_extension("@rules_foreign_cc//foreign_cc:extensions.bzl", "tools")
-use_repo(tools, "ninja_1.11.1_toolchains")
+use_repo(tools, "ninja_1.12.1_toolchains")  # Make sure to update in register_toolchains as well
 
 bazel_dep(name = "rules_proto", version = "7.0.2")
-bazel_dep(name = "rules_go", version = "0.48.0", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "rules_go", version = "0.50.1", repo_name = "io_bazel_rules_go")
 single_version_override(
     module_name = "rules_go",
     patch_strip = 0,
@@ -41,9 +41,9 @@ single_version_override(
 )
 
 bazel_dep(name = "rules_pkg", version = "1.0.1")
-bazel_dep(name = "bazel_skylib", version = "1.7.0")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "platforms", version = "0.0.10")
-bazel_dep(name = "rules_nodejs", version = "6.1.1")
+bazel_dep(name = "rules_nodejs", version = "6.3.2")
 
 ## Nodejs Dependencies
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
@@ -69,9 +69,9 @@ git_override(
 )
 
 bazel_dep(name = "grpc", version = "1.63.1", repo_name = "com_github_grpc_grpc")
-bazel_dep(name = "glog", version = "0.7.0", repo_name = "com_github_google_glog")
+bazel_dep(name = "glog", version = "0.7.1", repo_name = "com_github_google_glog")
 bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
-bazel_dep(name = "googletest", version = "1.14.0.bcr.1", repo_name = "com_google_googletest")
+bazel_dep(name = "googletest", version = "1.15.2", repo_name = "com_google_googletest")
 
 gclient_repository = use_repo_rule("//:gclient.bzl", "gclient_repository")
 
@@ -119,12 +119,12 @@ use_repo(android_toolchain_extension, "linux_android1404", "linux_android1404_an
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
     name = "go_sdk",
-    version = "1.21.11",
+    version = "1.22.7",
 )
 use_repo(go_sdk, "go_sdk")
 go_sdk.nogo(nogo = "//tools:nogo")
 
-bazel_dep(name = "gazelle", version = "0.38.0")
+bazel_dep(name = "gazelle", version = "0.40.0")
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
