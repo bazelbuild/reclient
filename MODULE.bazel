@@ -8,7 +8,7 @@ register_toolchains(
 )
 
 ## Bazel rule libraries
-bazel_dep(name = "rules_cc", version = "0.0.17")
+bazel_dep(name = "rules_cc", version = "0.1.0")
 bazel_dep(name = "rules_foreign_cc", version = "0.13.0")
 single_version_override(
     module_name = "rules_foreign_cc",
@@ -58,7 +58,7 @@ use_repo(node, "nodejs", "nodejs_toolchains")
 # Protobuf and abseil are linked against by goma's input processor so we must keep the source versions in sync
 bazel_dep(
     name = "protobuf",
-    version = "29.1",  # Same version as used in goma fork
+    version = "29.2",  # Same version as used in goma fork
     repo_name = "com_google_protobuf",
 )
 bazel_dep(name = "abseil-cpp", repo_name = "com_google_absl")
@@ -68,7 +68,7 @@ git_override(
     remote = "https://github.com/abseil/abseil-cpp.git",
 )
 
-bazel_dep(name = "grpc", version = "1.63.1", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "grpc", version = "1.68.0", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "glog", version = "0.7.1", repo_name = "com_github_google_glog")
 bazel_dep(name = "gflags", version = "2.2.2", repo_name = "com_github_gflags_gflags")
 bazel_dep(name = "googletest", version = "1.15.2", repo_name = "com_google_googletest")
