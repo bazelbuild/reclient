@@ -42,11 +42,11 @@ jobs:
             sudo rm -rf "/Users/runner/Library/Android/sdk"
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
           python-version: '3.11'
       - name: Get Bazel
-        uses: bazel-contrib/setup-bazel@e403ad507104847c3539436f64a9e9eecc73eeec # v0.8.5
+        uses: bazel-contrib/setup-bazel@f3f50ea6791b9b0f4c4eeabba4507422426462f5 # 0.9.1
         with:
           # Avoid downloading Bazel every time.
           bazelisk-cache: true

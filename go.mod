@@ -14,7 +14,7 @@ require (
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/bazelbuild/remote-apis-sdks v0.0.0-20241218150251-063ce6485ae8
-	github.com/bazelbuild/rules_go v0.50.1
+	github.com/bazelbuild/rules_go v0.51.0
 	github.com/eapache/go-resiliency v1.7.0
 	github.com/fatih/color v1.18.0
 	github.com/golang/glog v1.2.3
