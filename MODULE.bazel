@@ -22,7 +22,7 @@ tools = use_extension("@rules_foreign_cc//foreign_cc:extensions.bzl", "tools")
 use_repo(tools, "ninja_1.12.1_toolchains")  # Make sure to update in register_toolchains as well
 
 bazel_dep(name = "rules_proto", version = "7.0.2")
-bazel_dep(name = "rules_go", version = "0.50.1", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "rules_go", version = "0.51.0", repo_name = "io_bazel_rules_go")
 single_version_override(
     module_name = "rules_go",
     patch_strip = 0,
@@ -119,7 +119,7 @@ use_repo(android_toolchain_extension, "linux_android1404", "linux_android1404_an
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
     name = "go_sdk",
-    version = "1.22.7",
+    version = "1.23.1",  # remember to update go.mod as well
 )
 use_repo(go_sdk, "go_sdk")
 go_sdk.nogo(nogo = "//tools:nogo")

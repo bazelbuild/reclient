@@ -1,6 +1,6 @@
---- go/private/rules/binary.bzl	2024-06-04 15:30:43.511943305 +0000
-+++ go/private/rules/binary.bzl.new	2024-06-04 15:30:30.391960478 +0000
-@@ -461,9 +461,12 @@
+--- go/private/rules/binary.bzl
++++ go/private/rules/binary.bzl.new
+@@ -510,10 +510,13 @@ exit /b %GO_EXIT_CODE%
              output = bat,
              content = cmd,
          )
@@ -8,10 +8,11 @@
 +        bargs.add("/c", bat.path.replace("/", "\\"))
          ctx.actions.run(
 -            executable = bat,
--            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go],
 +            executable = "cmd",
 +            arguments = [bargs],
-+            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go] + [bat],
+             inputs = depset(
+-                ctx.files.srcs + [sdk.go],
++                ctx.files.srcs + [sdk.go] + [bat],
+                 transitive = [sdk.headers, sdk.srcs, sdk.tools],
+             ),
              outputs = [out, gotmp],
-             mnemonic = "GoToolchainBinaryBuild",
-         )
