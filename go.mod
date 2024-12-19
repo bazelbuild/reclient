@@ -13,7 +13,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/bazelbuild/remote-apis-sdks v0.0.0-20241218150251-063ce6485ae8
+	github.com/bazelbuild/remote-apis-sdks v0.0.0-20241219162347-0a7e5999aeba
 	github.com/bazelbuild/rules_go v0.51.0
 	github.com/eapache/go-resiliency v1.7.0
 	github.com/fatih/color v1.18.0
@@ -84,7 +84,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.32.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
