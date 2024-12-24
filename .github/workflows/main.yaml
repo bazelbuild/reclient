@@ -46,7 +46,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Get Bazel
-        uses: bazel-contrib/setup-bazel@f3f50ea6791b9b0f4c4eeabba4507422426462f5 # 0.9.1
+        uses: bazel-contrib/setup-bazel@bbf8fe8b219f642c7f8bc673215f28eb1d9dec51 # 0.10.0
         with:
           # Avoid downloading Bazel every time.
           bazelisk-cache: true
