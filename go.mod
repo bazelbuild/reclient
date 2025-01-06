@@ -6,10 +6,10 @@ toolchain go1.23.4
 
 require (
 	cloud.google.com/go/bigquery v1.65.0
-	cloud.google.com/go/monitoring v1.22.0
+	cloud.google.com/go/monitoring v1.22.1
 	cloud.google.com/go/profiler v0.4.2
 	cloud.google.com/go/storage v1.43.0
-	cloud.google.com/go/trace v1.11.2
+	cloud.google.com/go/trace v1.11.3
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
@@ -33,20 +33,20 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
 	golang.org/x/tools v0.28.0
-	google.golang.org/api v0.213.0
-	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241216192217-9240e9c98484
+	google.golang.org/api v0.214.0
+	google.golang.org/genproto v0.0.0-20250106144421-5f5ef82da422
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250102185135-69823020774d
 	google.golang.org/grpc v1.68.0
-	google.golang.org/protobuf v1.36.0
+	google.golang.org/protobuf v1.36.1
 )
 
 require (
-	cloud.google.com/go v0.116.0 // indirect
+	cloud.google.com/go v0.118.0 // indirect
 	cloud.google.com/go/auth v0.13.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
-	cloud.google.com/go/iam v1.2.2 // indirect
-	cloud.google.com/go/longrunning v0.6.2 // indirect
+	cloud.google.com/go/iam v1.3.1 // indirect
+	cloud.google.com/go/longrunning v0.6.4 // indirect
 	github.com/apache/arrow/go/v15 v15.0.2 // indirect
 	github.com/aws/aws-sdk-go v1.43.31 // indirect
 	github.com/bazelbuild/remote-apis v0.0.0-20230411132548-35aee1c4a425 // indirect
@@ -88,6 +88,6 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241113202542-65e8d215514f // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250102185135-69823020774d // indirect
 	google.golang.org/genproto/googleapis/bytestream v0.0.0-20241209162323-e6fa225c2576 // indirect
 )
