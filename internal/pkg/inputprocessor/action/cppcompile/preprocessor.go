@@ -183,9 +183,14 @@ func (p *Preprocessor) ComputeSpec() error {
 // using the current include scanner.
 func (p *Preprocessor) FindDependencies(args []string) ([]string, error) {
 	dg := digest.NewFromBlob([]byte(strings.Join(args, " ")))
+	if len(p.Flags.TargetFilePaths) < 1 {
+		log.Warningf("No target file was found in command-line (not running include scanner): %v", args)
+		return nil, nil
+	}
+	filename := p.Flags.TargetFilePaths[0]
 	key := depscache.Key{
 		CommandDigest: dg.String(),
-		SrcFilePath:   filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, p.Flags.TargetFilePaths[0]),
+		SrcFilePath:   filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory, filename),
 	}
 	res, ok := p.getFromDepsCache(key)
 	if ok {
@@ -220,11 +225,6 @@ func (p *Preprocessor) FindDependencies(args []string) ([]string, error) {
 		p.Rec.RecordEventTime(evt, from)
 	}()
 
-	if len(p.Flags.TargetFilePaths) != 1 {
-		return nil, fmt.Errorf("expected exactly one targetfilepath, got: %v", p.Flags.TargetFilePaths)
-	}
-
-	filename := p.Flags.TargetFilePaths[0]
 	directory := filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory)
 	if !filepath.IsAbs(filename) {
 		filename = filepath.Join(directory, filename)
@@ -247,15 +247,18 @@ func (p *Preprocessor) FindDependencies(args []string) ([]string, error) {
 // BuildCommandLine builds a command line arguments from flags
 func (p *Preprocessor) BuildCommandLine(outputFlag string, outputFlagJoined bool, toAbsArgs map[string]bool) []string {
 	directory := filepath.Join(p.Flags.ExecRoot, p.Flags.WorkingDirectory)
-	filename := p.Flags.TargetFilePaths[0]
 	executablePath := p.Flags.ExecutablePath
 	if !filepath.IsAbs(executablePath) {
 		executablePath = filepath.Join(directory, executablePath)
 	}
-	if !filepath.IsAbs(p.Flags.TargetFilePaths[0]) {
-		filename = filepath.Join(directory, p.Flags.TargetFilePaths[0])
-	}
 	args := []string{executablePath}
+	filename := ""
+	if len(p.Flags.TargetFilePaths) > 0 {
+		filename = p.Flags.TargetFilePaths[0]
+		if !filepath.IsAbs(filename) {
+			filename = filepath.Join(directory, filename)
+		}
+	}
 	for _, flag := range p.Flags.Flags {
 		key, value := flag.Key, flag.Value
 		if key == clangCompilerArgFlag {

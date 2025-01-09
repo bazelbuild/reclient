@@ -318,6 +318,35 @@ func clearResourceDirCache(t *testing.T) {
 	resourceDirs = map[string]resourceDirInfo{}
 }
 
+func TestComputeSpec_ClangVersionFlag(t *testing.T) {
+	ctx := context.Background()
+	fmc := filemetadata.NewSingleFlightCache()
+	s := &stubCPPDepScanner{
+		res: []string{},
+		err: nil,
+	}
+	c := &Preprocessor{CPPDepScanner: s, BasePreprocessor: &inputprocessor.BasePreprocessor{Ctx: ctx, FileMetadataCache: fmc}}
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Unable to get current working directory: %v", err)
+	}
+	c.Flags = &flags.CommandFlags{
+		ExecutablePath:   "../bin/clang++",
+		ExecRoot:         pwd,
+		WorkingDirectory: "out",
+		Flags: []*flags.Flag{
+			{Key: "--version"},
+		},
+	}
+	if err := c.ComputeSpec(); err != nil {
+		t.Fatalf("ComputeSpec() failed: %v", err)
+	}
+	if s.gotCmd != nil {
+		t.Errorf("ComputeSpec() called clang-scan-deps incorrectly, want (nil), got %v", s.gotCmd)
+	}
+}
+
 func TestComputeSpec_SysrootAndProfileSampleUseArgsConvertedToAbsolutePath(t *testing.T) {
 	ctx := context.Background()
 	fmc := filemetadata.NewSingleFlightCache()
