@@ -17,7 +17,7 @@ require (
 	github.com/bazelbuild/rules_go v0.51.0
 	github.com/eapache/go-resiliency v1.7.0
 	github.com/fatih/color v1.18.0
-	github.com/golang/glog v1.2.3
+	github.com/golang/glog v1.2.4
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gosuri/uilive v0.0.4
