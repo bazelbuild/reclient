@@ -64,6 +64,10 @@ var (
 	toRemoveArgs = map[string]struct{}{
 		"-fno-experimental-new-pass-manager": struct{}{},
 		"-fexperimental-new-pass-manager":    struct{}{},
+		// Our release binary has a few bytes difference than pre-release/local
+		// build, this flag is falling the input processor only with our prod release
+		// binary, see b/391924509
+		"-fconserve-stack": struct{}{},
 	}
 	// These Xclang flags are unsupported, need to be removed before calling clang-scan-deps.
 	toRemoveXclangFlags = map[string]struct{}{
