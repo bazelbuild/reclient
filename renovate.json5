@@ -44,6 +44,13 @@
           "llvm_zstd",
         ],
         "enabled": false
+      },
+      { // Ignore abseil-cpp in renovate to keep it the same version as the goma fork.
+        "matchPackagePrefixes": [
+          "abseil-cpp"
+        ],
+        "enabled": false,
+        "groupName": "abseil-cpp"
       }
     ]
 }
