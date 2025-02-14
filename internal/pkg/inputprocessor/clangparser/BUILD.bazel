@@ -6,6 +6,7 @@ genrule(
     outs = ["clang_flags.go"],
     cmd = "./$(location //internal/pkg/inputprocessor/clangparser/gen_clang_flags:gen_clang_flags) --input $(location //llvm:clang-options) -o $@",
     tools = ["//internal/pkg/inputprocessor/clangparser/gen_clang_flags"],
+    visibility = ["//visibility:public"],
 )
 
 go_library(
