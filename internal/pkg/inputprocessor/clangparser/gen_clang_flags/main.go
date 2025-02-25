@@ -259,7 +259,13 @@ func parseOptions(m map[string]interface{}) (Options, error) {
 			NormalizedFlags: make(map[string]string),
 		},
 	}
-	for key, val := range m {
+	keys := make([]string, 0, len(m))
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		val := m[key]
 		v, ok := val.(map[string]interface{})
 		if !ok {
 			if *verbose {
