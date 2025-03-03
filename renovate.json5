@@ -7,7 +7,15 @@
     ],
     "postUpdateOptions": ["gomodTidy"], // Run go mod tidy after updating.
     "packageRules": [
-      { // Update googleapis packages once a month.
+      {
+        "description": "Ignore minor & patch updates for googleapis.",
+        "matchPackagePrefixes": [
+          "google.golang.org/genproto",
+        ],
+        "matchUpdateTypes": ["minor, patch"],
+        "enabled": false
+      },
+      { "description": "Update googleapis packages once a month.",
         "matchPackagePrefixes": [
           "google.golang.org/genproto",
         ],
@@ -15,13 +23,13 @@
         "schedule": ["every month"],
         "groupName": "googleapis"
       },
-      { // Update x/tools packages once a month.
+      { "description": "Update x/tools packages once a month.",
         "matchPackagePrefixes": [
           "golang.org/x/tools"
         ],
         "schedule": ["every month"]
       },
-      { // Update angular monorepo packages once a month.
+      { "description": "Update angular monorepo packages once a month.",
         "matchSourceUrlPrefixes": [
           "https://github.com/angular/angular",
           "https://github.com/angular/angular-cli",
@@ -30,7 +38,15 @@
         "schedule": ["every month"],
         "groupName": "angular+cli monorepo"
       },
-      { // Update protobuf packages once a month as this is a major task.
+      {
+        "description": "Ignore minor & patch updates for protobuf.",
+        "matchPackagePrefixes": [
+          "protobuf"
+        ],
+        "matchUpdateTypes": ["minor, patch"],
+        "enabled": false
+      },
+      {"description": "Update protobuf packages once a month as this is a major task.",
         "matchPackagePrefixes": [
           "protobuf"
         ],
@@ -38,17 +54,19 @@
         "schedule": ["every month"],
         "groupName": "protobuf"
       },
-      { // Ignore llvm_zlib and llvm_zstd packages as they are pinned to the version used by the llvm project.
+      { "description": "Ignore llvm_zlib and llvm_zstd packages as they are pinned to the version used by the llvm project.",
         "matchPackagePrefixes": [
           "llvm_zlib",
           "llvm_zstd",
         ],
+        "matchUpdateTypes": ["major, minor, patch"],
         "enabled": false
       },
-      { // Ignore abseil-cpp in renovate to keep it the same version as the goma fork.
+      { "description": "Ignore abseil-cpp in renovate to keep it the same version as the goma fork.",
         "matchPackagePrefixes": [
           "abseil-cpp"
         ],
+        "matchUpdateTypes": ["major, minor, patch"],
         "enabled": false,
         "groupName": "abseil-cpp"
       }
