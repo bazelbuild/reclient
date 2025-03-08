@@ -70,7 +70,7 @@ Target //:artifacts_tar up-to-date:
 To build a complete set of binaries for reclient with a goma deps scanner:
 
 ```shell
-$ bazelisk build --config=goma //:artifacts_tar
+$ bazelisk build --config=goma --//:use_android_glibc=true //:artifacts_tar
 [...]
 Target //:artifacts_tar up-to-date:
   bazel-bin/artifacts.tar
@@ -81,7 +81,7 @@ Target //:artifacts_tar up-to-date:
 To install all binaries to a `$BINDIR`
 
 ```shell
-$ bazelisk run --config=goma //:artifacts_install -- --destdir $BINDIR
+$ bazelisk run --config=goma --//:use_android_glibc=true //:artifacts_install -- --destdir $BINDIR
 [...]
 INFO: Running command line: bazel-bin/artifacts_install --destdir $BINDIR
 ```
@@ -118,7 +118,7 @@ Reclient can be built to use Goma's input processor. Goma's input processor is
 follows:
 
 ```shell
-bazelisk build //:artifacts_tar --config=goma
+bazelisk build //:artifacts_tar --config=goma --//:use_android_glibc=true
 ```
 
 
