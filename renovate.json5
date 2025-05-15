@@ -8,20 +8,20 @@
     "postUpdateOptions": ["gomodTidy"], // Run go mod tidy after updating.
     "packageRules": [
       {
-        "description": "Ignore minor & patch updates for googleapis.",
+        "description": "Ignore minor & patch updates for genproto.",
         "matchPackagePrefixes": [
           "google.golang.org/genproto",
         ],
-        "matchUpdateTypes": ["minor, patch"],
+        "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump", "replacement"],
         "enabled": false
       },
-      { "description": "Update googleapis packages once a month.",
+      { "description": "Update genproto packages once a month.",
         "matchPackagePrefixes": [
           "google.golang.org/genproto",
         ],
         "matchUpdateTypes": ["major"],
         "schedule": ["every month"],
-        "groupName": "googleapis"
+        "groupName": "genproto"
       },
       { "description": "Update x/tools packages once a month.",
         "matchPackagePrefixes": [
@@ -43,7 +43,7 @@
         "matchPackagePrefixes": [
           "protobuf"
         ],
-        "matchUpdateTypes": ["minor, patch"],
+        "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump", "replacement"],
         "enabled": false
       },
       {"description": "Update protobuf packages once a month as this is a major task.",
@@ -51,6 +51,8 @@
           "protobuf"
         ],
         "matchUpdateTypes": ["major"],
+        // https://docs.renovatebot.com/modules/manager/#supported-managers
+        "matchManagers": ["gomod"],
         "schedule": ["every month"],
         "groupName": "protobuf"
       },
@@ -59,14 +61,15 @@
           "llvm_zlib",
           "llvm_zstd",
         ],
-        "matchUpdateTypes": ["major, minor, patch"],
+        "matchUpdateTypes": ["major", "minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump", "replacement"],
         "enabled": false
       },
       { "description": "Ignore abseil-cpp in renovate to keep it the same version as the goma fork.",
         "matchPackagePrefixes": [
           "abseil-cpp"
         ],
-        "matchUpdateTypes": ["major, minor, patch"],
+        // https://docs.renovatebot.com/configuration-options/#matchupdatetypes
+        "matchUpdateTypes": ["major", "minor", "patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump", "replacement"],
         "enabled": false,
         "groupName": "abseil-cpp"
       }
