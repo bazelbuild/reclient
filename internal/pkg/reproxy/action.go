@@ -172,6 +172,7 @@ func (a *action) runRemote(ctx context.Context, client *rexec.Client) {
 	}
 	outs, err := ec.GetFlattenedOutputs()
 	if err != nil {
+		res, meta = ec.Result, ec.Metadata
 		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v",
 			a.cmd.Identifiers.ExecutionID, err)
 		return
