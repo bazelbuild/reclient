@@ -12,6 +12,7 @@ require (
 	cloud.google.com/go/trace v1.11.3
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
+	github.com/GoogleCloudPlatform/protoc-gen-bq-schema/v3 v3.1.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/bazelbuild/remote-apis-sdks v0.0.0-20250708204855-85b23cd12656
 	github.com/bazelbuild/rules_go v0.51.0
