@@ -119,7 +119,7 @@ use_repo(android_toolchain_extension, "linux_android1404", "linux_android1404_an
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
     name = "go_sdk",
-    version = "1.23.1",  # remember to update go.mod as well
+    version = "1.24.7",  # remember to update go.mod as well
 )
 use_repo(go_sdk, "go_sdk")
 go_sdk.nogo(nogo = "//tools:nogo")

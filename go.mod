@@ -1,8 +1,6 @@
 module github.com/bazelbuild/reclient
 
-go 1.23.1 // Remember to also update the go sdks in MODULE.bazel
-
-toolchain go1.23.4
+go 1.24.7 // Remember to also update the go sdks in MODULE.bazel
 
 require (
 	cloud.google.com/go/bigquery v1.65.0
