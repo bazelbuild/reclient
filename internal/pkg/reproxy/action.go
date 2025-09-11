@@ -897,12 +897,31 @@ func (a *action) inOutFiles() []string {
 	if a.rawInOutFiles == nil {
 		inps := make(map[string]bool, len(a.cmd.InputSpec.Inputs))
 		for _, inp := range a.cmd.InputSpec.Inputs {
-			inps[inp] = true
+			inps[filepath.Clean(inp)] = true
 		}
 		a.rawInOutFiles = []string{}
 		for _, f := range pathtranslator.ListRelToExecRoot(a.cmd.ExecRoot, a.cmd.WorkingDir, a.cmd.OutputFiles) {
-			if inps[f] {
-				a.rawInOutFiles = append(a.rawInOutFiles, filepath.Join(a.cmd.ExecRoot, f))
+			cleaned := filepath.Clean(f)
+			if inps[cleaned] {
+				a.rawInOutFiles = append(a.rawInOutFiles, filepath.Join(a.cmd.ExecRoot, cleaned))
+				delete(inps, cleaned)
+			}
+		}
+		for _, d := range pathtranslator.ListRelToExecRoot(a.cmd.ExecRoot, a.cmd.WorkingDir, a.cmd.OutputDirs) {
+			cleaned := filepath.Clean(d)
+			if inps[cleaned] {
+				a.rawInOutFiles = append(a.rawInOutFiles, filepath.Join(a.cmd.ExecRoot, cleaned))
+				delete(inps, cleaned)
+			} else {
+				if !strings.HasSuffix(cleaned, string(filepath.Separator)) {
+					cleaned += string(filepath.Separator)
+				}
+				for inp := range inps {
+					if strings.HasPrefix(inp, cleaned) {
+						a.rawInOutFiles = append(a.rawInOutFiles, filepath.Join(a.cmd.ExecRoot, inp))
+						delete(inps, inp)
+					}
+				}
 			}
 		}
 	}
@@ -911,6 +930,9 @@ func (a *action) inOutFiles() []string {
 
 type restoreInOutFilesFn func()
 
+// Note that currently, if a.cmd.InputSpec.Inputs contains directories, any
+// files implicitly included under those directories will not be stashed.
+// Attempting to fix this issue lead to 15% build time regression: b/312463803
 func (a *action) stashInputOutputFiles() restoreInOutFilesFn {
 	restoreFn := StashFiles(a.inOutFiles())
 	return func() {

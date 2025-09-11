@@ -11,13 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Example invocation:
+//
+// bazelisk test //internal/pkg/reproxy:reproxy_test --test_filter=TestInOutFiles --test_arg=--logtostderr --test_output=streamed
 
 package reproxy
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
@@ -271,5 +277,76 @@ func TestDownloadRegex(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestInOutFiles(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Skipping test on non-Linux platform")
+	}
+	tests := []struct {
+		name        string
+		execRoot    string
+		workingDir  string   // workingDir is relative to execRoot.
+		inputs      []string // inputs are relative to execRoot.
+		outputFiles []string // outputs are relative to workingDir or absolute.
+		outputDirs  []string
+		wantInOut   []string // wantInOut files should has execRoot as prefix.
+	}{
+		{
+			// For more details, see local re-run failures in b/435160524.
+			name:       "Input file is inside of the output directory",
+			execRoot:   "/usr/local/home/aosp",
+			workingDir: ".",
+			inputs: []string{
+				// This is actually a file, not a directory!
+				"out/soong/.intermediates/external/jsr305/jsr305/linux_glibc_common/javac/anno/list",
+			},
+			outputDirs: []string{
+				"out/soong/.intermediates/external/jsr305/jsr305/linux_glibc_common/javac/classes",
+				"out/soong/.intermediates/external/jsr305/jsr305/linux_glibc_common/javac/anno",
+			},
+			wantInOut: []string{
+				"/usr/local/home/aosp/out/soong/.intermediates/external/jsr305/jsr305/linux_glibc_common/javac/anno/list",
+			},
+		},
+		{
+			name:       "Input file has similar prefix as output directory",
+			execRoot:   "/usr/local/home/aosp",
+			workingDir: ".",
+			inputs:     []string{"fooooo/bar.txt"},
+			outputDirs: []string{"foo"},
+			wantInOut:  []string{},
+		},
+		{
+			name:       "Input directory is the same as output directory",
+			execRoot:   "/usr/local/home/aosp",
+			workingDir: ".",
+			inputs:     []string{"out"},
+			outputDirs: []string{"out"},
+			wantInOut:  []string{"/usr/local/home/aosp/out"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a := &action{
+				cmd: &command.Command{
+					ExecRoot:   tc.execRoot,
+					WorkingDir: tc.workingDir,
+					InputSpec: &command.InputSpec{
+						Inputs: tc.inputs,
+					},
+					OutputFiles: tc.outputFiles,
+					OutputDirs:  tc.outputDirs,
+				},
+			}
+			gotInOut := a.inOutFiles()
+			sort.Strings(gotInOut)
+			sort.Strings(tc.wantInOut)
+			if fmt.Sprintf("%v", gotInOut) != fmt.Sprintf("%v", tc.wantInOut) {
+				t.Errorf("inOutFiles() = %v, want %v", gotInOut, tc.wantInOut)
+			}
+		})
 	}
 }
