@@ -165,8 +165,8 @@ github.com/aws/aws-sdk-go v1.43.31 h1:yJZIr8nMV1hXjAvvOLUFqZRJcHV7udPQBfhJqawDzI
 github.com/aws/aws-sdk-go v1.43.31/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/bazelbuild/remote-apis v0.0.0-20230411132548-35aee1c4a425 h1:Lj8uXWW95oXyYguUSdQDvzywQb4f0jbJWsoLPQWAKTY=
 github.com/bazelbuild/remote-apis v0.0.0-20230411132548-35aee1c4a425/go.mod h1:ry8Y6CkQqCVcYsjPOlLXDX2iRVjOnjogdNwhvHmRcz8=
-github.com/bazelbuild/remote-apis-sdks v0.0.0-20250708204855-85b23cd12656 h1:4IrzXTG2p14SBGMYGY8BlANFFnMogkWQionVDRXqIsI=
-github.com/bazelbuild/remote-apis-sdks v0.0.0-20250708204855-85b23cd12656/go.mod h1:sMJ2QK7QssHpNpvbTBmneBJvc+fBHoi26eVoxNwiqIE=
+github.com/bazelbuild/remote-apis-sdks v0.0.0-20250924144931-212b8b213918 h1:++icGq+TIFrJB77eu59P5e6uONyoN+oJXen4M6vNYtM=
+github.com/bazelbuild/remote-apis-sdks v0.0.0-20250924144931-212b8b213918/go.mod h1:sMJ2QK7QssHpNpvbTBmneBJvc+fBHoi26eVoxNwiqIE=
 github.com/bazelbuild/rules_go v0.51.0 h1:og6AqW7T4uFgcySRYn/EFg5VUHR2KY7jypYmVeIGh9k=
 github.com/bazelbuild/rules_go v0.51.0/go.mod h1:+jnXOJJO4C+WYH5v1v0SsPTncQ9sHGsCrAOgrflqSUE=
 github.com/benbjohnson/clock v1.0.3/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
