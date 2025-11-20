@@ -26,11 +26,11 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/vardius/progress-go v0.0.0-20221030221608-f948426036a9
 	go.opencensus.io v0.24.0
-	golang.org/x/mod v0.22.0
+	golang.org/x/mod v0.29.0
 	golang.org/x/oauth2 v0.24.0
-	golang.org/x/sync v0.11.0
-	golang.org/x/sys v0.30.0
-	golang.org/x/tools v0.28.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/tools v0.38.0
 	google.golang.org/api v0.214.0
 	google.golang.org/genproto v0.0.0-20250106144421-5f5ef82da422
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250207221924-e9438ea467c6
@@ -80,10 +80,11 @@ require (
 	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/metric v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250102185135-69823020774d // indirect
