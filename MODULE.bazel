@@ -64,7 +64,7 @@ bazel_dep(
 bazel_dep(name = "abseil-cpp", repo_name = "com_google_absl")
 git_override(
     module_name = "abseil-cpp",
-    commit = "4a2c63365eff8823a5221db86ef490e828306f9d",  # Same commit as in goma fork
+    commit = "5614692612134a4ba2468495a42ece1a4afaf524",  # Same commit as in goma fork
     remote = "https://github.com/abseil/abseil-cpp.git",
 )
 
