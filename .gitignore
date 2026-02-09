@@ -43,3 +43,7 @@ MODULE.bazel.lock
 
 # User specific bazelrc
 user.bazelrc
+
+# vpython
+.venv/
+.python-version
