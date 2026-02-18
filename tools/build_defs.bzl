@@ -58,10 +58,12 @@ def go_proto_checkedin_test(name, proto):
         name = name + "_copy_pbgo_files",
         srcs = ["//tools:copy_to_workspace.sh"],
         args = [
+            "$(execpath @io_bazel_rules_go//go:go)",
             native.package_name(),
             "$(execpaths " + genfile + ")",
         ],
         data = [
             genfile,
+            "@io_bazel_rules_go//go",
         ],
     )

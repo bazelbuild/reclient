@@ -35,9 +35,12 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-pkg="$1"
+gobin="$1"
+pkg="$2"
 cd "$BUILD_WORKSPACE_DIRECTORY" || exit 1
-for file in "${@:2}"
+for file in "${@:3}"
 do
   cp -f "$file" "$pkg/$(basename "$file")"
+  chmod 644 "$pkg/$(basename "$file")"
+  $gobin fmt "$pkg/$(basename "$file")"
 done

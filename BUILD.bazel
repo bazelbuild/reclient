@@ -10,6 +10,7 @@ exports_files(["go.mod"])
 # gazelle:prefix github.com/bazelbuild/reclient
 # gazelle:exclude docker
 # gazelle:exclude **/*.pb.go
+# gazelle:go_grpc_compilers @io_bazel_rules_go//proto:go_proto,@io_bazel_rules_go//proto:go_grpc_v2
 gazelle(
     name = "gazelle",
     build_tags = ["goma"],

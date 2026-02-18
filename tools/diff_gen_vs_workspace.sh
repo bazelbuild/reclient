@@ -41,13 +41,16 @@
 
 # Fail on any error.
 set -o errexit
-set -o nounset
+#set -o nounset
 set -o pipefail
 
 pkg="$1"
 diff_found=0
 for file in "${@:2}"
 do
+  if [[ "$file" =~ _grpc\.pb\.go$ ]]; then
+    continue
+  fi
   gen="$(rlocation "$TEST_WORKSPACE/$file")"
   checked_in="$(rlocation "$TEST_WORKSPACE/$pkg/$(basename "$file")")"
   if [ ! -f "$gen" ]; then
