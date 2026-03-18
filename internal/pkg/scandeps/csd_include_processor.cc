@@ -84,8 +84,8 @@ class include_processor::IncludeProcessor::impl {
       : Service(clang::tooling::dependencies::DependencyScanningService(
             clang::tooling::dependencies::ScanningMode::
                 DependencyDirectivesScan,
-            clang::tooling::dependencies::ScanningOutputFormat::Make, true,
-            true)),
+            clang::tooling::dependencies::ScanningOutputFormat::Make,
+            clang::tooling::dependencies::ScanningOptimizations::Default, true)),
         PluginsToIgnore(csdutils::ParsePluginsToIgnore(
             std::getenv("RBE_clang_depscan_ignored_plugins"))) {}
   impl(const impl& other) = delete;

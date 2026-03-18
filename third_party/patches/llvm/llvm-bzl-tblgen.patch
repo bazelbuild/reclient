@@ -1,25 +1,36 @@
-diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-index 037719a51dd1..99a6942341fb 100644
 --- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
-@@ -1484,6 +1484,20 @@ gentbl(
+@@ -15,7 +15,7 @@
+ load("//llvm:binary_alias.bzl", "binary_alias")
+ load("//llvm:cc_plugin_library.bzl", "cc_plugin_library")
+ load("//llvm:driver.bzl", "llvm_driver_cc_binary")
+-load("//mlir:tblgen.bzl", "gentbl_cc_library", "td_library")
++load("//mlir:tblgen.bzl", "gentbl_cc_library", "gentbl_filegroup", "td_library")
+
+ package(
+     default_visibility = ["//visibility:public"],
+@@ -593,6 +593,10 @@
+ cc_library(
+     name = "config",
++    defines = select({
++        "@platforms//os:windows": ["CLANG_BUILD_STATIC"],
++        "//conditions:default": [],
++    }),
+     hdrs = [
+         "include/clang/Basic/Version.inc",
+         "include/clang/Config/config.h",
+@@ -2518,4 +2522,14 @@
+         "//llvm:Core",
+         "//llvm:Support",
      ],
  )
- 
-+gentbl(
-+    name = "driver_options_json_gen",
-+    tbl_outs = [(
-+        "",
-+        "clang-options.json",
-+    )],
-+    tblgen = "//llvm:llvm-tblgen",
-+    tblgen_args = "--dump-json",
-+    td_file = "include/clang/Driver/Options.td",
-+    td_srcs = [
-+        "//llvm:include/llvm/Option/OptParser.td",
-+    ],
-+)
 +
- cc_library(
-     name = "driver",
-     srcs = glob(
++alias(name = "dependency_scanning", actual = ":tooling_dependency_scanning")
++
++gentbl_filegroup(
++    name = "driver_options_json_gen",
++    tbl_outs = [(["--dump-json"], "clang-options.json")],
++    tblgen = "//llvm:llvm-tblgen",
++    td_file = "include/clang/Driver/Options.td",
++    deps = ["//llvm:OptParserTdFiles"],
++)

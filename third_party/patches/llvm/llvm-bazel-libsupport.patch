@@ -1,8 +1,6 @@
-diff --git a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
-index 0efaccb43e6a..9de9ad8ae2ff 100644
 --- a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
 +++ b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
-@@ -192,6 +192,30 @@ genrule(
+@@ -221,6 +221,30 @@ genrule(
            "echo -e '#undef HANDLE_EXTENSION' >> $@\n",
  )
 
@@ -33,7 +31,8 @@ index 0efaccb43e6a..9de9ad8ae2ff 100644
  cc_library(
      name = "Support",
      srcs = glob([
-@@ -220,7 +244,19 @@ cc_library(
+@@ -247,7 +271,19 @@ cc_library(
+     ] + select({
          "@platforms//cpu:aarch64": [
              "lib/Support/BLAKE3/blake3_neon.c",
          ],
@@ -54,20 +53,5 @@ index 0efaccb43e6a..9de9ad8ae2ff 100644
              "lib/Support/BLAKE3/blake3_avx2_x86-64_unix.S",
              "lib/Support/BLAKE3/blake3_avx512_x86-64_unix.S",
              "lib/Support/BLAKE3/blake3_sse2_x86-64_unix.S",
-@@ -4610,7 +4646,7 @@ cc_binary(
-     srcs = glob([
-         "tools/llvm-symbolizer/*.cpp",
-         "tools/llvm-symbolizer/*.h",
--    ]) + [ "llvm-symbolizer-driver.cpp"],
-+    ]) + ["llvm-symbolizer-driver.cpp"],
-     copts = llvm_copts,
-     stamp = 0,
-     deps = [
-@@ -4723,7 +4759,6 @@ expand_template(
-     template = "cmake/modules/llvm-driver-template.cpp.in",
- )
-
--
- cc_binary(
-     name = "sancov",
-     srcs = glob([
+             "lib/Support/BLAKE3/blake3_sse41_x86-64_unix.S",
+         ],

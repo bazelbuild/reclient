@@ -4,9 +4,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Refer to go/rbe/dev/x/playbook/upgrading_clang_scan_deps
 # to update clang-scan-deps version.
-LLVM_COMMIT = "82e851a407c52d65ce65e7aa58453127e67d42a0"
+LLVM_COMMIT = "6d4a0935c850ec3ddfc70c4ba97b98adc35c676e"
 
-LLVM_SHA256 = "c45d3e776d8f54362e05d4d5da8b559878077241d84c81f69ed40f11c0cdca8f"
+LLVM_SHA256 = "46d963c8cbc1c3f0f06424e61fc739c626317e5b7c91cca8b0ef3cf0c69dd14a"
 
 def _llvm_version_repo_impl(ctx):
     ctx.file("BUILD.bazel")
@@ -22,7 +22,8 @@ def _llvm_extension_impl(ctx):
         build_file_content = "#empty",
         patch_args = ["-p1"],
         patches = [
-            # For simplicity, we expose the tblgen rule for a binary we use.
+            # Expose the tblgen rule to generate the clang-options.json file,
+            # provide dep_scanning alias, and static link clang for Windows.
             "//third_party/patches/llvm:llvm-bzl-tblgen.patch",
             # This patch picks the right version of assembly files to build libSupport
             # on Windows. Refer to https://github.com/llvm/llvm-project/issues/54685
@@ -34,8 +35,6 @@ def _llvm_extension_impl(ctx):
             # line `llvm_configure(name = "llvm-project")` below, in the bzl file,
             # @llvm//utils/bazel:configure.bzl, @llvm-raw is not pre-defined.
             "//third_party/patches/llvm:llvm-bzl-config.patch",
-            "//third_party/patches/llvm:llvm-project-overlay-exectools.patch",
-            "//third_party/patches/llvm:llvm-delay-sanitizer-args-parsing.patch",
         ],
         sha256 = LLVM_SHA256,
         strip_prefix = "llvm-project-%s" % LLVM_COMMIT,
