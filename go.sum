@@ -118,6 +118,7 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapp
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0/go.mod h1:cSgYe11MCNYunTnRXrKiR/tHc0eoKjICUuWpNZoVCOo=
 github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0 h1:YydHz0LOUfsZ0/wnGj9T5SgyL5KyC0/jKM+bNZndmpU=
 github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0/go.mod h1:ZWP6hShlkP3umZRP3V9jft8h1egCZWZnX5CgYQIDbuU=
+github.com/GoogleCloudPlatform/protoc-gen-bq-schema/v3 v3.1.0/go.mod h1:mBBReylUchn5O7KqcOK83/V51uPFZIgN/pJrhRc7Plw=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5/go.mod h1:tTuCMEN+UleMWgg9dVx4Hu52b1bJo+59jBh3ajtinzw=
