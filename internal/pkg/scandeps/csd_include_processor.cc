@@ -92,6 +92,12 @@ clang::dependencies::DependencyScanningServiceOptions MakeServiceOptions() {
   clang::dependencies::DependencyScanningServiceOptions Opts;
   Opts.Mode = clang::dependencies::ScanningMode::DependencyDirectivesScan;
   Opts.OptimizeArgs = clang::dependencies::ScanningOptimizations::Default;
+  // Preserved from the old constructor call, whose fourth argument was
+  // EagerLoadModules=true; the struct defaults it to false. It only affects
+  // the explicit-module command lines the scanner generates, which this
+  // scanner never asks for, but keeping it avoids an unintended behaviour
+  // change riding along with the API migration.
+  Opts.EagerLoadModules = true;
   return Opts;
 }
 
