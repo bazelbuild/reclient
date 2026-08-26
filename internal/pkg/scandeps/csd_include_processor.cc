@@ -18,13 +18,16 @@
 #include <string>
 #include <vector>
 
-#include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Basic/Diagnostic.h"
+#include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Tooling/CompilationDatabase.h"
-#include "clang/Tooling/DependencyScanning/DependencyScanningTool.h"
+#include "clang/Tooling/DependencyScanningTool.h"
 #include "csdutils/adjust_cmd.h"
 #include "csdutils/parse_deps.h"
 #include "csdutils/parse_env.h"
 #include "include_processor.h"
+#include "llvm/Support/raw_ostream.h"
 
 // Some of reclient's use cases require ubuntu 16.04, which is only shipped
 // with GLIBC 2.23 at the latest, by default (or so is the ubuntu:16.04 docker
@@ -78,14 +81,26 @@ class SingleCommandCompilationDatabase
   clang::tooling::CompileCommand Command;
 };
 
+namespace {
+
+// The scanning service is configured by a struct as of llvmorg-23.1.0; it used
+// to take the mode, output format and optimizations as constructor arguments.
+// The output format is no longer a service-wide setting -- it follows from
+// which DependencyScanningTool method is called, and this one wants make
+// format.
+clang::dependencies::DependencyScanningServiceOptions MakeServiceOptions() {
+  clang::dependencies::DependencyScanningServiceOptions Opts;
+  Opts.Mode = clang::dependencies::ScanningMode::DependencyDirectivesScan;
+  Opts.OptimizeArgs = clang::dependencies::ScanningOptimizations::Default;
+  return Opts;
+}
+
+}  // namespace
+
 class include_processor::IncludeProcessor::impl {
  public:
   impl()
-      : Service(clang::tooling::dependencies::DependencyScanningService(
-            clang::tooling::dependencies::ScanningMode::
-                DependencyDirectivesScan,
-            clang::tooling::dependencies::ScanningOutputFormat::Make,
-            clang::tooling::dependencies::ScanningOptimizations::Default, true)),
+      : Service(MakeServiceOptions()),
         PluginsToIgnore(csdutils::ParsePluginsToIgnore(
             std::getenv("RBE_clang_depscan_ignored_plugins"))) {}
   impl(const impl& other) = delete;
@@ -118,35 +133,50 @@ class include_processor::IncludeProcessor::impl {
 
     clang::tooling::CompileCommand command(Directory, Filename, CommandLine,
                                            llvm::StringRef());
-    std::unique_ptr<SingleCommandCompilationDatabase> Compilations =
-        std::make_unique<SingleCommandCompilationDatabase>(std::move(command));
-    // The command options are rewritten to run Clang in preprocessor only
-    // mode.
-    auto AdjustingCompilations =
-        std::make_unique<clang::tooling::ArgumentsAdjustingCompilations>(
-            std::move(Compilations));
+    // This used to be wrapped in an ArgumentsAdjustingCompilations, which
+    // llvmorg-23.1.0 removed. It was a no-op wrapper: no argument adjusters
+    // were ever registered on it, so it handed back exactly the command it was
+    // given. AdjustCmd above is what actually rewrites the command line to run
+    // clang in preprocessor-only mode.
+    SingleCommandCompilationDatabase Compilations(std::move(command));
 
-    auto cmds = AdjustingCompilations->getAllCompileCommands();
+    auto cmds = Compilations.getAllCompileCommands();
     if (cmds.size() < 1) {
-      return llvm::createStringError(
-          std::errc::argument_out_of_domain,
-          "unexpected number of cmds from AdjustingCompilation");
+      return llvm::createStringError(std::errc::argument_out_of_domain,
+                                     "no commands in compilation database");
     }
 
-    std::unique_ptr<clang::tooling::dependencies::DependencyScanningTool>
-        WorkerTool = std::make_unique<
-            clang::tooling::dependencies::DependencyScanningTool>(Service);
+    std::unique_ptr<clang::tooling::DependencyScanningTool> WorkerTool =
+        std::make_unique<clang::tooling::DependencyScanningTool>(Service);
 
-    auto DependencyScanningRes =
-        WorkerTool->getDependencyFile(cmds[0].CommandLine, Directory);
+    // getDependencyFile now reports failures through a DiagnosticConsumer and
+    // returns nullopt, rather than returning an llvm::Expected carrying the
+    // message. Collect the diagnostics into a string so the caller still gets
+    // the compiler's own explanation of why scanning failed -- that text is
+    // what makes a scan failure diagnosable at all.
+    std::string Diags;
+    llvm::raw_string_ostream DiagsOS(Diags);
+    clang::DiagnosticOptions DiagOpts;
+    clang::TextDiagnosticPrinter DiagPrinter(DiagsOS, DiagOpts);
+
+    // No module output lookup: this scanner only ever asks for make-format
+    // dependencies, so nothing should consult it.
+    auto LookupOutput = [](const clang::dependencies::ModuleDeps&,
+                           clang::dependencies::ModuleOutputKind) {
+      return std::string();
+    };
+
+    auto DependencyScanningRes = WorkerTool->getDependencyFile(
+        cmds[0].CommandLine, Directory, LookupOutput, DiagPrinter);
     if (!DependencyScanningRes) {
-      return DependencyScanningRes.takeError();
+      DiagsOS.flush();
+      return llvm::createStringError(llvm::inconvertibleErrorCode(), Diags);
     }
     return csdutils::ParseDeps(*DependencyScanningRes);
   }
 
  private:
-  clang::tooling::dependencies::DependencyScanningService Service;
+  clang::dependencies::DependencyScanningService Service;
   std::set<std::string> PluginsToIgnore;
 };
 
