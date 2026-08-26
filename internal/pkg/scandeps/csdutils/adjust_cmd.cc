@@ -87,6 +87,24 @@ void csdutils::AdjustCmd(std::vector<std::string>& cmd,
       cmd.push_back(filename);
     }
   }
+  // A dependency scan needs the set of headers a translation unit opens, and
+  // nothing else, so no diagnostic short of a hard error should decide whether
+  // an action is scannable.
+  //
+  // This matters because the bundled clang-scan-deps is not the same build as
+  // the compiler that runs the action. A newer scanner knows diagnostics the
+  // older compiler does not: scanning with clang 23 reports "'__COUNTER__' is
+  // a C2y extension" for a file clang 22 compiles without complaint. Under
+  // -pedantic-errors that is fatal, and the action fails to scan for a reason
+  // that has nothing to do with its dependencies.
+  //
+  // -pedantic-errors has to be removed rather than countered: it sets clang's
+  // extension-diagnostic behaviour to "error" outright, which neither
+  // -Wno-error nor -Wno-everything undoes. Dropping it cannot change the
+  // header set, only which diagnostics fire.
+  cmd.erase(
+      std::remove(cmd.begin(), cmd.end(), std::string("-pedantic-errors")),
+      cmd.end());
   cmd.insert(cmd.end(), {"-Xclang", "-Eonly", "-Xclang", "-sys-header-deps",
-                         "-Wno-error"});
+                         "-Wno-error", "-Wno-everything"});
 }
