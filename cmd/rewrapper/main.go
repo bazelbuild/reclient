@@ -194,6 +194,11 @@ func main() {
 	if err != nil {
 		log.Exitf("Failed to compute working directory path relative to the exec root: %v", err)
 	}
+	// REAPI uses an empty working_directory to mean "run at the input root".
+	// Some backends reject "." even though it represents the same location.
+	if cOpts.WorkDir == "." {
+		cOpts.WorkDir = ""
+	}
 	if strings.HasPrefix(cOpts.WorkDir, "..") {
 		log.Exitf("Current working directory (%q) is not under the exec root (%q), relative working dir = %q", wd, cOpts.ExecRoot, cOpts.WorkDir)
 	}

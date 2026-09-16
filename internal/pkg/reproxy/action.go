@@ -242,7 +242,7 @@ func depth(path string) int {
 // This path is normalized so that all separators are os.PathSeparator
 func toRemoteWorkingDir(workingDir string) string {
 	if workingDir == "" || workingDir == "." {
-		return workingDir
+		return ""
 	}
 	dirDepth := depth(filepath.Clean(workingDir))
 	elem := make([]string, dirDepth)
