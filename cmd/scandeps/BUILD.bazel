@@ -30,8 +30,13 @@ cc_platform_binary(
         "//:goma_input_processor_config": ["-std=c++14"],
         "//conditions:default": [],
     }),
+    # Wrapping getentropy lets the binary link against the old android1404
+    # glibc, which does not export it; __wrap_getentropy is a LOG(FATAL) stub
+    # on the assumption that nothing ever calls it. gRPC does call it on a
+    # modern glibc, so applying the wrap outside that platform turns every
+    # scandeps_server startup into a fatal abort.
     linkopts = select({
-        "@platforms//os:linux": [
+        "//:use_android_glibc_true": [
             "-Wl,--wrap=getentropy",
         ],
         "//conditions:default": [],
