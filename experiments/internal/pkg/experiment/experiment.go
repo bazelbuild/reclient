@@ -286,7 +286,7 @@ func (e *Experiment) copyInputs(ctx context.Context) error {
 				for i := 0; i < 5; i++ {
 					var oe string
 					if oe, err = v.RunCommand(ctx, &epb.Command{
-						Args: []string{"gsutil", "cp", gcsDest, input.Destination},
+						Args: []string{"gcloud", "storage", "cp", gcsDest, input.Destination},
 					}); err == nil {
 						ok = true
 						break

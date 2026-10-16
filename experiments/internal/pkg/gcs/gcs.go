@@ -30,7 +30,7 @@ import (
 // Copy copies a file from/to GCS.
 func Copy(ctx context.Context, src, dest string) error {
 	log.Infof("Copying %v", src)
-	args := []string{"gsutil", "cp", src, dest}
+	args := []string{"gcloud", "storage", "cp", src, dest}
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Stdin = os.Stdin // Connect stdin to allow gcloud to use gsutil reauth flow
 	if oe, err := cmd.CombinedOutput(); err != nil {
@@ -42,7 +42,7 @@ func Copy(ctx context.Context, src, dest string) error {
 
 // List lists the contents of a directory in GCS.
 func List(ctx context.Context, dir string) ([]string, error) {
-	args := []string{"gsutil", "ls", dir}
+	args := []string{"gcloud", "storage", "ls", dir}
 	oe, err := exec.CommandContext(ctx, args[0], args[1:]...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list dir: %v, outerr: %v", err, string(oe))
