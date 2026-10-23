@@ -30,7 +30,9 @@ GNU-style compiler options and clang-cl path options are supported, including
 joined and separate `/I` and `/FI`, object/PDB outputs, and recognized `/clang:`
 forwarded path flags. Windows drive-letter and UNC paths use case-insensitive
 root matching. Windows clients targeting non-Windows workers also normalize
-recognized relative path arguments to forward slashes.
+recognized relative path arguments to forward slashes. Directory-valued paths
+retain their trailing separator, and make dependency targets (`-MT`/`-MQ`)
+remain literal, including when forwarded through `/clang:`.
 
 Absolute paths outside the execution root are preserved and reported. Enable
 `-fail_on_paths_outside_exec_root` with `-relativize_paths` to reject these actions.

@@ -18,6 +18,7 @@ package reproxy
 import (
 	"errors"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
@@ -401,7 +402,7 @@ func TestRelativizePathsReportsResponseFiles(t *testing.T) {
 // windowsCross action, whose client is Windows regardless of which GOOS this
 // test binary itself is built for. Unlike TestRelativizePaths, it does not
 // skip on a Windows host -- the Windows-path logic (isWindowsAbs,
-// cleanWindowsPath, winUnderRoot, relWinPath) is spelled out independently of
+// cleanWindowsPath, commonWindowsPrefix) is spelled out independently of
 // path/filepath specifically so it behaves the same on every GOOS.
 func TestRelativizePathsClangClWindows(t *testing.T) {
 	tests := []struct {
@@ -634,6 +635,104 @@ func TestRelativizePathsClangClForcedIncludes(t *testing.T) {
 				if errors.Is(err, errPathsOutsideExecRoot) != wantError {
 					t.Errorf("applyPathRelativization(strict=%v) = %v; want outside-root error: %v", strict, err, wantError)
 				}
+			}
+		})
+	}
+}
+
+func TestRelativizeDirectorySuffixes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX paths")
+	}
+	cmd := &command.Command{ExecRoot: "/root", WorkingDir: "build", Args: []string{
+		"/root/bin/clang", "-iprefix", "/root/", "-iwithprefix", "inc",
+		"-iprefix/root/build/", "--sysroot=/root/sys/", "-I/root/include/",
+	}}
+	got, outside, _ := relativizePaths(cmd, false)
+	want := []string{"../bin/clang", "-iprefix", "../", "-iwithprefix", "inc",
+		"-iprefix./", "--sysroot=../sys/", "-I../include/"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatal(diff)
+	}
+	if len(outside) != 0 {
+		t.Fatalf("unexpected outside paths: %v", outside)
+	}
+}
+
+func TestRelativizeLiteralOperands(t *testing.T) {
+	for _, forwarded := range []bool{false, true} {
+		t.Run(map[bool]string{false: "GNU", true: "clang-cl forwarded"}[forwarded], func(t *testing.T) {
+			exe, root, source := "clang", "/work", "/work/src/a.c"
+			operands := []string{"-MT", "/work/build/a.o", "-MQ", "/outside/target",
+				"-MT/work/build/joined.o", "-MQ/outside/joined", "-D", "/outside/definition",
+				"--system-header-prefix", "/outside/prefix/"}
+			if forwarded {
+				exe, root, source = "clang-cl.exe", `C:\work`, `c:\WORK\src\a.c`
+				for i := range operands {
+					operands[i] = "/clang:" + operands[i]
+				}
+			} else if runtime.GOOS == "windows" {
+				t.Skip("POSIX paths")
+			}
+			args := append([]string{exe}, operands...)
+			args = append(args, "-c", source)
+			cmd := &command.Command{Identifiers: &command.Identifiers{}, ExecRoot: root, WorkingDir: "build", Args: args}
+			want := append([]string{exe}, operands...)
+			want = append(want, "-c", "../src/a.c")
+			if err := applyPathRelativization(&action{cmd: cmd, windowsCross: forwarded}, true); err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(want, cmd.Args); diff != "" {
+				t.Fatal(diff)
+			}
+		})
+	}
+}
+
+func TestRelativizeWindowsPaths(t *testing.T) {
+	for _, cross := range []bool{false, true} {
+		for _, root := range []string{`C:\root`, `\\server\share\root`} {
+			t.Run(root+map[bool]string{false: "/native", true: "/cross"}[cross], func(t *testing.T) {
+				varied := strings.ToUpper(root)
+				args := []string{varied + `\build\clang-cl.exe`, `/Fo` + varied + `\build\`, `/Fd:` + varied + `\build/`,
+					"-I", varied + `\include\`, "/c", varied + `\src\a.cc`}
+				sep := "/"
+				if !cross {
+					sep = `\`
+				}
+				want := []string{"." + sep + "clang-cl.exe", "/Fo." + sep, "/Fd:." + sep,
+					"-I", ".." + sep + "include" + sep, "/c", ".." + sep + "src" + sep + "a.cc"}
+				cmd := &command.Command{Identifiers: &command.Identifiers{}, ExecRoot: root, WorkingDir: "build", Args: args}
+				if err := applyPathRelativization(&action{cmd: cmd, windowsCross: cross}, true); err != nil {
+					t.Fatal(err)
+				}
+				if diff := cmp.Diff(want, cmd.Args); diff != "" {
+					t.Fatal(diff)
+				}
+			})
+		}
+	}
+}
+
+func TestRelativizeWindowsRootBoundaries(t *testing.T) {
+	for _, tt := range []struct {
+		root, source, want string
+		outside            bool
+	}{
+		{`C:\root`, `c:\ROOTED\a.cc`, `c:\ROOTED\a.cc`, true},
+		{`C:\root`, `D:\root\a.cc`, `D:\root\a.cc`, true},
+		{`\\server\share\root`, `\\server\other\root\a.cc`, `\\server\other\root\a.cc`, true},
+		{`C:\`, `c:\..\src\a.cc`, `../src/a.cc`, false},
+		{`\\server\share`, `\\SERVER\SHARE\..\src\a.cc`, `../src/a.cc`, false},
+	} {
+		t.Run(tt.source, func(t *testing.T) {
+			cmd := &command.Command{Identifiers: &command.Identifiers{}, ExecRoot: tt.root, WorkingDir: "build", Args: []string{"clang-cl.exe", "/c", tt.source}}
+			got, outside, _ := relativizePaths(cmd, true)
+			if diff := cmp.Diff([]string{"clang-cl.exe", "/c", tt.want}, got); diff != "" {
+				t.Fatal(diff)
+			}
+			if (len(outside) > 0) != tt.outside {
+				t.Fatalf("outside paths = %v; want outside=%v", outside, tt.outside)
 			}
 		})
 	}
