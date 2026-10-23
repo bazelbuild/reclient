@@ -718,6 +718,13 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 	case ppb.ExecutionStrategy_REMOTE_LOCAL_FALLBACK:
 		s.runRemote(ctx, a)
 		if !a.res.IsOk() {
+			// -fail_on_paths_outside_exec_root asked for this action to fail.
+			// Retrying it locally would succeed and turn a hermeticity problem
+			// into a green build, which is precisely what the flag exists to
+			// prevent.
+			if errors.Is(a.res.Err, errPathsOutsideExecRoot) {
+				return
+			}
 			roe := a.oe.(*outerr.RecordingOutErr)
 			log.Warningf("%v: Remote execution failed with %+v, falling back to local.\n stdout: %s\n stderr: %s",
 				a.cmd.Identifiers.ExecutionID, a.res, roe.Stdout(), roe.Stderr())
@@ -886,6 +893,12 @@ func (s *Server) runRacing(ctx context.Context, a *action) {
 	if features.GetConfig().CleanIncludePaths {
 		a.cmd.Args = cleanIncludePaths(a.cmd)
 	}
+	if features.GetConfig().RelativizePaths {
+		if err := applyPathRelativization(a, features.GetConfig().FailOnPathsOutsideExecRoot); err != nil {
+			a.res = command.NewLocalErrorResult(err)
+			return
+		}
+	}
 
 	if err := s.populateCommandIO(ctx, a); err != nil {
 		return
@@ -944,6 +957,12 @@ func (s *Server) runRemote(ctx context.Context, a *action) {
 
 	if features.GetConfig().CleanIncludePaths {
 		a.cmd.Args = cleanIncludePaths(a.cmd)
+	}
+	if features.GetConfig().RelativizePaths {
+		if err := applyPathRelativization(a, features.GetConfig().FailOnPathsOutsideExecRoot); err != nil {
+			a.res = command.NewLocalErrorResult(err)
+			return
+		}
 	}
 	if err := s.populateCommandIO(rCtx, a); err != nil {
 		return
