@@ -21,10 +21,8 @@ becomes:
 ../tools/clang++ -I../include -c ../src/a.cc -o a.o
 ```
 
-The execution root must cover the toolchain and source/build inputs that need to
-be uploaded. Relativization changes command arguments; it does not discover or
-upload additional toolchain files. Declare those inputs through the existing
-input and toolchain configuration mechanisms.
+Declare source and toolchain inputs through the existing input configuration;
+paths to uploaded files must fall under the execution root.
 
 GNU-style compiler options and clang-cl path options are supported, including
 joined and separate `/I` and `/FI`, object/PDB outputs, and recognized `/clang:`
@@ -33,23 +31,19 @@ root matching. Windows clients targeting non-Windows workers also normalize
 recognized relative path arguments to forward slashes. Directory-valued paths
 retain their trailing separator, and make dependency targets (`-MT`/`-MQ`)
 remain literal, including when forwarded through `/clang:`.
+Definitions, warning options, and prefix-map expressions retain their original
+values.
 
-Absolute paths outside the execution root are preserved and reported. Enable
-`-fail_on_paths_outside_exec_root` with `-relativize_paths` to reject these actions.
-Such a rejection also prevents remote-local fallback from hiding the error.
+Recognized absolute paths outside the execution root cause the action to fail,
+including when local fallback is enabled. The error identifies the offending
+paths. Worker pseudo-filesystem paths under `/proc`, `/sys`, and `/dev` are
+preserved.
 
-## Limits
+## Scope
 
-- The rewriter recognizes command-line path spellings; it does not rewrite
-  arbitrary file contents. It reports response-file arguments because their
-  contents are not rewritten by this pass.
-- Preprocessor definitions, warning options, prefix-map expressions, and other
-  values whose meaning is not a filesystem path are deliberately preserved.
-- `/proc`, `/sys`, and `/dev` paths are preserved as worker filesystem paths.
-- Paths embedded in generated filenames or file contents require build-system
-  handling. This option alone does not guarantee matching action keys across
-  checkouts: inputs, working directories, environment, and all other command
-  properties must also agree.
-- Use without working-directory canonicalization until the interaction has
-  dedicated coverage. Existing canonicalization changes other parts of the
-  command and input tree independently of this pass.
+Rewriting applies to recognized command-line arguments. Response-file contents
+and paths embedded in file contents are unchanged.
+
+Working-directory canonicalization has been validated with Linux LLVM builds.
+For Windows clients targeting Linux workers, use `canonicalize_working_dir=false`,
+as in the native Windows LLVM integration.

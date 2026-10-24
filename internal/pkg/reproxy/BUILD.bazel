@@ -64,6 +64,7 @@ go_test(
         "//internal/pkg/deps",
         "//internal/pkg/event",
         "//internal/pkg/execroot",
+        "//internal/pkg/features",
         "//internal/pkg/labels",
         "//internal/pkg/localresources",
         "//internal/pkg/logger",

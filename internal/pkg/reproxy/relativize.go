@@ -375,10 +375,8 @@ func relativizePaths(cmd *command.Command, windowsCross bool) (args []string, ou
 var errPathsOutsideExecRoot = errors.New("command references absolute paths outside the exec root")
 
 // applyPathRelativization rewrites absolute paths in the action's arguments and
-// reports any that could not be rewritten. It returns an error when the action
-// is configured to treat those as fatal, so that a non-hermetic action fails
-// here rather than mysteriously on a worker.
-func applyPathRelativization(a *action, failOnOutside bool) error {
+// fails the action if a recognized path is outside the execution root.
+func applyPathRelativization(a *action) error {
 	args, outside, responseFiles := relativizePaths(a.cmd, a.windowsCross)
 	a.cmd.Args = args
 	if len(responseFiles) > 0 {
@@ -391,11 +389,5 @@ func applyPathRelativization(a *action, failOnOutside bool) error {
 	if len(outside) == 0 {
 		return nil
 	}
-	msg := fmt.Sprintf("%v: command references absolute paths outside exec root %s, which cannot be sent to a remote worker: %v",
-		a.cmd.Identifiers.ExecutionID, a.cmd.ExecRoot, outside)
-	if failOnOutside {
-		return fmt.Errorf("%s: %w", msg, errPathsOutsideExecRoot)
-	}
-	log.Warning(msg)
-	return nil
+	return fmt.Errorf("%v: %w %s: %v", a.cmd.Identifiers.ExecutionID, errPathsOutsideExecRoot, a.cmd.ExecRoot, outside)
 }

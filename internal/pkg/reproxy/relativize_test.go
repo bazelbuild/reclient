@@ -16,14 +16,54 @@
 package reproxy
 
 import (
+	"context"
 	"errors"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	ppb "github.com/bazelbuild/reclient/api/proxy"
+	"github.com/bazelbuild/reclient/internal/pkg/features"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/command"
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestRelativizeRejectsOutsideRoot(t *testing.T) {
+	config := features.GetConfig()
+	saved := config.RelativizePaths
+	config.RelativizePaths = true
+	t.Cleanup(func() { config.RelativizePaths = saved })
+	for _, strategy := range []ppb.ExecutionStrategy_Value{
+		ppb.ExecutionStrategy_REMOTE,
+		ppb.ExecutionStrategy_REMOTE_LOCAL_FALLBACK,
+		ppb.ExecutionStrategy_RACING,
+	} {
+		t.Run(strategy.String(), func(t *testing.T) {
+			outside := filepath.Join(t.TempDir(), "outside.h")
+			a := &action{
+				cmd: &command.Command{
+					Identifiers: &command.Identifiers{},
+					ExecRoot:    t.TempDir(),
+					Args:        []string{"clang", "-include", outside, "-c", "source.cc"},
+				},
+				execStrategy:    strategy,
+				reclientTimeout: 60,
+			}
+			server := &Server{}
+			server.Init()
+			// No execution services are installed: mapping must fail before
+			// input processing, remote execution, or a local fallback starts.
+			server.runAction(context.Background(), a)
+			if a.res == nil || !errors.Is(a.res.Err, errPathsOutsideExecRoot) {
+				t.Fatalf("result = %v; want outside-root error", a.res)
+			}
+			if !strings.Contains(a.res.Err.Error(), outside) {
+				t.Errorf("error %q does not identify %q", a.res.Err, outside)
+			}
+		})
+	}
+}
 
 func TestRelativizePaths(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -628,13 +668,11 @@ func TestRelativizePathsClangClForcedIncludes(t *testing.T) {
 					t.Errorf("outside-root diff (-want +got):\n%s", diff)
 				}
 			}
-			for _, strict := range []bool{false, true} {
-				cmd.Args = append([]string(nil), args...)
-				err := applyPathRelativization(&action{cmd: cmd, windowsCross: windowsCross}, strict)
-				wantError := strict && len(tt.wantOutside) > 0
-				if errors.Is(err, errPathsOutsideExecRoot) != wantError {
-					t.Errorf("applyPathRelativization(strict=%v) = %v; want outside-root error: %v", strict, err, wantError)
-				}
+			cmd.Args = append([]string(nil), args...)
+			err := applyPathRelativization(&action{cmd: cmd, windowsCross: windowsCross})
+			wantError := len(tt.wantOutside) > 0
+			if errors.Is(err, errPathsOutsideExecRoot) != wantError {
+				t.Errorf("applyPathRelativization() = %v; want outside-root error: %v", err, wantError)
 			}
 		})
 	}
@@ -679,7 +717,7 @@ func TestRelativizeLiteralOperands(t *testing.T) {
 			cmd := &command.Command{Identifiers: &command.Identifiers{}, ExecRoot: root, WorkingDir: "build", Args: args}
 			want := append([]string{exe}, operands...)
 			want = append(want, "-c", "../src/a.c")
-			if err := applyPathRelativization(&action{cmd: cmd, windowsCross: forwarded}, true); err != nil {
+			if err := applyPathRelativization(&action{cmd: cmd, windowsCross: forwarded}); err != nil {
 				t.Fatal(err)
 			}
 			if diff := cmp.Diff(want, cmd.Args); diff != "" {
@@ -703,7 +741,7 @@ func TestRelativizeWindowsPaths(t *testing.T) {
 				want := []string{"." + sep + "clang-cl.exe", "/Fo." + sep, "/Fd:." + sep,
 					"-I", ".." + sep + "include" + sep, "/c", ".." + sep + "src" + sep + "a.cc"}
 				cmd := &command.Command{Identifiers: &command.Identifiers{}, ExecRoot: root, WorkingDir: "build", Args: args}
-				if err := applyPathRelativization(&action{cmd: cmd, windowsCross: cross}, true); err != nil {
+				if err := applyPathRelativization(&action{cmd: cmd, windowsCross: cross}); err != nil {
 					t.Fatal(err)
 				}
 				if diff := cmp.Diff(want, cmd.Args); diff != "" {
