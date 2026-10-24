@@ -28,6 +28,11 @@ type Config struct {
 	// It is temporary feature for nest build. b/157442013
 	CleanIncludePaths bool
 
+	// RelativizePaths rewrites recognized absolute paths under the exec root
+	// relative to the action's working directory. Paths outside the exec root
+	// cause the action to fail.
+	RelativizePaths bool
+
 	// ExperimentalCacheMissRate is the cache miss rate simulated by
 	// reproxy in an experimental build. Not to be used for production.
 	ExperimentalCacheMissRate int
@@ -70,6 +75,7 @@ func GetConfig() *Config {
 func init() {
 	flag.Bool("shadow_header_detection", false, "Indicates whether to enable detection of shadow headers when building/verifying dependencies of c++ compilations in local execution remote cache mode")
 	flag.BoolVar(&GetConfig().CleanIncludePaths, "clean_include_paths", false, "Indicates whether to clean include paths from -I arguments")
+	flag.BoolVar(&GetConfig().RelativizePaths, "relativize_paths", false, "Rewrite recognized absolute paths relative to the action's working directory; fail on paths outside the exec root")
 	flag.IntVar(&GetConfig().ExperimentalCacheMissRate, "experimental_cache_miss_rate", 0, "Indicates percent of actions to simulate cache misses. Integer [0,100).")
 	flag.BoolVar(&GetConfig().ExperimentalSysrootDoNotUpload, "experimental_sysroot_do_not_upload", false, "Do not upload the the files/directories under the directory specified by the --sysroot flag.")
 	flag.BoolVar(&GetConfig().ExperimentalGomaDepsCache, "experimental_goma_deps_cache", false, "Use go deps cache with goma instead of goma's deps cache")

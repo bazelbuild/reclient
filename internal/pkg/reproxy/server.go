@@ -718,6 +718,10 @@ func (s *Server) runAction(ctx context.Context, a *action) {
 	case ppb.ExecutionStrategy_REMOTE_LOCAL_FALLBACK:
 		s.runRemote(ctx, a)
 		if !a.res.IsOk() {
+			// Path mapping failures must not be hidden by local fallback.
+			if errors.Is(a.res.Err, errPathsOutsideExecRoot) {
+				return
+			}
 			roe := a.oe.(*outerr.RecordingOutErr)
 			log.Warningf("%v: Remote execution failed with %+v, falling back to local.\n stdout: %s\n stderr: %s",
 				a.cmd.Identifiers.ExecutionID, a.res, roe.Stdout(), roe.Stderr())
@@ -886,6 +890,12 @@ func (s *Server) runRacing(ctx context.Context, a *action) {
 	if features.GetConfig().CleanIncludePaths {
 		a.cmd.Args = cleanIncludePaths(a.cmd)
 	}
+	if features.GetConfig().RelativizePaths {
+		if err := applyPathRelativization(a); err != nil {
+			a.res = command.NewLocalErrorResult(err)
+			return
+		}
+	}
 
 	if err := s.populateCommandIO(ctx, a); err != nil {
 		return
@@ -944,6 +954,12 @@ func (s *Server) runRemote(ctx context.Context, a *action) {
 
 	if features.GetConfig().CleanIncludePaths {
 		a.cmd.Args = cleanIncludePaths(a.cmd)
+	}
+	if features.GetConfig().RelativizePaths {
+		if err := applyPathRelativization(a); err != nil {
+			a.res = command.NewLocalErrorResult(err)
+			return
+		}
 	}
 	if err := s.populateCommandIO(rCtx, a); err != nil {
 		return
