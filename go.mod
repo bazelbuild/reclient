@@ -3,18 +3,18 @@ module github.com/bazelbuild/reclient
 go 1.25.7 // Remember to also update the go sdks in MODULE.bazel
 
 require (
-	cloud.google.com/go/bigquery v1.72.0
-	cloud.google.com/go/monitoring v1.24.3
-	cloud.google.com/go/profiler v0.4.2
-	cloud.google.com/go/storage v1.56.0
-	cloud.google.com/go/trace v1.11.7
+	cloud.google.com/go/bigquery v1.86.1
+	cloud.google.com/go/monitoring v1.32.1
+	cloud.google.com/go/profiler v0.7.1
+	cloud.google.com/go/storage v1.70.0
+	cloud.google.com/go/trace v1.18.1
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
 	github.com/GoogleCloudPlatform/protoc-gen-bq-schema v1.1.0
-	github.com/Microsoft/go-winio v0.6.2
+	github.com/Microsoft/go-winio v0.6.4
 	github.com/bazelbuild/remote-apis-sdks v0.0.0-20260312150912-46f258f4b4d3
-	github.com/bazelbuild/rules_go v0.60.0
+	github.com/bazelbuild/rules_go v0.65.0
 	github.com/eapache/go-resiliency v1.7.0
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/golang/glog v1.2.5
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -26,16 +26,16 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/vardius/progress-go v0.0.0-20221030221608-f948426036a9
 	go.opencensus.io v0.24.0
-	golang.org/x/mod v0.31.0
-	golang.org/x/oauth2 v0.34.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.40.0
-	golang.org/x/tools v0.40.0
-	google.golang.org/api v0.265.0
+	golang.org/x/mod v0.42.0
+	golang.org/x/oauth2 v0.37.0
+	golang.org/x/sync v0.24.0
+	golang.org/x/sys v0.49.0
+	golang.org/x/tools v0.52.0
+	google.golang.org/api v0.310.0
 	google.golang.org/genproto v0.0.0-20260203192932-546029d2fa20
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260203192932-546029d2fa20
 	google.golang.org/grpc v1.78.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
