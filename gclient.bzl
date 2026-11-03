@@ -48,14 +48,14 @@ def _config(ctx):
         __execute(ctx, __prefix(ctx, "gclient") + ["config", ctx.attr.remote, "--name", "client", "--unmanaged"])
 
 def _clone(ctx):
-    __execute(ctx, __prefix(ctx, "git") + ["clone", ctx.attr.remote, "client"])
+    __execute_with_retry(ctx, __prefix(ctx, "git") + ["clone", ctx.attr.remote, "client"], cleanup_path = "client")
 
 def _checkout(ctx):
-    __execute(ctx, __prefix(ctx, "git") + ["fetch", "origin", ctx.attr.revision], wd = ctx.attr.base_dir)
+    __execute_with_retry(ctx, __prefix(ctx, "git") + ["fetch", "origin", ctx.attr.revision], wd = ctx.attr.base_dir)
     __execute(ctx, __prefix(ctx, "git") + ["checkout", ctx.attr.revision], wd = ctx.attr.base_dir)
 
 def _sync(ctx):
-    __execute(ctx, __prefix(ctx, "gclient") + ["sync", "--no-history"])
+    __execute_with_retry(ctx, __prefix(ctx, "gclient") + ["sync", "--no-history", "--jobs=4"])
 
 def _copy(ctx):
     __execute(ctx, __prefix(ctx, "cp") + ["-rf", ctx.attr.local_path, "."])
@@ -153,6 +153,23 @@ def __execute(ctx, command, wd = ""):
     st = ctx.execute(command, environment = __env(ctx), working_directory = wd, timeout = 1800)
     if st.return_code != 0:
         __error(ctx.name, command, st.stdout, st.stderr, __env(ctx))
+
+def __sleep(ctx, seconds):
+    if __is_windows(ctx):
+        ctx.execute(["powershell", "-NoProfile", "-Command", "Start-Sleep -Seconds " + str(seconds)], environment = __env(ctx), timeout = seconds + 30)
+    else:
+        ctx.execute(["sleep", str(seconds)], environment = __env(ctx), timeout = seconds + 30)
+
+def __execute_with_retry(ctx, command, wd = "", retries = 3, cleanup_path = ""):
+    for attempt in range(retries):
+        st = ctx.execute(command, environment = __env(ctx), working_directory = wd, timeout = 1800)
+        if st.return_code == 0:
+            return
+        if attempt + 1 == retries:
+            __error(ctx.name, command, st.stdout, st.stderr, __env(ctx))
+        if cleanup_path != "":
+            ctx.delete(cleanup_path)
+        __sleep(ctx, 10 * (attempt + 1))
 
 def __is_windows(ctx):
     return ctx.os.name.lower().find("windows") != -1
