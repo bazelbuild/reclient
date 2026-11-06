@@ -21,15 +21,18 @@ package reproxy
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"testing"
 	"time"
 
+	lpb "github.com/bazelbuild/reclient/api/log"
 	ppb "github.com/bazelbuild/reclient/api/proxy"
 	"github.com/bazelbuild/reclient/internal/pkg/execroot"
 	"github.com/bazelbuild/reclient/internal/pkg/localresources"
+	"github.com/bazelbuild/reclient/internal/pkg/logger"
 	"github.com/bazelbuild/reclient/internal/pkg/subprocess"
 	"github.com/bazelbuild/reclient/pkg/inputprocessor"
 	cpb "github.com/bazelbuild/remote-apis-sdks/go/api/command"
@@ -37,6 +40,7 @@ import (
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/digest"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/fakes"
 	"github.com/bazelbuild/remote-apis-sdks/go/pkg/filemetadata"
+	"github.com/bazelbuild/remote-apis-sdks/go/pkg/outerr"
 )
 
 // TestDownloadRegex verifies that --download_regex controls which files to download from output list.
@@ -346,6 +350,80 @@ func TestInOutFiles(t *testing.T) {
 			sort.Strings(tc.wantInOut)
 			if fmt.Sprintf("%v", gotInOut) != fmt.Sprintf("%v", tc.wantInOut) {
 				t.Errorf("inOutFiles() = %v, want %v", gotInOut, tc.wantInOut)
+			}
+		})
+	}
+}
+
+func TestGetCachedResult(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		clearCAS       bool
+		wantContent    string
+		wantStatus     command.ResultStatus
+		wantCacheHit   bool
+		wantValidCache bool
+	}{
+		{
+			name:           "valid_cache_hit",
+			wantContent:    "foo.o",
+			wantStatus:     command.CacheHitResultStatus,
+			wantCacheHit:   true,
+			wantValidCache: true,
+		},
+		{
+			name:           "download_failure_resets_cache_hit",
+			clearCAS:       true,
+			wantStatus:     command.RemoteErrorResultStatus,
+			wantCacheHit:   false,
+			wantValidCache: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env, cleanup := fakes.NewTestEnv(t)
+			t.Cleanup(cleanup)
+			cmd := &command.Command{
+				Identifiers: &command.Identifiers{ExecutionID: "exec-id"},
+				Args:        []string{"tool"},
+				ExecRoot:    env.ExecRoot,
+				InputSpec:   &command.InputSpec{},
+				OutputFiles: []string{"foo.o"},
+			}
+			env.Set(cmd, command.DefaultExecutionOptions(), &command.Result{Status: command.CacheHitResultStatus},
+				&fakes.OutputFile{Path: "foo.o", Contents: "foo.o"},
+			)
+			if tc.clearCAS {
+				env.Server.CAS.Clear()
+			}
+			rec := logger.NewLogRecord()
+			rec.LocalMetadata = &lpb.LocalMetadata{}
+			a := &action{
+				cmd:           cmd,
+				rOpt:          &ppb.RemoteExecutionOptions{AcceptCached: true, DownloadOutputs: false},
+				rec:           rec,
+				oe:            outerr.NewRecordingOutErr(),
+				downloadRegex: ".*",
+			}
+			ctx := t.Context()
+			if err := a.createExecContext(ctx, env.Client); err != nil {
+				t.Fatalf("createExecContext() failed: %v", err)
+			}
+			a.getCachedResult(ctx)
+			if a.res.Status != tc.wantStatus {
+				t.Errorf("a.res.Status = %v, want %v", a.res.Status, tc.wantStatus)
+			}
+			if got := a.rec.RemoteMetadata.GetCacheHit(); got != tc.wantCacheHit {
+				t.Errorf("RemoteMetadata.CacheHit = %v, want %v", got, tc.wantCacheHit)
+			}
+			if got := a.rec.LocalMetadata.GetValidCacheHit(); got != tc.wantValidCache {
+				t.Errorf("LocalMetadata.ValidCacheHit = %v, want %v", got, tc.wantValidCache)
+			}
+			gotBytes, err := os.ReadFile(filepath.Join(env.ExecRoot, "foo.o"))
+			if err != nil && (tc.wantContent != "" || !os.IsNotExist(err)) {
+				t.Fatalf("os.ReadFile(foo.o) failed: %v", err)
+			}
+			if string(gotBytes) != tc.wantContent {
+				t.Errorf("foo.o content = %q, want %q", gotBytes, tc.wantContent)
 			}
 		})
 	}

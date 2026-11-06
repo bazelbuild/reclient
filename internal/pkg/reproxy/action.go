@@ -701,13 +701,19 @@ func (a *action) getCachedResult(ctx context.Context) {
 		a.res = command.NewLocalErrorResult(fmt.Errorf("%v failed deps validation", a.cmd.Identifiers.ExecutionID))
 		return
 	}
-	a.rec.LocalMetadata.ValidCacheHit = true
 	outDir := a.cmd.ExecRoot
 	outs, err := a.execContext.GetFlattenedOutputs()
 	if err != nil {
 		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v", a.cmd.Identifiers.ExecutionID, err)
+	} else {
+		a.execContext.DownloadSpecifiedOutputs(a.excludeOutputsViaFilter(outs), outDir)
 	}
-	a.execContext.DownloadSpecifiedOutputs(a.excludeOutputsViaFilter(outs), outDir)
+	if a.res = a.execContext.Result; a.res == nil || !a.res.IsOk() {
+		a.rec.RemoteMetadata.CacheHit = false
+		a.rec.RemoteMetadata.Result = command.ResultToProto(a.res)
+		return
+	}
+	a.rec.LocalMetadata.ValidCacheHit = true
 }
 
 func (a *action) cacheLocal() {
