@@ -91,6 +91,15 @@ def _strip(ctx):
             ctx.symlink(item, root.get_child(item.basename))
 
 def _gn(ctx):
+    # Pin get_tool_mtime.py output to 0 so macOS toolchain.ninja files do not
+    # embed per-VM checkout mtimes in TOOL_VERSION=... flags.
+    tool_mtime_py = "client/third_party/chromium_build/toolchain/apple/get_tool_mtime.py"
+    if ctx.path(tool_mtime_py).exists:
+        ctx.file(
+            tool_mtime_py,
+            "import os, sys\nfor f in sys.argv[1:]:\n  print('%s = 0' % os.path.splitext(os.path.basename(f))[0])\n",
+        )
+
     if __is_macos(ctx):
         # We cannot condition this repository rule on whether we want to build for an Intel target
         # or an Arm target. Thus we will generate the ninja files for both Intel and Arm in
@@ -115,10 +124,13 @@ def _gn(ctx):
 # using gn, but we don't want to build steps to rely on gn at all.
 def _trim_build(ctx):
     # https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
-    __execute(ctx, __prefix(ctx, "sed") + ["-i.bak", "-e", "s/^build build\\.ninja.*$//g", "out/build.ninja"], wd = ctx.attr.base_dir)
-    __execute(ctx, __prefix(ctx, "sed") + ["-i.bak", "-e", "s/^  generator.*$//g", "out/build.ninja"], wd = ctx.attr.base_dir)
-    __execute(ctx, __prefix(ctx, "sed") + ["-i.bak", "-e", "s/^  depfile.*$//g", "out/build.ninja"], wd = ctx.attr.base_dir)
-    __execute(ctx, __prefix(ctx, "rm") + ["-f", "out/build.ninja.bak"], wd = ctx.attr.base_dir)
+    out_dirs = ["out", "out_arm64"] if __is_macos(ctx) else ["out"]
+    for out_dir in out_dirs:
+        ninja_file = "{}/build.ninja".format(out_dir)
+        __execute(ctx, __prefix(ctx, "sed") + ["-i.bak", "-e", "s/^build build\\.ninja.*$//g", ninja_file], wd = ctx.attr.base_dir)
+        __execute(ctx, __prefix(ctx, "sed") + ["-i.bak", "-e", "s/^  generator.*$//g", ninja_file], wd = ctx.attr.base_dir)
+        __execute(ctx, __prefix(ctx, "sed") + ["-i.bak", "-e", "s/^  depfile.*$//g", ninja_file], wd = ctx.attr.base_dir)
+        __execute(ctx, __prefix(ctx, "rm") + ["-f", "{}.bak".format(ninja_file), "{}.d".format(ninja_file)], wd = ctx.attr.base_dir)
 
 def _clean_extra_files(ctx):
     __execute(ctx, __prefix(ctx, "find") + [".", "-name", "BUILD", "-delete"])
@@ -128,15 +140,12 @@ def _clean_extra_files(ctx):
 
     # Defining all the actual required files on //external/BUILD.goma is hard,
     # so instead we trim anything that may affect our action cacheability.
-    delPaths = ["*/.git*", "*/.cipd*", "*/depot_tools*", "*/testdata*", "*/test/data*"]
+    delPaths = ["*/.git*", "*/.gclient*", "*/.cipd*", "*/depot_tools*", "*/testdata*", "*/test/data*", "*/__pycache__*"]
 
     if __is_windows(ctx):
         for i, path in enumerate(delPaths):
             delPaths[i] = "'" + path + "'"
-
-    if __is_windows(ctx) or __is_macos(ctx):
         __execute(ctx, __prefix(ctx, "find") + [".", "-path", "'*/buildtools/third_party/libc++*'", "-delete"])
-        __execute(ctx, __prefix(ctx, "find") + [".", "-path", "'*/__pycache__*'", "-delete"])
 
     for path in delPaths:
         __execute(ctx, __prefix(ctx, "find") + [".", "-path", path, "-delete"])
