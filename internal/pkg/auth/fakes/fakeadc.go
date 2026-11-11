@@ -15,9 +15,9 @@ func StartTokenValidationServer(t *testing.T, exp time.Time, validToken string) 
 	fakeTokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/tokeninfo":
-			token := r.URL.Query().Get("access_token")
+			token := r.FormValue("access_token")
 			if token != validToken {
-				t.Errorf("Expected query param access_token=%s, got access_token=%s", validToken, token)
+				t.Errorf("Expected access_token=%s, got access_token=%s", validToken, token)
 			}
 			resp := map[string]interface{}{
 				"exp": strconv.FormatInt(exp.Unix(), 10),
