@@ -2506,6 +2506,10 @@ func TestLERCDepsInvalidCacheHit(t *testing.T) {
 	execroot.AddFilesWithContent(t, env.ExecRoot, fileContents)
 	executor := &execStub{localExec: func() {
 		createDFile(t, env.ExecRoot, "foo.o", "foo.h", "bar.h")
+		os.Chmod(filepath.Join(env.ExecRoot, "foo.d"), 0644)
+		if err := os.WriteFile(filepath.Join(env.ExecRoot, "foo.o"), []byte("foo.o"), 0644); err != nil {
+			t.Fatalf("failed to write foo.o: %v", err)
+		}
 	}}
 	resMgr := localresources.NewDefaultManager()
 	server := &Server{

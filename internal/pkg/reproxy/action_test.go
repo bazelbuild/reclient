@@ -20,6 +20,7 @@ package reproxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -356,32 +357,149 @@ func TestInOutFiles(t *testing.T) {
 }
 
 func TestGetCachedResult(t *testing.T) {
+	dFileRel := filepath.Join("sub", "foo.d")
+	depsFileRel := filepath.Join("sub", "foo.d.deps")
+	outDirRel := "out_dir"
+	staleDirFileRel := filepath.Join(outDirRel, "stale.txt")
+	checkFileContent := func(t *testing.T, path, want string) {
+		t.Helper()
+		if got, err := os.ReadFile(path); err != nil || string(got) != want {
+			t.Errorf("os.ReadFile(%s) = (%q, %v), want (%q, nil)", path, got, err, want)
+		}
+	}
+	checkFileNotExist := func(t *testing.T, path string) {
+		t.Helper()
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("os.Stat(%s) error = %v, want not-exist", path, err)
+		}
+	}
 	for _, tc := range []struct {
-		name           string
-		clearCAS       bool
-		wantContent    string
-		wantStatus     command.ResultStatus
-		wantCacheHit   bool
-		wantValidCache bool
+		name                 string
+		withDepsFile         bool
+		staleDepsFile        bool
+		withOutDir           bool
+		downloadOutputs      bool
+		downloadRegex        string
+		clearCAS             bool
+		keepDepsInCAS        bool
+		wantStatus           command.ResultStatus
+		wantCacheHit         bool
+		wantValidCache       bool
+		wantOutputDownloaded bool
+		wantStaleRemoved     bool
+		wantDepsFileReads    int
+		wantOutputReads      int
 	}{
 		{
-			name:           "valid_cache_hit",
-			wantContent:    "foo.o",
-			wantStatus:     command.CacheHitResultStatus,
-			wantCacheHit:   true,
-			wantValidCache: true,
+			name:                 "valid_cache_hit",
+			withOutDir:           true,
+			downloadOutputs:      true,
+			wantStatus:           command.CacheHitResultStatus,
+			wantCacheHit:         true,
+			wantValidCache:       true,
+			wantOutputDownloaded: true,
+			wantStaleRemoved:     true,
+			wantOutputReads:      1,
 		},
 		{
-			name:           "download_failure_resets_cache_hit",
-			clearCAS:       true,
-			wantStatus:     command.RemoteErrorResultStatus,
-			wantCacheHit:   false,
-			wantValidCache: false,
+			name:                 "valid_cache_hit_with_deps",
+			withDepsFile:         true,
+			withOutDir:           true,
+			downloadOutputs:      true,
+			wantStatus:           command.CacheHitResultStatus,
+			wantCacheHit:         true,
+			wantValidCache:       true,
+			wantOutputDownloaded: true,
+			wantStaleRemoved:     true,
+			wantDepsFileReads:    2,
+			wantOutputReads:      1,
+		},
+		{
+			name:              "stale_deps_skips_output_download",
+			withDepsFile:      true,
+			staleDepsFile:     true,
+			withOutDir:        true,
+			downloadOutputs:   true,
+			wantStatus:        command.LocalErrorResultStatus,
+			wantCacheHit:      true,
+			wantDepsFileReads: 1,
+		},
+		{
+			name:              "download_outputs_false_skips_output_download",
+			withDepsFile:      true,
+			withOutDir:        true,
+			wantStatus:        command.CacheHitResultStatus,
+			wantCacheHit:      true,
+			wantValidCache:    true,
+			wantDepsFileReads: 1,
+		},
+		{
+			name:              "download_regex_excludes_output",
+			withDepsFile:      true,
+			withOutDir:        true,
+			downloadOutputs:   true,
+			downloadRegex:     "-.*",
+			wantStatus:        command.CacheHitResultStatus,
+			wantCacheHit:      true,
+			wantValidCache:    true,
+			wantDepsFileReads: 1,
+		},
+		{
+			name:                 "download_regex_overrides_download_outputs_false",
+			withDepsFile:         true,
+			withOutDir:           true,
+			downloadRegex:        ".*",
+			wantStatus:           command.CacheHitResultStatus,
+			wantCacheHit:         true,
+			wantValidCache:       true,
+			wantOutputDownloaded: true,
+			wantDepsFileReads:    1,
+			wantOutputReads:      1,
+		},
+		{
+			name:            "flatten_outputs_failure_resets_cache_hit",
+			withOutDir:      true,
+			downloadOutputs: true,
+			clearCAS:        true,
+			wantStatus:      command.RemoteErrorResultStatus,
+		},
+		{
+			name:              "download_deps_failure_resets_cache_hit",
+			withDepsFile:      true,
+			downloadOutputs:   true,
+			clearCAS:          true,
+			wantStatus:        command.RemoteErrorResultStatus,
+			wantDepsFileReads: 1,
+		},
+		{
+			name:              "download_output_failure_with_deps_resets_cache_hit",
+			withDepsFile:      true,
+			downloadOutputs:   true,
+			clearCAS:          true,
+			keepDepsInCAS:     true,
+			wantStatus:        command.RemoteErrorResultStatus,
+			wantDepsFileReads: 2,
+		},
+		{
+			name:            "download_output_failure_resets_cache_hit",
+			downloadOutputs: true,
+			clearCAS:        true,
+			wantStatus:      command.RemoteErrorResultStatus,
+			wantOutputReads: 1,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			env, cleanup := fakes.NewTestEnv(t)
 			t.Cleanup(cleanup)
+			filemetadata.ResetGlobalCache()
+			fmc := filemetadata.NewSingleFlightCache()
+			env.Client.FileMetadataCache = fmc
+			execroot.AddFileWithContent(t, filepath.Join(env.ExecRoot, "foo.h"), []byte("foo"))
+			headerBlob := "foo"
+			if tc.staleDepsFile {
+				headerBlob = "stale"
+			}
+			depsContent := fmt.Sprintf("foo.h:%s\n", digest.NewFromBlob([]byte(headerBlob)))
 			cmd := &command.Command{
 				Identifiers: &command.Identifiers{ExecutionID: "exec-id"},
 				Args:        []string{"tool"},
@@ -389,20 +507,40 @@ func TestGetCachedResult(t *testing.T) {
 				InputSpec:   &command.InputSpec{},
 				OutputFiles: []string{"foo.o"},
 			}
-			env.Set(cmd, command.DefaultExecutionOptions(), &command.Result{Status: command.CacheHitResultStatus},
-				&fakes.OutputFile{Path: "foo.o", Contents: "foo.o"},
-			)
+			outs := []fakes.Option{&fakes.OutputFile{Path: "foo.o", Contents: "foo.o"}}
+			if tc.withDepsFile {
+				cmd.OutputFiles = append(cmd.OutputFiles, depsFileRel)
+				outs = append(outs, &fakes.OutputFile{Path: depsFileRel, Contents: depsContent})
+			}
+			if tc.withOutDir {
+				if err := os.MkdirAll(filepath.Join(env.ExecRoot, outDirRel), 0755); err != nil {
+					t.Fatalf("MkdirAll(%v) failed: %v", outDirRel, err)
+				}
+				cmd.OutputDirs = []string{outDirRel}
+				outs = append(outs, &fakes.OutputDir{Path: outDirRel})
+			}
+			env.Set(cmd, command.DefaultExecutionOptions(), &command.Result{Status: command.CacheHitResultStatus}, outs...)
+			if tc.withOutDir {
+				execroot.AddFileWithContent(t, filepath.Join(env.ExecRoot, staleDirFileRel), []byte("stale-dir-file"))
+			}
 			if tc.clearCAS {
 				env.Server.CAS.Clear()
+				if tc.keepDepsInCAS {
+					env.Server.CAS.Put([]byte(depsContent))
+				}
 			}
 			rec := logger.NewLogRecord()
 			rec.LocalMetadata = &lpb.LocalMetadata{}
 			a := &action{
 				cmd:           cmd,
-				rOpt:          &ppb.RemoteExecutionOptions{AcceptCached: true, DownloadOutputs: false},
+				rOpt:          &ppb.RemoteExecutionOptions{AcceptCached: true, DownloadOutputs: tc.downloadOutputs},
+				fmc:           fmc,
 				rec:           rec,
 				oe:            outerr.NewRecordingOutErr(),
-				downloadRegex: ".*",
+				downloadRegex: tc.downloadRegex,
+			}
+			if tc.withDepsFile {
+				a.dFile, a.depsFile = dFileRel, depsFileRel
 			}
 			ctx := t.Context()
 			if err := a.createExecContext(ctx, env.Client); err != nil {
@@ -418,12 +556,35 @@ func TestGetCachedResult(t *testing.T) {
 			if got := a.rec.LocalMetadata.GetValidCacheHit(); got != tc.wantValidCache {
 				t.Errorf("LocalMetadata.ValidCacheHit = %v, want %v", got, tc.wantValidCache)
 			}
-			gotBytes, err := os.ReadFile(filepath.Join(env.ExecRoot, "foo.o"))
-			if err != nil && (tc.wantContent != "" || !os.IsNotExist(err)) {
-				t.Fatalf("os.ReadFile(foo.o) failed: %v", err)
+			if reads := env.Server.CAS.BlobReads(digest.NewFromBlob([]byte("foo.o"))); reads != tc.wantOutputReads {
+				t.Errorf("CAS.BlobReads(foo.o) = %d, want %d", reads, tc.wantOutputReads)
 			}
-			if string(gotBytes) != tc.wantContent {
-				t.Errorf("foo.o content = %q, want %q", gotBytes, tc.wantContent)
+			if reads := env.Server.CAS.BlobReads(digest.NewFromBlob([]byte(depsContent))); reads != tc.wantDepsFileReads {
+				t.Errorf("CAS.BlobReads(foo.d.deps) = %d, want %d", reads, tc.wantDepsFileReads)
+			}
+			fooPath := filepath.Join(env.ExecRoot, "foo.o")
+			if tc.wantOutputDownloaded {
+				checkFileContent(t, fooPath, "foo.o")
+			} else {
+				checkFileNotExist(t, fooPath)
+			}
+			if tc.withOutDir {
+				stalePath := filepath.Join(env.ExecRoot, staleDirFileRel)
+				if tc.wantStaleRemoved {
+					checkFileNotExist(t, stalePath)
+				} else {
+					checkFileContent(t, stalePath, "stale-dir-file")
+				}
+			}
+			depsPath := filepath.Join(env.ExecRoot, depsFileRel)
+			if tc.withDepsFile && tc.wantValidCache {
+				checkFileContent(t, depsPath, depsContent)
+			} else {
+				checkFileNotExist(t, depsPath)
+				var fe *filemetadata.FileError
+				if err := fmc.Get(depsPath).Err; !errors.As(err, &fe) || !fe.IsNotFound {
+					t.Errorf("fmc.Get(foo.d.deps).Err = %v, want not-found FileError", err)
+				}
 			}
 		})
 	}

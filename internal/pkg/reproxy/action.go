@@ -695,25 +695,66 @@ func (a *action) getCachedResult(ctx context.Context) {
 	if a.execContext.Result == nil || !a.execContext.Result.IsOk() {
 		return
 	}
-	a.rec.RemoteMetadata.CacheHit = true
-	a.rec.RemoteMetadata.Result = command.ResultToProto(a.execContext.Result)
+	defer func() {
+		if !a.rec.LocalMetadata.GetValidCacheHit() {
+			a.removeDepsFile()
+		}
+		a.rec.RemoteMetadata = logger.CommandRemoteMetadataToProto(a.execContext.Metadata)
+		a.rec.RemoteMetadata.CacheHit = a.execContext.Result != nil && a.execContext.Result.IsOk()
+		a.rec.RemoteMetadata.Result = command.ResultToProto(a.execContext.Result)
+	}()
+	outs, err := a.execContext.GetFlattenedOutputs()
+	if err != nil {
+		a.res = a.execContext.Result
+		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v", a.cmd.Identifiers.ExecutionID, err)
+		return
+	}
+	a.downloadDepsFile(outs)
+	if a.res = a.execContext.Result; a.res == nil || !a.res.IsOk() {
+		return
+	}
 	if !a.cachedResultValid() {
 		a.res = command.NewLocalErrorResult(fmt.Errorf("%v failed deps validation", a.cmd.Identifiers.ExecutionID))
 		return
 	}
-	outDir := a.cmd.ExecRoot
-	outs, err := a.execContext.GetFlattenedOutputs()
-	if err != nil {
-		log.Errorf("%v: Unable to get flattened outputs from Action Result: %v", a.cmd.Identifiers.ExecutionID, err)
-	} else {
-		a.execContext.DownloadSpecifiedOutputs(a.excludeOutputsViaFilter(outs), outDir)
+	if a.downloadRegex == "" {
+		if execOptionsFromProto(a.rOpt).DownloadOutputs {
+			a.execContext.DownloadOutputs(a.cmd.ExecRoot)
+		}
+	} else if filtered := a.excludeOutputsViaFilter(outs); len(filtered) > 0 {
+		a.execContext.DownloadSpecifiedOutputs(filtered, a.cmd.ExecRoot)
 	}
 	if a.res = a.execContext.Result; a.res == nil || !a.res.IsOk() {
-		a.rec.RemoteMetadata.CacheHit = false
-		a.rec.RemoteMetadata.Result = command.ResultToProto(a.res)
 		return
 	}
 	a.rec.LocalMetadata.ValidCacheHit = true
+}
+
+// downloadDepsFile downloads the cached deps file if present and removes it from outs to avoid duplicate downloads.
+func (a *action) downloadDepsFile(outs map[string]*client.TreeOutput) {
+	if a.dFile == "" || a.depsFile == "" {
+		return
+	}
+	depsRel := pathtranslator.RelToWorkingDir(a.cmd.ExecRoot, a.cmd.WorkingDir, a.depsFile)
+	if depsOut, ok := outs[depsRel]; ok {
+		a.execContext.DownloadSpecifiedOutputs(map[string]*client.TreeOutput{depsRel: depsOut}, a.cmd.ExecRoot)
+		delete(outs, depsRel)
+	}
+}
+
+func (a *action) removeDepsFile() {
+	if a.depsFile == "" {
+		return
+	}
+	depsPath := filepath.Join(a.cmd.ExecRoot, a.depsFile)
+	if err := os.Remove(depsPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Warningf("%v: Failed to remove cached deps file %v: %v", a.cmd.Identifiers.ExecutionID, a.depsFile, err)
+	}
+	if a.fmc != nil {
+		if err := a.fmc.Delete(depsPath); err != nil {
+			log.Warningf("%v: Failed to delete cache entry of %v: %v", a.cmd.Identifiers.ExecutionID, depsPath, err)
+		}
+	}
 }
 
 func (a *action) cacheLocal() {
@@ -837,8 +878,10 @@ func (a *action) createExecContext(ctx context.Context, client *rexec.Client) er
 	if a.execContext != nil {
 		return nil
 	}
+	opts := execOptionsFromProto(a.rOpt)
+	opts.DownloadOutputs = false
 	var err error
-	if a.execContext, err = client.NewContext(ctx, a.cmd, execOptionsFromProto(a.rOpt), a.oe); err != nil {
+	if a.execContext, err = client.NewContext(ctx, a.cmd, opts, a.oe); err != nil {
 		return err
 	}
 	return nil
