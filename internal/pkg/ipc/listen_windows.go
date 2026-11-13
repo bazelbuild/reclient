@@ -17,25 +17,22 @@
 package ipc
 
 import (
+	"fmt"
 	"net"
 	"strings"
 
 	winio "github.com/Microsoft/go-winio"
 )
 
-// Listen announces on the serverAddr to accept grpc connection.
-// If serverAddr is `pipe://<addr>`, it listens on named pipe `\\.\pipe\<addr>`.
+// Listen announces on serverAddr to accept gRPC connections.
+// Only pipe:// addresses are supported on Windows.
 func Listen(serverAddr string) (net.Listener, error) {
-	network := "tcp"
-	address := serverAddr
-	if strings.HasPrefix(address, "pipe://") {
-		network = "pipe"
-		address = `\\.\pipe\` + strings.TrimPrefix(address, "pipe://")
-		return winio.ListenPipe(address, &winio.PipeConfig{
-			InputBufferSize:  64 * 1024,
-			OutputBufferSize: 128 * 1024,
-		})
-
+	address, ok := strings.CutPrefix(serverAddr, "pipe://")
+	if !ok || address == "" {
+		return nil, fmt.Errorf("invalid server address %q: only pipe://<name> addresses are supported", serverAddr)
 	}
-	return net.Listen(network, address)
+	return winio.ListenPipe(`\\.\pipe\`+address, &winio.PipeConfig{
+		InputBufferSize:  64 * 1024,
+		OutputBufferSize: 128 * 1024,
+	})
 }

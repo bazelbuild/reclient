@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "ipc",
@@ -66,4 +66,13 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "ipc_test",
+    srcs = [
+        "listen_posix_test.go",
+        "listen_windows_test.go",
+    ],
+    embed = [":ipc"],
 )

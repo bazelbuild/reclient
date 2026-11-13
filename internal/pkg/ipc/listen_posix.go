@@ -17,24 +17,45 @@
 package ipc
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"strings"
+	"sync"
+	"syscall"
 )
 
-// Listen announces on the serverAddr to accept grpc connection.
+var umaskMu sync.Mutex
+
+// Listen announces on serverAddr to accept gRPC connections.
+// Only unix:// addresses are supported on POSIX, and the socket permissions
+// are restricted to 0600.
 func Listen(serverAddr string) (net.Listener, error) {
-	network := "tcp"
-	address := serverAddr
-	if strings.HasPrefix(address, "unix://") {
-		network = "unix"
-		address = strings.TrimPrefix(address, "unix://")
-		if _, err := os.Stat(address); err == nil {
-			if err := os.RemoveAll(address); err != nil {
-				return nil, fmt.Errorf("failed to remove socket file %q: %v", address, err)
-			}
-		}
+	address, ok := strings.CutPrefix(serverAddr, "unix://")
+	if !ok || address == "" {
+		return nil, fmt.Errorf("invalid server address %q: only unix:///path addresses are supported", serverAddr)
 	}
-	return net.Listen(network, address)
+
+	if err := os.Remove(address); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("failed to remove existing socket %q: %w", address, err)
+	}
+
+	umaskMu.Lock()
+	oldMask := syscall.Umask(0o177)
+	l, err := net.Listen("unix", address)
+	syscall.Umask(oldMask)
+	umaskMu.Unlock()
+	if err != nil {
+		if len(address) >= 104 { // 104 bytes on macOS/BSD, 108 on Linux
+			return nil, fmt.Errorf("socket path %q (%d bytes) likely exceeds OS Unix socket length limit; try a shorter path under /tmp: %w", address, len(address), err)
+		}
+		return nil, err
+	}
+
+	if err := os.Chmod(address, 0o600); err != nil {
+		l.Close()
+		return nil, fmt.Errorf("failed to chmod socket %q: %w", address, err)
+	}
+	return l, nil
 }
