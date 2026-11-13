@@ -4,9 +4,14 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Refer to go/rbe/dev/x/playbook/upgrading_clang_scan_deps
 # to update clang-scan-deps version.
-LLVM_COMMIT = "6d4a0935c850ec3ddfc70c4ba97b98adc35c676e"
+# llvmorg-23.1.0. Must stay at or past 4f50a725fa19 ("Add
+# LangOptions::AllowLiteralDigitSeparator to fix #88896"), which is what lets
+# the dependency-directives scanner lex C++14 digit separators in preprocessor
+# conditionals -- without it, scanning any LLVM build with libc on the include
+# path fails on hardening.h.
+LLVM_COMMIT = "ea7d852a70e8bdfaf601d6626a760f9771b2c4b4"
 
-LLVM_SHA256 = "46d963c8cbc1c3f0f06424e61fc739c626317e5b7c91cca8b0ef3cf0c69dd14a"
+LLVM_SHA256 = "298aa483c883027a38c6a38008464e50546aaa738e8ff9b9bd1045f5268646c0"
 
 def _llvm_version_repo_impl(ctx):
     ctx.file("BUILD.bazel")
@@ -18,23 +23,17 @@ _llvm_version_repo = repository_rule(
 
 def _llvm_extension_impl(ctx):
     http_archive(
-        name = "llvm",
+        name = "llvm-raw",
         build_file_content = "#empty",
         patch_args = ["-p1"],
         patches = [
             # Expose the tblgen rule to generate the clang-options.json file,
             # provide dep_scanning alias, and static link clang for Windows.
             "//third_party/patches/llvm:llvm-bzl-tblgen.patch",
-            # This patch picks the right version of assembly files to build libSupport
-            # on Windows. Refer to https://github.com/llvm/llvm-project/issues/54685
-            # for the corresponding fix to CMake files.
-            "//third_party/patches/llvm:llvm-bazel-libsupport.patch",
-            # Replace @llvm-raw with @llvm so we can build llvm inside of re-client.
-            # In the llvm-project checkout, @llvm-raw is defined the WORKSPACE file
-            # and point to the root of llvm-project; However, when we invoke the
-            # line `llvm_configure(name = "llvm-project")` below, in the bzl file,
-            # @llvm//utils/bazel:configure.bzl, @llvm-raw is not pre-defined.
-            "//third_party/patches/llvm:llvm-bzl-config.patch",
+            # Avoid the @llvm//platforms/config settings, which come from a
+            # registry module that requires a newer Bazel than .bazelversion
+            # pins. See the patch header.
+            "//third_party/patches/llvm:llvm-bzl-platform-config.patch",
         ],
         sha256 = LLVM_SHA256,
         strip_prefix = "llvm-project-%s" % LLVM_COMMIT,

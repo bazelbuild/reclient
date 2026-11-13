@@ -1,0 +1,28 @@
+As of llvmorg-23.1.0, llvm-project's bazel overlay selects on
+@llvm//platforms/config:{gnu,musl} to decide whether backtrace() and
+mallinfo() are available. Those config settings come from the registry module
+named "llvm", which declares bazel_compatibility >=7.7.0 -- newer than the
+Bazel this repo pins in .bazelversion, and bumping that requires regenerating
+the RBE toolchain configs (see the instructions in .bazelversion).
+
+Drop the libc-flavour distinction instead. reclient builds against glibc on
+Linux, so key the mallinfo define off the OS. A musl target would need this
+revisited, as would adopting the registry module once Bazel is bumped.
+
+--- a/utils/bazel/llvm-project-overlay/llvm/config.bzl
++++ b/utils/bazel/llvm-project-overlay/llvm/config.bzl
+@@ -49,13 +49,12 @@
+ backtrace_defines = select({
+     "@platforms//os:windows": [],
+-    "@llvm//platforms/config:musl": [],
+     "//conditions:default": [
+         "HAVE_BACKTRACE=1",
+         "BACKTRACE_HEADER=<execinfo.h>",
+     ],
+ })
+
+ mallinfo_defines = select({
+-    "@llvm//platforms/config:gnu": ["HAVE_MALLINFO=1"],
++    "@platforms//os:linux": ["HAVE_MALLINFO=1"],
+     "//conditions:default": [],
+ })

@@ -19,18 +19,19 @@
      hdrs = [
          "include/clang/Basic/Version.inc",
          "include/clang/Config/config.h",
-@@ -2518,4 +2522,14 @@
+@@ -2518,4 +2522,15 @@
          "//llvm:Core",
          "//llvm:Support",
      ],
  )
 +
-+alias(name = "dependency_scanning", actual = ":tooling_dependency_scanning")
-+
 +gentbl_filegroup(
 +    name = "driver_options_json_gen",
-+    tbl_outs = [(["--dump-json"], "clang-options.json")],
++    tbl_outs = {"clang-options.json": ["--dump-json"]},
 +    tblgen = "//llvm:llvm-tblgen",
-+    td_file = "include/clang/Driver/Options.td",
-+    deps = ["//llvm:OptParserTdFiles"],
++    td_file = "include/clang/Options/Options.td",
++    deps = [
++        ":FlangOptionsTdFiles",
++        "//llvm:OptParserTdFiles",
++    ],
 +)

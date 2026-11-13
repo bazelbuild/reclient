@@ -42,7 +42,9 @@ cc_library(
             "//internal/pkg/scandeps/csdutils:adjust_cmd",
             "//internal/pkg/scandeps/csdutils:parse_deps",
             "//internal/pkg/scandeps/csdutils:parse_env",
-            "@llvm-project//clang:tooling_dependency_scanning",
+            "@llvm-project//clang:dependency_scanning",
+            "@llvm-project//clang:frontend",
+            "@llvm-project//clang:tooling",
         ],
     }) + select({
         "//:clangscandeps_input_processor_config": [
