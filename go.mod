@@ -24,7 +24,7 @@ require (
 	github.com/kolesnikovae/go-winjob v1.0.0
 	github.com/pkg/xattr v0.4.12
 	github.com/shirou/gopsutil/v3 v3.24.5
-	github.com/vardius/progress-go v0.0.0-20221030221608-f948426036a9
+	github.com/vardius/progress-go v0.0.0-20261024103742-4e82042a80c3
 	go.opencensus.io v0.24.0
 	golang.org/x/mod v0.38.0
 	golang.org/x/oauth2 v0.36.0
