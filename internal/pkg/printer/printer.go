@@ -30,14 +30,14 @@ func StartFunc(header string, count int) (func(int), func()) {
 	if count == 0 {
 		return func(_ int) {}, func() {}
 	}
-	bar := progress.New(1, int64(count), progress.Options{
+	bar := progress.New(int64(count), progress.Options{
 		Graph: ">",
 	})
 	bar.Start()
 	return func(x int) {
 			bar.Advance(int64(x))
 		}, func() {
-			if _, err := bar.Stop(); err != nil {
+			if err := bar.Stop(); err != nil {
 				log.Errorf("Failed to finish progress: %v", err)
 			}
 		}
