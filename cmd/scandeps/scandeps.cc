@@ -41,10 +41,6 @@ int __wrap_getentropy(uint8_t* buffer, size_t length) {
 }
 }
 
-#else
-int __wrap_getentropy(uint8_t* buffer, size_t length) {
-  return __real_getentropy(buffer, length);
-}
 #endif  // __GLIBC_NEW__
 #endif  // __linux__
 
