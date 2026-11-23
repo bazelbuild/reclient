@@ -199,8 +199,8 @@ github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFA
 github.com/tklauser/go-sysconf v0.3.12/go.mod h1:Ho14jnntGE1fpdOqQEEaiKRpvIavV0hSfmBq8nJbHYI=
 github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+Fk=
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
-github.com/vardius/progress-go v0.0.0-20261024103742-4e82042a80c3 h1:DfCPKlRWVqxPk1CThqauvNTlYBmsIM1jr/X7zQH5bu0=
-github.com/vardius/progress-go v0.0.0-20261024103742-4e82042a80c3/go.mod h1:X8KDpk0mGplsX8UO9Wb8m5XB2J4tWuWanc1Gy+TcdxI=
+github.com/vardius/progress-go v0.0.0-20261119043747-caae7de679b0 h1:2QSGxeVZeXfpVjupZYbFVMO8ctBiwBUh1qvnWbxX2x8=
+github.com/vardius/progress-go v0.0.0-20261119043747-caae7de679b0/go.mod h1:X8KDpk0mGplsX8UO9Wb8m5XB2J4tWuWanc1Gy+TcdxI=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zeebo/assert v1.3.0 h1:g7C04CbJuIDKNPFHmsk4hwZDO5O+kntRxzaUoNXj+IQ=
